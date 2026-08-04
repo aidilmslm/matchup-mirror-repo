@@ -6,10 +6,291 @@ datasource db {
   provider = "postgresql"
 }
 
-model UsersTest {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+// ─── Users & Auth ───────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?
+  fullName      String    @map("full_name")
+  avatarUrl     String?   @map("avatar_url")
+  bio           String?
+  googleId      String?   @unique @map("google_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  preferences       UserPreference[]
+  sportPreferences  UserSportPreference[]
+  hostedActivities  Activity[]          @relation("Host")
+  participations    ActivityParticipant[]
+  swipeRecords      SwipeRecord[]
+  sentMessages      Message[]           @relation("Sender")
+  reports           Report[]            @relation("Reporter")
+  reportsAgainst    Report[]            @relation("Reported")
+  resolvedReports   Report[]            @relation("Resolver")
+  devices           UserDevice[]
+  refreshTokens     RefreshToken[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  @@map("users_test")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model UserDevice {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  platform     String    // ios, android
+  pushToken    String?   @map("push_token")
+  isActive     Boolean   @default(true) @map("is_active")
+  lastSeenAt   DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_devices")
+}
+
+// ─── User Preferences ───────────────────────────────────────────
+
+model UserPreference {
+  id              String  @id @default(uuid())
+  userId          String  @map("user_id")
+  maxDistanceKm   Int     @default(20) @map("max_distance_km")
+  ageRangeMin     Int?    @map("age_range_min")
+  ageRangeMax     Int?    @map("age_range_max")
+  notificationsOn Boolean @default(true) @map("notifications_on")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("user_preferences")
+}
+
+model UserSportPreference {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  sport     SportType
+  skillLevel SkillLevel @default(BEGINNER) @map("skill_level")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sport])
+  @@map("user_sport_preferences")
+}
+
+enum SportType {
+  FOOTBALL
+  FUTSAL
+  BASKETBALL
+  BADMINTON
+  TENNIS
+  VOLLEYBALL
+  TABLE_TENNIS
+  RUNNING
+  CYCLING
+  SWIMMING
+  GYM
+  YOGA
+  MARTIAL_ARTS
+  GOLF
+  OTHER
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  COMPETITIVE
+}
+
+// ─── Activities ──────────────────────────────────────────────────
+
+model Activity {
+  id              String         @id @default(uuid())
+  hostId          String         @map("host_id")
+  title           String
+  description     String?
+  sport           SportType
+  skillLevel      SkillLevel     @default(BEGINNER) @map("skill_level")
+  locationName    String         @map("location_name")
+  latitude        Float
+  longitude       Float
+  scheduledAt     DateTime       @map("scheduled_at") @db.Timestamptz(6)
+  durationMinutes Int            @default(60) @map("duration_minutes")
+  maxParticipants Int            @default(10) @map("max_participants")
+  status          ActivityStatus @default(OPEN)
+  imageUrl        String?        @map("image_url")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  host          User                  @relation("Host", fields: [hostId], references: [id])
+  participants  ActivityParticipant[]
+  swipeRecords  SwipeRecord[]
+  chatRoom      ChatRoom?
+  reports       Report[]             @relation("ActivityReports")
+
+  @@map("activities")
+}
+
+enum ActivityStatus {
+  OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ActivityParticipant {
+  id         String   @id @default(uuid())
+  activityId String   @map("activity_id")
+  userId     String   @map("user_id")
+  joinedAt   DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId])
+  @@map("activity_participants")
+}
+
+// ─── Swipe / Discovery ──────────────────────────────────────────
+
+model SwipeRecord {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  activityId String    @map("activity_id")
+  direction  SwipeDirection
+  swipedAt   DateTime  @default(now()) @map("swiped_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityId])
+  @@map("swipe_records")
+}
+
+enum SwipeDirection {
+  LEFT
+  RIGHT
+}
+
+// ─── Chat ────────────────────────────────────────────────────────
+
+model ChatRoom {
+  id         String    @id @default(uuid())
+  activityId String    @unique @map("activity_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  activity Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@map("chat_rooms")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  chatRoomId String   @map("chat_room_id")
+  senderId   String   @map("sender_id")
+  content    String
+  sentAt     DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User     @relation("Sender", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+// ─── Reports & Moderation ────────────────────────────────────────
+
+model Report {
+  id           String       @id @default(uuid())
+  reporterId   String       @map("reporter_id")
+  reportedUserId String?    @map("reported_user_id")
+  activityId   String?      @map("activity_id")
+  reason       ReportReason
+  description  String?
+  status       ReportStatus @default(PENDING)
+  resolvedById String?      @map("resolved_by_id")
+  resolvedAt   DateTime?    @map("resolved_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  reporter     User           @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUser User?          @relation("Reported", fields: [reportedUserId], references: [id])
+  resolvedBy   User?          @relation("Resolver", fields: [resolvedById], references: [id])
+  activity     Activity?      @relation("ActivityReports", fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@map("reports")
+}
+
+enum ReportReason {
+  INAPPROPRIATE_BEHAVIOR
+  SPAM
+  FAKE_ACTIVITY
+  HARASSMENT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+// ─── Broadcasts ──────────────────────────────────────────────────
+
+model Broadcast {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  title     String
+  body      String
+  targetAll Boolean  @default(true) @map("target_all")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("broadcasts")
+}
+
+// ─── Notifications ───────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  ACTIVITY_MATCHED
+  NEW_PARTICIPANT
+  ACTIVITY_REMINDER
+  CHAT_MESSAGE
+  BROADCAST
+  SYSTEM
 }
