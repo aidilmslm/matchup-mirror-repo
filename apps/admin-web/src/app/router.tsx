@@ -10,12 +10,9 @@ import { BroadcastsPage } from '../pages/broadcasts/BroadcastsPage';
 
 const router = createBrowserRouter([
   {
+    // Full-bleed auth layout — no sidebar/topbar chrome.
     path: '/login',
-    element: (
-      <PageContainer>
-        <LoginPage />
-      </PageContainer>
-    ),
+    element: <LoginPage />,
   },
   {
     path: '/',
