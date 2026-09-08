@@ -6,12 +6,25 @@ import 'auth_repository.dart';
 /// the real backend path.
 class LocalAuthRepository implements AuthRepository {
   @override
+  Future<bool> bootstrapUser({required String email}) async => false;
+
+  @override
   Future<AuthResult> signIn({
     required String email,
     required String password,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
     // Any email/password succeeds — matches the pre-existing UX.
+    return const AuthResult(
+      accessToken: 'dummy_access_token',
+      refreshToken: 'dummy_refresh_token',
+      userId: 'demo_user_001',
+    );
+  }
+
+  @override
+  Future<AuthResult> signInWithGoogle() async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
     return const AuthResult(
       accessToken: 'dummy_access_token',
       refreshToken: 'dummy_refresh_token',

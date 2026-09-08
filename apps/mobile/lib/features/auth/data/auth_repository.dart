@@ -7,6 +7,10 @@ class AuthResult {
   });
 
   final String accessToken;
+
+  /// Email/password REST auth returns this explicitly. Provider auth such as
+  /// Google keeps its refresh token inside the Firebase Auth SDK, so this can
+  /// be empty for those providers.
   final String refreshToken;
 
   /// Server-side user ID — stored in [SecureTokenStore] and used as the
@@ -21,10 +25,11 @@ class AuthResult {
 abstract class AuthRepository {
   /// Signs in with email + password. Returns [AuthResult] on success.
   /// Throws [AuthException] on invalid credentials or network error.
-  Future<AuthResult> signIn({
-    required String email,
-    required String password,
-  });
+  Future<AuthResult> signIn({required String email, required String password});
+
+  Future<AuthResult> signInWithGoogle();
+
+  Future<bool> bootstrapUser({required String email});
 
   /// Creates a new account. Returns [AuthResult] on success (auto-login).
   Future<AuthResult> register({

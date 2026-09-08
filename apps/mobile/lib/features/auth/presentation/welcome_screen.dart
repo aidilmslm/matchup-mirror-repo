@@ -1,23 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/auth_state_provider.dart';
+import '../../../core/providers/repository_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/dark_colors.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../../../core/widgets/pressable_scale.dart';
+import '../data/auth_repository.dart';
+import '../../tour/presentation/tour_controller.dart';
+import '../../tour/presentation/tour_steps.dart';
 
-void _showComingSoon(BuildContext context) {
-  AppSnackbar.show(
-    context,
-    message: 'Social sign-in coming soon.',
-    variant: AppSnackbarVariant.info,
-  );
+class WelcomeScreen extends ConsumerStatefulWidget {
+  const WelcomeScreen({super.key});
+
+  @override
+  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
+  bool _isLoading = false;
+
+  Future<void> _onGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final repository = ref.read(authRepositoryProvider);
+      final result = await repository.signInWithGoogle();
+      await ref
+          .read(authStateProvider.notifier)
+          .signIn(
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+            userId: result.userId,
+          );
+      final isNewUser = await repository.bootstrapUser(email: '');
+      if (isNewUser) {
+        await ref.read(tourStoreProvider).reset(kFirstRunTourId);
+      }
+
+      if (!mounted) return;
+      context.go(isNewUser ? '/get-to-know-1' : '/discovery');
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.show(
+        context,
+        message: e is AuthException ? e.userMessage : 'Google sign-in failed.',
+        variant: AppSnackbarVariant.error,
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,10 +84,9 @@ class WelcomeScreen extends StatelessWidget {
             Text(
               'Welcome to MatchUp',
               textAlign: TextAlign.center,
-              style: AppTypography.headingDisplay(context).copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-              ),
+              style: AppTypography.headingDisplay(
+                context,
+              ).copyWith(fontSize: 28, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.x2),
             Text(
@@ -76,7 +111,11 @@ class WelcomeScreen extends StatelessWidget {
             // ── Sign up with Apple ─────────────────────────────
             _PillButton(
               label: 'Sign up with Apple',
-              onTap: () => _showComingSoon(context),
+              onTap: () => AppSnackbar.show(
+                context,
+                message: 'Apple sign-in coming soon.',
+                variant: AppSnackbarVariant.info,
+              ),
               bgColor: const Color(0xFF000000),
               textColor: AppColors.textOnPrimary,
               icon: Icons.apple_rounded,
@@ -86,7 +125,7 @@ class WelcomeScreen extends StatelessWidget {
             // ── Sign up with Google ────────────────────────────
             _PillButton(
               label: 'Sign up with Google',
-              onTap: () => _showComingSoon(context),
+              onTap: _isLoading ? () {} : () => _onGoogleSignIn(),
               bgColor: context.colors.surface,
               textColor: context.colors.textPrimary,
               icon: Icons.circle_outlined,
@@ -211,10 +250,7 @@ class _Collage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.success,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.textOnPrimary,
-                  width: 2,
-                ),
+                border: Border.all(color: AppColors.textOnPrimary, width: 2),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x4022C55E),
@@ -299,9 +335,7 @@ class _PillButton extends StatelessWidget {
               ],
               Text(
                 label,
-                style: AppTypography.buttonPrimary.copyWith(
-                  color: textColor,
-                ),
+                style: AppTypography.buttonPrimary.copyWith(color: textColor),
               ),
             ],
           ),

@@ -13,11 +13,13 @@ import '../../../core/utils/secure_screen.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../../../core/widgets/pressable_scale.dart';
+import '../../tour/presentation/tour_controller.dart';
+import '../../tour/presentation/tour_steps.dart';
 
 void _showSocialComingSoon(BuildContext context) {
   AppSnackbar.show(
     context,
-    message: 'Social sign-in coming soon.',
+    message: 'Apple sign-in coming soon.',
     variant: AppSnackbarVariant.info,
   );
 }
@@ -61,24 +63,67 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     }
     setState(() => _isLoading = true);
     try {
-      final result = await ref.read(authRepositoryProvider).register(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      final result = await ref
+          .read(authRepositoryProvider)
+          .register(
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
       if (!mounted) return;
-      await ref.read(authStateProvider.notifier).signIn(
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-        userId: result.userId,
-      );
+      await ref
+          .read(authStateProvider.notifier)
+          .signIn(
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+            userId: result.userId,
+          );
+      final isNewUser = await ref
+          .read(authRepositoryProvider)
+          .bootstrapUser(email: _emailController.text.trim());
+      if (isNewUser) {
+        await ref.read(tourStoreProvider).reset(kFirstRunTourId);
+      }
       if (!mounted) return;
-      context.go('/get-to-know-1');
+      context.go(isNewUser ? '/get-to-know-1' : '/discovery');
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.show(
         context,
-        message: e is AuthException ? e.userMessage : 'Registration failed. Please try again.',
+        message: e is AuthException
+            ? e.userMessage
+            : 'Registration failed. Please try again.',
+        variant: AppSnackbarVariant.error,
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _onGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final result = await ref.read(authRepositoryProvider).signInWithGoogle();
+      await ref
+          .read(authStateProvider.notifier)
+          .signIn(
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+            userId: result.userId,
+          );
+      final isNewUser = await ref
+          .read(authRepositoryProvider)
+          .bootstrapUser(email: '');
+      if (isNewUser) {
+        await ref.read(tourStoreProvider).reset(kFirstRunTourId);
+      }
+      if (!mounted) return;
+      context.go(isNewUser ? '/get-to-know-1' : '/discovery');
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.show(
+        context,
+        message: e is AuthException ? e.userMessage : 'Google sign-in failed.',
         variant: AppSnackbarVariant.error,
       );
     } finally {
@@ -185,7 +230,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                           child: _SocialButton(
                             label: 'Google',
                             icon: Icons.circle_outlined,
-                            onTap: () => _showSocialComingSoon(context),
+                            onTap: _isLoading ? () {} : () => _onGoogleSignIn(),
                             isOutline: true,
                           ),
                         ),
@@ -205,33 +250,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     // Divider
                     Row(
                       children: [
-                        Expanded(
-                          child: Divider(color: context.colors.border),
-                        ),
+                        Expanded(child: Divider(color: context.colors.border)),
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.x3,
                           ),
                           child: Text(
                             'OR SIGN UP WITH EMAIL',
-                            style: AppTypography.metaSub(context).copyWith(
-                              fontSize: 12,
-                              letterSpacing: 0.5,
-                            ),
+                            style: AppTypography.metaSub(
+                              context,
+                            ).copyWith(fontSize: 12, letterSpacing: 0.5),
                           ),
                         ),
-                        Expanded(
-                          child: Divider(color: context.colors.border),
-                        ),
+                        Expanded(child: Divider(color: context.colors.border)),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.x4),
 
                     // Full Name
-                    Text(
-                      'Full Name',
-                      style: AppTypography.labelField(context),
-                    ),
+                    Text('Full Name', style: AppTypography.labelField(context)),
                     const SizedBox(height: AppSpacing.x2),
                     _TextField(
                       controller: _nameController,
@@ -303,9 +340,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                           size: 20,
                           color: context.colors.textTertiary,
                         ),
-                        onPressed: () => setState(
-                          () => _obscureConfirm = !_obscureConfirm,
-                        ),
+                        onPressed: () =>
+                            setState(() => _obscureConfirm = !_obscureConfirm),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.x5),
@@ -321,8 +357,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               ? AppColors.primary.withValues(alpha: 0.6)
                               : AppColors.primary,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
-                          boxShadow:
-                              _isLoading ? null : AppShadows.glowPrimary,
+                          boxShadow: _isLoading ? null : AppShadows.glowPrimary,
                         ),
                         alignment: Alignment.center,
                         child: _isLoading
@@ -361,14 +396,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               onTap: () => context.go('/login'),
                               child: Text(
                                 'Sign In',
-                                style:
-                                    AppTypography.bodyFormSecondary(context)
-                                        .copyWith(
-                                          color: context.colors.primaryOnSurface,
-                                          fontWeight: FontWeight.w700,
-                                          decoration: TextDecoration.underline,
-                                          decorationColor: context.colors.primaryOnSurface,
-                                        ),
+                                style: AppTypography.bodyFormSecondary(context)
+                                    .copyWith(
+                                      color: context.colors.primaryOnSurface,
+                                      fontWeight: FontWeight.w700,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor:
+                                          context.colors.primaryOnSurface,
+                                    ),
                               ),
                             ),
                           ),
@@ -410,9 +445,7 @@ class _SocialButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: isOutline
-                ? context.colors.surface
-                : const Color(0xFF000000),
+            color: isOutline ? context.colors.surface : const Color(0xFF000000),
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: isOutline
                 ? Border.all(color: context.colors.border, width: 1)
@@ -492,23 +525,17 @@ class _TextField extends StatelessWidget {
         onFieldSubmitted: onSubmitted,
         cursorColor: AppColors.primary,
         cursorWidth: 1.5,
-        style: AppTypography.bodyReading(context).copyWith(
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-        ),
+        style: AppTypography.bodyReading(
+          context,
+        ).copyWith(fontSize: 15, fontWeight: FontWeight.w400),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: AppTypography.bodyReading(context).copyWith(
-            color: context.colors.textTertiary,
-            fontSize: 15,
-          ),
+          hintStyle: AppTypography.bodyReading(
+            context,
+          ).copyWith(color: context.colors.textTertiary, fontSize: 15),
           prefixIcon: Padding(
             padding: const EdgeInsets.only(left: AppSpacing.x3),
-            child: Icon(
-              icon,
-              size: 18,
-              color: context.colors.textTertiary,
-            ),
+            child: Icon(icon, size: 18, color: context.colors.textTertiary),
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 48),
           suffixIcon: suffixIcon,

@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/config/env.dart';
@@ -6,8 +8,7 @@ import '../../../core/network/api_client.dart';
 import 'auth_repository.dart';
 
 /// Firebase Auth REST API base URL.
-const _firebaseAuthBase =
-    'https://identitytoolkit.googleapis.com/v1/accounts';
+const _firebaseAuthBase = 'https://identitytoolkit.googleapis.com/v1/accounts';
 
 /// HTTP-backed [AuthRepository] using the Firebase Authentication REST API.
 ///
@@ -22,19 +23,19 @@ const _firebaseAuthBase =
 ///   4. On 401 → refresh via securetoken endpoint → retry once
 class RemoteAuthRepository implements AuthRepository {
   RemoteAuthRepository({Dio? firebaseClient, ApiClient? apiClient})
-      : _fb = firebaseClient ?? _buildFirebaseDio(),
-        _api = apiClient ?? ApiClient.instance;
+    : _fb = firebaseClient ?? _buildFirebaseDio(),
+      _api = apiClient ?? ApiClient.instance;
 
   final Dio _fb;
   final ApiClient _api;
 
   static Dio _buildFirebaseDio() => Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 12),
-          receiveTimeout: const Duration(seconds: 12),
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 12),
+      receiveTimeout: const Duration(seconds: 12),
+      headers: {'Content-Type': 'application/json'},
+    ),
+  );
 
   String get _key => Env.firebaseWebApiKey;
 
@@ -61,6 +62,58 @@ class RemoteAuthRepository implements AuthRepository {
       debugPrint('[RemoteAuthRepository.signIn] unexpected: $e');
       throw const AuthException('Sign in failed. Please try again.');
     }
+  }
+
+  @override
+  Future<AuthResult> signInWithGoogle() async {
+    try {
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final googleAuth = googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        throw const AuthException('Google sign-in did not return an ID token.');
+      }
+
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+      final user = userCredential.user;
+      final firebaseIdToken = await user?.getIdToken();
+
+      if (user == null || firebaseIdToken == null || firebaseIdToken.isEmpty) {
+        throw const AuthException(
+          'Google sign-in did not return a Firebase user.',
+        );
+      }
+
+      return AuthResult(
+        accessToken: firebaseIdToken,
+        refreshToken: '',
+        userId: user.uid,
+      );
+    } on AuthException {
+      rethrow;
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(e.message ?? 'Google sign-in failed.', code: e.code);
+    } catch (e) {
+      debugPrint('[RemoteAuthRepository.signInWithGoogle] unexpected: $e');
+      throw const AuthException('Google sign-in failed. Please try again.');
+    }
+  }
+
+  @override
+  Future<bool> bootstrapUser({required String email}) async {
+    final response = await _api.dio.post(
+      '/users/me',
+      data: {'email': email.trim().toLowerCase()},
+    );
+
+    final responseData = response.data;
+    if (responseData is! Map) return false;
+    final data = responseData['data'];
+    return data is Map && data['created'] == true;
   }
 
   @override
@@ -93,20 +146,9 @@ class RemoteAuthRepository implements AuthRepository {
         );
       } catch (e) {
         // Non-fatal — display name update can fail silently
-        debugPrint('[RemoteAuthRepository.register] displayName update failed: $e');
-      }
-
-      // 3. Create user profile in backend Firestore
-      try {
-        await _api.dio.post(
-          '/users',
-          data: {
-            'authUid': result.userId,
-            'email': email.trim().toLowerCase(),
-          },
+        debugPrint(
+          '[RemoteAuthRepository.register] displayName update failed: $e',
         );
-      } catch (e) {
-        debugPrint('[RemoteAuthRepository.register] backend profile create failed: $e');
       }
 
       return result;
@@ -123,25 +165,20 @@ class RemoteAuthRepository implements AuthRepository {
     try {
       await _fb.post(
         '$_firebaseAuthBase:sendOobCode?key=$_key',
-        data: {
-          'requestType': 'PASSWORD_RESET',
-          'email': email.trim(),
-        },
+        data: {'requestType': 'PASSWORD_RESET', 'email': email.trim()},
       );
     } on DioException catch (e) {
       throw _toAuthException(e);
     } catch (e) {
       debugPrint('[RemoteAuthRepository.forgotPassword] unexpected: $e');
       throw const AuthException(
-          'Could not send reset email. Please try again.');
+        'Could not send reset email. Please try again.',
+      );
     }
   }
 
   @override
-  Future<void> verifyOtp({
-    required String email,
-    required String code,
-  }) async {
+  Future<void> verifyOtp({required String email, required String code}) async {
     // Firebase email/password reset uses a link, not a 6-digit OTP.
     // This is a no-op in the Firebase REST path — kept for interface compat.
   }
@@ -154,7 +191,9 @@ class RemoteAuthRepository implements AuthRepository {
     // Firebase password reset is done via the link sent in forgotPassword.
     // If the user has a valid idToken (signed in), we can update directly.
     // Otherwise this is handled by Firebase on the web side via the reset link.
-    debugPrint('[RemoteAuthRepository.resetPassword] handled via Firebase reset link');
+    debugPrint(
+      '[RemoteAuthRepository.resetPassword] handled via Firebase reset link',
+    );
   }
 
   @override
@@ -199,29 +238,21 @@ class RemoteAuthRepository implements AuthRepository {
     final userMsg = switch (firebaseCode) {
       'EMAIL_NOT_FOUND' ||
       'INVALID_PASSWORD' ||
-      'INVALID_LOGIN_CREDENTIALS' =>
-        'Incorrect email or password.',
-      'EMAIL_EXISTS' =>
-        'An account with this email already exists.',
-      'WEAK_PASSWORD' =>
-        'Password must be at least 6 characters.',
-      'INVALID_EMAIL' =>
-        'Please enter a valid email address.',
-      'USER_DISABLED' =>
-        'This account has been disabled.',
+      'INVALID_LOGIN_CREDENTIALS' => 'Incorrect email or password.',
+      'EMAIL_EXISTS' => 'An account with this email already exists.',
+      'WEAK_PASSWORD' => 'Password must be at least 6 characters.',
+      'INVALID_EMAIL' => 'Please enter a valid email address.',
+      'USER_DISABLED' => 'This account has been disabled.',
       'TOO_MANY_ATTEMPTS_TRY_LATER' =>
         'Too many attempts. Please try again later.',
-      'MISSING_PASSWORD' =>
-        'Password is required.',
-      'MISSING_EMAIL' =>
-        'Email is required.',
-      'USER_NOT_FOUND' =>
-        'Account not found.',
+      'MISSING_PASSWORD' => 'Password is required.',
+      'MISSING_EMAIL' => 'Email is required.',
+      'USER_NOT_FOUND' => 'Account not found.',
       'TOKEN_EXPIRED' ||
-      'INVALID_ID_TOKEN' =>
-        'Session expired. Please sign in again.',
-      _ when e.type == DioExceptionType.connectionError ||
-            e.type == DioExceptionType.connectionTimeout =>
+      'INVALID_ID_TOKEN' => 'Session expired. Please sign in again.',
+      _
+          when e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout =>
         'Cannot reach the server. Check your internet connection.',
       _ => 'Authentication failed. Please try again.',
     };

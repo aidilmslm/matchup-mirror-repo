@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/env.dart';
@@ -88,7 +89,22 @@ class _AuthInterceptor extends Interceptor {
   /// using the Firebase securetoken REST endpoint.
   Future<bool> _tryRefreshFirebaseToken() async {
     final refreshToken = await SecureTokenStore.instance.readRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) return false;
+
+    // firebase_auth owns the refresh token for provider sign-in (Google,
+    // Apple, etc.), so it is not available to this app as a REST token.
+    if (refreshToken == null || refreshToken.isEmpty) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        final newIdToken = await user?.getIdToken(true);
+        if (newIdToken == null || newIdToken.isEmpty) return false;
+
+        await SecureTokenStore.instance.saveAccessToken(newIdToken);
+        return true;
+      } catch (e) {
+        debugPrint('[ApiClient] SDK token refresh failed: $e');
+        return false;
+      }
+    }
 
     final apiKey = Env.firebaseWebApiKey;
     if (apiKey.isEmpty) return false;
@@ -97,10 +113,7 @@ class _AuthInterceptor extends Interceptor {
       final plain = Dio();
       final res = await plain.post(
         'https://securetoken.googleapis.com/v1/token?key=$apiKey',
-        data: {
-          'grant_type': 'refresh_token',
-          'refresh_token': refreshToken,
-        },
+        data: {'grant_type': 'refresh_token', 'refresh_token': refreshToken},
         options: Options(
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         ),
