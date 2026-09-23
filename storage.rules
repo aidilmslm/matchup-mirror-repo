@@ -33,6 +33,12 @@ service firebase.storage {
         && request.resource.contentType.matches('image/(jpeg|png|webp)');
     }
 
+    function isAllowedEvidenceImage() {
+      return request.resource != null
+        && request.resource.size <= 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
     match /users/{uid}/profile/{fileName} {
       allow read: if isSignedIn();
       allow create, update: if isOwner(uid) && isAllowedProfileImage();
@@ -69,6 +75,16 @@ service firebase.storage {
     match /uploads/chat-attachments/{scope}/{fileName} {
       allow read: if isSignedIn();
       allow write: if false;
+    }
+
+    // Report evidence photos, uploaded by the reporter via
+    // StorageService.uploadReportEvidence
+    // (`uploads/report-evidence/{uid}/{file}`). Owner-scoped like chat
+    // attachments — the uid segment must equal the uploader — since the
+    // report the evidence attaches to doesn't exist yet at upload time.
+    match /uploads/report-evidence/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(uid) && isAllowedEvidenceImage();
     }
 
     match /{allPaths=**} {
