@@ -8,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/dark_colors.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../data/report_repository.dart';
+import 'report_evidence_picker.dart';
 import 'report_sheet_widgets.dart';
 
 /// Bottom sheet for reporting a user — companion to [ReportActivitySheet].
@@ -46,6 +47,8 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
   final _detailsController = TextEditingController();
   String? _reason;
   bool _submitting = false;
+  List<String> _evidenceUrls = [];
+  bool _evidenceBusy = false;
 
   static const _reasons = [
     'Harassment',
@@ -71,6 +74,14 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
       );
       return;
     }
+    if (_evidenceBusy) {
+      AppSnackbar.show(
+        context,
+        message: 'Evidence is still uploading — please wait.',
+        variant: AppSnackbarVariant.error,
+      );
+      return;
+    }
     setState(() => _submitting = true);
     try {
       await ref.read(reportRepositoryProvider).submit(
@@ -80,6 +91,7 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
         details: _detailsController.text.trim().isEmpty
             ? null
             : _detailsController.text.trim(),
+        evidenceUrls: _evidenceUrls.isEmpty ? null : _evidenceUrls,
       );
     } catch (_) {
       if (!mounted) return;
@@ -152,6 +164,13 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
                     ),
                     const SizedBox(height: AppSpacing.x4),
                     ReportDetailsField(controller: _detailsController),
+                    const SizedBox(height: AppSpacing.x4),
+                    ReportEvidencePicker(
+                      onChanged: (urls) =>
+                          setState(() => _evidenceUrls = urls),
+                      onBusyChanged: (busy) =>
+                          setState(() => _evidenceBusy = busy),
+                    ),
                     const SizedBox(height: AppSpacing.x4),
                     const ReportDisclaimer(),
                   ],
