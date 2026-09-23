@@ -13,6 +13,7 @@ class _FakeReportRepository implements ReportRepository {
   ReportTargetType? lastTargetType;
   String? lastReason;
   String? lastDetails;
+  List<String>? lastEvidenceUrls;
 
   /// When true, [submit] throws to simulate a backend/network failure.
   bool shouldThrow = false;
@@ -23,12 +24,14 @@ class _FakeReportRepository implements ReportRepository {
     required ReportTargetType targetType,
     required String reason,
     String? details,
+    List<String>? evidenceUrls,
   }) async {
     calls++;
     lastTargetId = targetId;
     lastTargetType = targetType;
     lastReason = reason;
     lastDetails = details;
+    lastEvidenceUrls = evidenceUrls;
     if (shouldThrow) throw Exception('submission failed');
   }
 }

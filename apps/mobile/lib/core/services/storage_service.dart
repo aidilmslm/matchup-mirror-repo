@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 /// burning the upload bandwidth.
 const kMaxChatImageBytes = 8 * 1024 * 1024;
 const kMaxCoverImageBytes = 8 * 1024 * 1024;
+const kMaxEvidenceBytes = 8 * 1024 * 1024;
 
 /// Thrown by [StorageService.checkImageSize] when the picked file exceeds
 /// the destination's cap. Callers must let this reach the screen verbatim
@@ -123,6 +124,74 @@ class StorageService {
       storagePath:
           'uploads/chat-attachments/$safeScope/$safeOwner/$timestamp-$basename',
     );
+  }
+
+  /// Uploads a report-evidence photo and returns the public download URL
+  /// (`null` on any failure — same contract as [uploadImage]).
+  ///
+  /// Owner-scoped like [uploadChatAttachment]
+  /// (`uploads/report-evidence/{uid}/{timestamp}-{basename}`) since the
+  /// report this evidence attaches to doesn't exist yet at upload time —
+  /// only the uploader's uid is known. An empty [uid] throws [StateError].
+  ///
+  /// Unlike the other upload methods, this one streams real progress via
+  /// [onProgress] (`bytesTransferred / totalBytes`, 0.0–1.0) instead of
+  /// going through [_put], which awaits the whole upload with no progress
+  /// visibility. Kept as its own method so [_put]'s existing callers are
+  /// untouched.
+  Future<String?> uploadReportEvidence({
+    required String localPath,
+    required String uid,
+    void Function(double progress)? onProgress,
+  }) async {
+    final owner = uid.trim();
+    if (owner.isEmpty) {
+      throw StateError('uploadReportEvidence requires a non-empty uid');
+    }
+    if (!_isFirebaseReady()) {
+      debugPrint(
+        '[StorageService] Firebase not initialised — skipping upload',
+      );
+      return null;
+    }
+
+    try {
+      final file = File(localPath);
+      if (!await file.exists()) {
+        debugPrint('[StorageService] File not found: $localPath');
+        return null;
+      }
+
+      final safeOwner = owner.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final basename = localPath.split('/').last;
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storagePath =
+          'uploads/report-evidence/$safeOwner/$timestamp-$basename';
+      final ref = FirebaseStorage.instance.ref(storagePath);
+
+      final task = ref.putFile(
+        file,
+        SettableMetadata(contentType: _guessContentType(basename)),
+      );
+      if (onProgress != null) {
+        task.snapshotEvents.listen((snapshot) {
+          if (snapshot.totalBytes > 0) {
+            onProgress(snapshot.bytesTransferred / snapshot.totalBytes);
+          }
+        });
+      }
+      final snapshot = await task;
+
+      if (snapshot.state != TaskState.success) {
+        debugPrint('[StorageService] Upload state: ${snapshot.state}');
+        return null;
+      }
+
+      return await ref.getDownloadURL();
+    } catch (e, st) {
+      debugPrint('[StorageService.uploadReportEvidence] $e\n$st');
+      return null;
+    }
   }
 
   /// Uploads [localPath] to an explicit Storage [storagePath] (no

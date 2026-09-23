@@ -12,10 +12,14 @@ abstract class ReportRepository {
   /// [targetType] — discriminates between user and activity reports.
   /// [reason]     — the selected reason string shown to the moderator.
   /// [details]    — optional free-text elaboration from the reporter.
+  /// [evidenceUrls] — optional Firebase Storage download URLs for
+  ///                  reporter-attached evidence photos, already
+  ///                  uploaded by the time this is called.
   Future<void> submit({
     required String targetId,
     required ReportTargetType targetType,
     required String reason,
     String? details,
+    List<String>? evidenceUrls,
   });
 }

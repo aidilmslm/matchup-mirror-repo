@@ -23,6 +23,8 @@ export type SubmitReportInput = {
     targetType: ReportTargetType;
     reason: string;
     details?: string;
+    /** Firebase Storage download URLs for reporter-attached evidence photos. */
+    evidenceUrls?: string[];
 };
 
 export type SubmitReportResult = {
@@ -42,6 +44,8 @@ export type ReportRecord = {
     targetType: ReportTargetType;
     reason: string;
     details?: string;
+    /** Firebase Storage download URLs for reporter-attached evidence photos. */
+    evidenceUrls?: string[];
     status: ReportStatus;
     createdAt: FirebaseFirestore.Timestamp;
     adminNote?: string;
@@ -74,6 +78,8 @@ export type AdminReportView = {
 const MAX_REASON_LENGTH = 200;
 const MAX_DETAILS_LENGTH = 2000;
 const MAX_NOTE_LENGTH = 500;
+const MAX_EVIDENCE_ITEMS = 3;
+const MAX_EVIDENCE_URL_LENGTH = 2000;
 
 /**
  * Distinct reporters with `pending` reports on the same target that
@@ -106,6 +112,19 @@ export async function submitReport(input: SubmitReportInput): Promise<SubmitRepo
         throw new Error(`details must be at most ${MAX_DETAILS_LENGTH} characters`);
     }
 
+    const evidenceUrls = (input.evidenceUrls ?? [])
+        .map((url) => url.trim())
+        .filter((url) => url.length > 0);
+
+    if (evidenceUrls.length > MAX_EVIDENCE_ITEMS) {
+        throw new Error(`evidenceUrls must be at most ${MAX_EVIDENCE_ITEMS} items`);
+    }
+    for (const url of evidenceUrls) {
+        if (url.length > MAX_EVIDENCE_URL_LENGTH) {
+            throw new Error(`evidence URL must be at most ${MAX_EVIDENCE_URL_LENGTH} characters`);
+        }
+    }
+
     if (reporterId === targetId) {
         throw new Error('cannot report yourself');
     }
@@ -129,6 +148,9 @@ export async function submitReport(input: SubmitReportInput): Promise<SubmitRepo
 
     if (details !== undefined) {
         record.details = details;
+    }
+    if (evidenceUrls.length > 0) {
+        record.evidenceUrls = evidenceUrls;
     }
 
     const ref = await firestore.collection('reports').add(record);

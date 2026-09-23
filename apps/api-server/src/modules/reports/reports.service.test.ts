@@ -78,6 +78,48 @@ describe('reports service', () => {
         expect(record).not.toHaveProperty('details');
     });
 
+    it('stores evidenceUrls when given', async () => {
+        const add = mockAdd();
+
+        await submitReport({
+            ...baseInput,
+            evidenceUrls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'],
+        });
+
+        const record = vi.mocked(add).mock.calls[0][0] as Record<string, unknown>;
+        expect(record.evidenceUrls).toEqual([
+            'https://example.com/a.jpg',
+            'https://example.com/b.jpg',
+        ]);
+    });
+
+    it('omits evidenceUrls when the array is empty or blank-only', async () => {
+        const add = mockAdd();
+
+        await submitReport({ ...baseInput, evidenceUrls: ['   '] });
+
+        const record = vi.mocked(add).mock.calls[0][0] as Record<string, unknown>;
+        expect(record).not.toHaveProperty('evidenceUrls');
+    });
+
+    it('rejects more than 3 evidenceUrls', async () => {
+        await expect(
+            submitReport({
+                ...baseInput,
+                evidenceUrls: ['a', 'b', 'c', 'd'].map((s) => `https://example.com/${s}.jpg`),
+            }),
+        ).rejects.toThrow('evidenceUrls must be at most 3 items');
+    });
+
+    it('rejects an overlong evidence URL', async () => {
+        await expect(
+            submitReport({
+                ...baseInput,
+                evidenceUrls: [`https://example.com/${'x'.repeat(2000)}.jpg`],
+            }),
+        ).rejects.toThrow('evidence URL must be at most 2000 characters');
+    });
+
     it('checks the activity document for activity targets', async () => {
         mockTargetExists(true);
 

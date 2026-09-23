@@ -126,6 +126,50 @@ describe('reports routes', () => {
             });
         });
 
+        it('when evidenceUrls is a valid string array => expected 201 with evidenceUrls forwarded', async () => {
+            const app = createApp();
+
+            const response = await request(app).post('/api/reports').send({
+                targetId: 'activity-1',
+                targetType: 'activity',
+                reason: 'Spam / Fake activity',
+                evidenceUrls: ['https://example.com/a.jpg'],
+            });
+
+            expect(response.status).toBe(201);
+            expect(reportsService.submitReport).toHaveBeenCalledWith({
+                reporterId: 'test-uid-1',
+                targetId: 'activity-1',
+                targetType: 'activity',
+                reason: 'Spam / Fake activity',
+                evidenceUrls: ['https://example.com/a.jpg'],
+            });
+        });
+
+        it.each([
+            { name: 'evidenceUrls is not an array', evidenceUrls: 'https://example.com/a.jpg' },
+            { name: 'evidenceUrls contains a non-string', evidenceUrls: [123] },
+        ])('when $name => expected 400 w/ INVALID_INPUT', async ({ evidenceUrls }) => {
+            const app = createApp();
+
+            const response = await request(app).post('/api/reports').send({
+                targetId: 'activity-1',
+                targetType: 'activity',
+                reason: 'Spam / Fake activity',
+                evidenceUrls,
+            });
+
+            expect(response.status).toBe(400);
+            expect(response.body).toEqual({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'evidenceUrls must be an array of strings',
+                },
+            });
+            expect(reportsService.submitReport).not.toHaveBeenCalled();
+        });
+
         it.each([
             {
                 name: 'targetId is not a string',
