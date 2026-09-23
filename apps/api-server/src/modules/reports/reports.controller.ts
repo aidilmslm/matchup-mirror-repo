@@ -14,11 +14,12 @@ import {
 export async function submitReportHandler(req: Request, res: Response) {
     try {
         const reporterId = req.auth?.uid;
-        const { targetId, targetType, reason, details } = req.body as {
+        const { targetId, targetType, reason, details, evidenceUrls } = req.body as {
             targetId?: unknown;
             targetType?: unknown;
             reason?: unknown;
             details?: unknown;
+            evidenceUrls?: unknown;
         };
 
         if (!reporterId) {
@@ -55,6 +56,20 @@ export async function submitReportHandler(req: Request, res: Response) {
             });
         }
 
+        if (
+            evidenceUrls !== undefined &&
+            (!Array.isArray(evidenceUrls) ||
+                !evidenceUrls.every((url) => typeof url === 'string'))
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'evidenceUrls must be an array of strings',
+                },
+            });
+        }
+
         if (!targetId.trim() || !reason.trim()) {
             return res.status(400).json({
                 ok: false,
@@ -72,6 +87,9 @@ export async function submitReportHandler(req: Request, res: Response) {
             reason,
             ...(typeof details === 'string' && details.trim()
                 ? { details }
+                : {}),
+            ...(Array.isArray(evidenceUrls)
+                ? { evidenceUrls: evidenceUrls as string[] }
                 : {}),
         });
 
@@ -98,7 +116,9 @@ export async function submitReportHandler(req: Request, res: Response) {
         if (
             message === 'cannot report yourself' ||
             message.startsWith('reason must be') ||
-            message.startsWith('details must be')
+            message.startsWith('details must be') ||
+            message.startsWith('evidenceUrls must be') ||
+            message.startsWith('evidence URL must be')
         ) {
             return res.status(400).json({
                 ok: false,
