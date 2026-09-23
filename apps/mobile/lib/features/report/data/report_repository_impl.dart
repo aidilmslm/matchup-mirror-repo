@@ -10,6 +10,7 @@ class LocalReportRepository implements ReportRepository {
     required ReportTargetType targetType,
     required String reason,
     String? details,
+    List<String>? evidenceUrls,
   }) async {
     throw StateError(
       'ReportRepository.submit() requires a live backend — no offline '
