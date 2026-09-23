@@ -19,6 +19,7 @@ class RemoteReportRepository implements ReportRepository {
     required ReportTargetType targetType,
     required String reason,
     String? details,
+    List<String>? evidenceUrls,
   }) async {
     await _client.dio.post(
       '/reports',
@@ -27,6 +28,8 @@ class RemoteReportRepository implements ReportRepository {
         'targetType': targetType.name, // 'user' | 'activity'
         'reason': reason,
         if (details != null && details.isNotEmpty) 'details': details,
+        if (evidenceUrls != null && evidenceUrls.isNotEmpty)
+          'evidenceUrls': evidenceUrls,
       },
     );
   }
