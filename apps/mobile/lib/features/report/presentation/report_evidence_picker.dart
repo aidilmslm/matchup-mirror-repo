@@ -25,6 +25,12 @@ class _EvidenceAttachment {
   double progress = 0.0;
   String? url;
   String? error;
+
+  /// False for a failure retrying can never fix (the file is simply too
+  /// large) — retrying would just re-run the same size check against the
+  /// same file and fail identically, so the tile offers remove-only
+  /// instead of a pointless Retry tap.
+  bool retryable = true;
 }
 
 /// Lets a reporter attach up to [maxAttachments] evidence photos to a
@@ -125,6 +131,7 @@ class _ReportEvidencePickerState extends ConsumerState<ReportEvidencePicker> {
       item.state = _EvidenceState.uploading;
       item.progress = 0.0;
       item.error = null;
+      item.retryable = true;
     });
     _notify();
 
@@ -135,6 +142,7 @@ class _ReportEvidencePickerState extends ConsumerState<ReportEvidencePicker> {
       setState(() {
         item.state = _EvidenceState.failed;
         item.error = e.message;
+        item.retryable = false;
       });
       _notify();
       return;
@@ -305,16 +313,16 @@ class _EvidenceTile extends StatelessWidget {
           if (item.state == _EvidenceState.failed)
             Positioned.fill(
               child: GestureDetector(
-                onTap: onRetry,
+                onTap: item.retryable ? onRetry : null,
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.danger.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(AppRadius.card),
                   ),
                   alignment: Alignment.center,
-                  child: const Text(
-                    'Retry',
-                    style: TextStyle(
+                  child: Text(
+                    item.retryable ? 'Retry' : 'Too large',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
