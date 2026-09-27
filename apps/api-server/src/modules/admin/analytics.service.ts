@@ -29,12 +29,23 @@ export type WeeklyPoint = {
 };
 export type SportStat = { sport: string; activities: number; pct: number };
 
+export type RetentionPoint = {
+    label: string;
+    value: number;
+};
+
+export type HealthMetric = {
+    label: string;
+    value: number;
+    color: string;
+};
+
 export type AnalyticsView = {
     kpis: KpiPoint[];
     weekly: WeeklyPoint[];
     topSports: SportStat[];
-    retention: never[];
-    health: never[];
+    retention: RetentionPoint[];
+    health: HealthMetric[];
     /** Empty-state note for the un-collected series (see above). */
     note: string;
 };
