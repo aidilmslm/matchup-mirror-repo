@@ -167,12 +167,12 @@ type DmInboxEntry = {
 };
 
 /**
- * Writes both sides' inbox entries after a send: the recipient's
- * unread bumps by one, the sender's keeps its current count (their
- * own send is implicitly seen) with refreshed last-message fields.
- * Read-modify-write (not a transaction) — concurrent sends to the
- * same thread can theoretically clobber an unread bump, acceptable
- * for an MVP inbox; the messages themselves are never lost.
+ * Writes both sides' inbox entries after a send. RTDB transactions ensure
+ * concurrent sends do not overwrite unread-count increments. The recipient's
+ * unread count increases by one; the sender's count is preserved.
+ * If two messages are sent concurrently, the last one to complete will
+ * update the inbox with its metadata. This is acceptable for an MVP inbox;
+ * the messages themselves are never lost.
  */
 async function updateInboxEntries(
     senderUid: string,
@@ -181,31 +181,80 @@ async function updateInboxEntries(
     now: number,
 ): Promise<void> {
     const peerRef = rtdb.ref(userDmEntryPath(peerUid, senderUid));
-    const peerSnap = await peerRef.get();
-    const peerPrev = peerSnap.exists() ? (peerSnap.val() as Partial<DmInboxEntry>) : null;
-    const peerUnread =
-        typeof peerPrev?.unreadCount === 'number' ? peerPrev.unreadCount : 0;
-    await peerRef.set({
-        peerUid: senderUid,
-        lastText: text,
-        lastTimestamp: now,
-        lastSenderId: senderUid,
-        unreadCount: peerUnread + 1,
+
+    await peerRef.transaction((current) => {
+        const previous =
+            current && typeof current === 'object'
+                ? (current as Partial<DmInboxEntry>)
+                : {};
+
+        const previousUnread =
+            typeof previous.unreadCount === 'number'
+                ? Math.max(0, previous.unreadCount)
+                : 0;
+
+        const previousTimestamp =
+            typeof previous.lastTimestamp === 'number'
+                ? previous.lastTimestamp
+                : 0;
+
+        // Preserve newer metadata if concurrent sends complete out of order,
+        // while still incrementing the recipient's unread count atomically.
+        const isNewerMessage = now >= previousTimestamp;
+
+        return {
+            peerUid: senderUid,
+            lastText: isNewerMessage
+                ? text
+                : typeof previous.lastText === 'string'
+                  ? previous.lastText
+                  : text,
+            lastTimestamp: isNewerMessage ? now : previousTimestamp,
+            lastSenderId: isNewerMessage
+                ? senderUid
+                : typeof previous.lastSenderId === 'string'
+                  ? previous.lastSenderId
+                  : senderUid,
+            unreadCount: previousUnread + 1,
+        } satisfies DmInboxEntry;
     });
 
     const senderRef = rtdb.ref(userDmEntryPath(senderUid, peerUid));
-    const senderSnap = await senderRef.get();
-    const senderPrev = senderSnap.exists()
-        ? (senderSnap.val() as Partial<DmInboxEntry>)
-        : null;
-    const senderUnread =
-        typeof senderPrev?.unreadCount === 'number' ? senderPrev.unreadCount : 0;
-    await senderRef.set({
-        peerUid,
-        lastText: text,
-        lastTimestamp: now,
-        lastSenderId: senderUid,
-        unreadCount: senderUnread,
+
+    await senderRef.transaction((current) => {
+        const previous =
+            current && typeof current === 'object'
+                ? (current as Partial<DmInboxEntry>)
+                : {};
+
+        const previousUnread =
+            typeof previous.unreadCount === 'number'
+                ? Math.max(0, previous.unreadCount)
+                : 0;
+
+        const previousTimestamp =
+            typeof previous.lastTimestamp === 'number'
+                ? previous.lastTimestamp
+                : 0;
+
+        const isNewerMessage = now >= previousTimestamp;
+
+        return {
+            peerUid,
+            lastText: isNewerMessage
+                ? text
+                : typeof previous.lastText === 'string'
+                  ? previous.lastText
+                  : text,
+            lastTimestamp: isNewerMessage ? now : previousTimestamp,
+            lastSenderId: isNewerMessage
+                ? senderUid
+                : typeof previous.lastSenderId === 'string'
+                  ? previous.lastSenderId
+                  : senderUid,
+            // The sender's own message does not increase their unread count.
+            unreadCount: previousUnread,
+        } satisfies DmInboxEntry;
     });
 }
 
@@ -269,13 +318,37 @@ export async function markDmThreadRead(
 ): Promise<void> {
     const me = viewerUid.trim();
     const peer = peerUid.trim();
+
     if (!me) throw new Error('viewerUid is required');
     if (!peer) throw new Error('peer uid is required');
 
     const ref = rtdb.ref(userDmEntryPath(me, peer));
-    const snap = await ref.get();
-    if (!snap.exists()) return;
-    const current = snap.val() as Partial<DmInboxEntry>;
-    if (current.unreadCount === 0) return;
-    await ref.update({ unreadCount: 0 });
+
+    await ref.transaction((current) => {
+        if (!current || typeof current !== 'object') {
+            return current;
+        }
+
+        const previous = current as Partial<DmInboxEntry>;
+
+        return {
+            peerUid:
+                typeof previous.peerUid === 'string'
+                    ? previous.peerUid
+                    : peer,
+            lastText:
+                typeof previous.lastText === 'string'
+                    ? previous.lastText
+                    : '',
+            lastTimestamp:
+                typeof previous.lastTimestamp === 'number'
+                    ? previous.lastTimestamp
+                    : 0,
+            lastSenderId:
+                typeof previous.lastSenderId === 'string'
+                    ? previous.lastSenderId
+                    : '',
+            unreadCount: 0,
+        } satisfies DmInboxEntry;
+    });
 }
