@@ -1,14 +1,7 @@
 import 'local_storage.dart';
 
-/// Persists the last visited route so the app can resume from where the user
-/// left off after being minimized or killed by the OS.
-///
-/// Auth routes are never persisted (there is no session to resume with —
-/// the router gates those to /welcome anyway, and splash clears the
-/// store on logout). The get-to-know onboarding steps ARE persisted so a
-/// restart mid-onboarding resumes the flow instead of dropping the user
-/// into Discovery with an unfinished profile — each step saves its
-/// answer to the backend before advancing, so nothing is lost.
+/// Persists the last visited route so the app resumes where the user left off.
+/// Auth routes are never persisted (no session to resume with).
 class RouteStore {
   RouteStore._();
   static final RouteStore instance = RouteStore._();

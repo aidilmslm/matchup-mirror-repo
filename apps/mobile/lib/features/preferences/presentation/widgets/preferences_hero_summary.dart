@@ -6,9 +6,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dark_colors.dart';
 import 'preference_types.dart';
 
-/// Summary card at the top of Preferences: how many sports are selected,
-/// the dominant skill level, and a distribution bar across
-/// beginner/intermediate/advanced.
+/// Summary card at the top of Preferences: how many sports are selected, the dominant skill level.
 class PreferencesHeroSummary extends StatelessWidget {
   const PreferencesHeroSummary({
     super.key,
@@ -156,9 +154,7 @@ class _SkillDistributionBars extends StatelessWidget {
                   height: 6,
                   decoration: BoxDecoration(
                     color: s.color(context),
-                    // Pill radius on a 6px-tall bar renders identically to a
-                    // small fixed radius — capsule shape either way, but
-                    // this stays a named token instead of a literal.
+                    // Pill radius on a 6px-tall bar renders identically to a small fixed radius.
                     borderRadius: AppRadius.pillR,
                   ),
                 ),

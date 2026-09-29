@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Named dark-mode colour constants. `AppColorTokens.dark` (below) and
-/// `MatchUpApp._buildDarkTheme()` (`lib/app/app.dart`) both reference these
-/// instead of repeating bare `Color(0x...)` literals — this is the single
-/// source of truth for the dark palette (PRD Appendix E.2 / F.4: `app.dart`'s
-/// 31 raw dark `ColorScheme` literals must live here as named tokens, not
-/// scattered through the theme builder).
+/// Named dark-mode colour constants.
 class DarkPalette {
   DarkPalette._();
 
@@ -16,34 +11,24 @@ class DarkPalette {
   static const shadow = Color(0x66000000);
   static const textPrimary = Color(0xFFE2E8F0);
   static const textSecondary = Color(0xFF94A3B8);
-  /// Tertiary slate lightened vs the `textSecondary` value (not the
-  /// near-black light-mode tertiary): 6.1:1 on surface, 4.7:1 on
-  /// surfaceMuted, 6.5:1 on background — clears WCAG AA everywhere it
-  /// appears as text in dark mode.
+
+  /// Tertiary slate lightened vs the `textSecondary` value.
   static const textTertiary = Color(0xFF8A99AD);
   static const iconPrimary = Color(0xFFA8B5C7);
 
-  /// Dark-mode container for the primary brand colour — used for
-  /// `ColorScheme.primaryContainer`, the selected nav-item indicator, and
-  /// the selected chip fill. One value, three Material slots, deliberately
-  /// consistent rather than three near-duplicates.
+  /// Dark-mode container for the primary brand colour.
   static const primaryContainer = Color(0xFF1E3A8A);
 
   /// Dark-mode container for the accent (orange) colour.
   static const secondaryContainer = Color(0xFF7C2D12);
 
-  /// Brand blue lightened for text-on-dark-surface use. `AppColors
-  /// .primary` (#0B1F8A) is the brand blue; on a dark background that same
-  /// colour would be dark-on-dark and nearly invisible. This is the
-  /// dark-mode counterpart: lightened for readability, same brand hue.
+  /// Brand blue lightened for text-on-dark-surface use.
   static const primaryOnDark = Color(0xFF7BAEF7);
 
   static const surfaceSubtle = Color(0xFF1A2333);
   static const surfaceMuted = Color(0xFF232F42);
 
-  /// Dark-mode counterpart of `AppColors.primarySoft` — a low-alpha brand
-  /// tint instead of a near-white fill, so selected/active surfaces still
-  /// read as "tinted" rather than "wrong colour" against a dark background.
+  /// Dark-mode counterpart of `AppColors.primarySoft`.
   static const primarySoft = Color(0xFF243357);
 
   static const statusSuccessBg = Color(0xFF0F2E22);
@@ -57,18 +42,8 @@ class DarkPalette {
   static const borderInput = Color(0xFF475569);
 }
 
-/// Dark theme tokens for MatchUp. Values follow standard iOS dark
-/// palette conventions; tweak as Figma dark mode spec becomes available.
-///
-/// Only surfaces, borders, text, and low-alpha fills live here — every field
-/// genuinely needs a different value in dark mode. Saturated brand/semantic
-/// colours (`AppColors.primary`, `.danger`, `.warning`, `.error`, `.success`,
-/// `.accent`, status-text colours, avatar fills) stay on the static
-/// `AppColors` class and are used unchanged in both themes: they're already
-/// saturated enough to read correctly against either a light or dark
-/// background, and duplicating them here would just be two names for the
-/// same value (PRD Appendix F.4 — "keep static `AppColors` for genuinely
-/// theme-invariant values only").
+/// Dark theme tokens for MatchUp.
+/// Only surfaces, borders, text, and low-alpha fills live here.
 @immutable
 class AppColorTokens extends ThemeExtension<AppColorTokens> {
   const AppColorTokens({
@@ -124,10 +99,7 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
   final Color primaryLight;
   final Color primarySoft;
 
-  /// Text-on-surface variant of the brand blue. Light mode uses
-  /// `AppColors.primaryDarker` (darkened for 6.4:1 on white); dark mode
-  /// lightens instead, since darkening further would sink into the dark
-  /// background. Same brand hue, opposite adjustment direction.
+  /// Text-on-surface variant of the brand blue.
   final Color primaryOnSurface;
   final Color scrim;
   final Color scrimControl;
@@ -140,18 +112,12 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
   final Color avatarNeutral;
 
   /// Theme-aware text/icon colour for "success" semantic surfaces.
-  /// Light: dark green (#04694A — 5.93:1 on light bg).
-  /// Dark:  light green (#4ADE80 — 9.06:1 on dark statusSuccessBg).
   final Color successText;
 
   /// Theme-aware text/icon colour for "warning" semantic surfaces.
-  /// Light: dark amber (#B45309 — 4.84:1 on warningBg).
-  /// Dark:  bright amber (#FCD34D — 9.60:1 on dark warningBg).
   final Color warningText;
 
   /// Theme-aware text/icon colour for "error" / "danger" semantic surfaces.
-  /// Light: dark red (#B91C1C — 5.94:1 on errorLight).
-  /// Dark:  light red (#FCA5A5 — 5.49:1 on dark errorLight).
   final Color errorText;
 
   static const light = AppColorTokens(
@@ -334,15 +300,8 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
   }
 }
 
-/// Convenience accessor for theme-aware tokens. Use this instead of
-/// `AppColors.surface` in new code; the static `AppColors` is kept for
-/// backwards compatibility with hard-coded light values.
-///
-/// Falls back to [AppColorTokens.light] if the current [Theme] doesn't
-/// register the extension (e.g. a widget test that pumps a bare
-/// `MaterialApp` without `MatchUpApp`'s `theme:`/`darkTheme:`) rather than
-/// throwing — a screen should never crash just because a test harness built
-/// its own minimal `ThemeData`.
+/// Convenience accessor for theme-aware tokens.
+/// Falls back to [AppColorTokens.light] if the current [Theme] doesn't register the extension.
 extension AppColorTokensX on BuildContext {
   AppColorTokens get colors =>
       Theme.of(this).extension<AppColorTokens>() ?? AppColorTokens.light;

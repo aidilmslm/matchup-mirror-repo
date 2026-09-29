@@ -9,14 +9,11 @@ import '../services/rtdb_auth_service.dart';
 import '../storage/secure_token_store.dart';
 import '../../features/notifications/data/remote_presence_repository.dart';
 
-// ─── Domain ──────────────────────────────────────────────────────────────────
+// Domain.
 
 enum AuthStatus { unknown, authenticated, unauthenticated, suspended }
 
-/// Outcome of a suspension re-check: [clear] means the account is active
-/// again, [suspended] means still suspended, [unknown] means the check
-/// could not reach the server (offline/timeout) — callers must not treat
-/// it as still-suspended.
+/// Outcome of a suspension re-check: [clear] means the account is active again, [suspended] means still suspended.
 enum SuspensionCheck { clear, suspended, unknown }
 
 class AuthState {
@@ -38,25 +35,18 @@ class AuthState {
   static const unknown = AuthState(status: AuthStatus.unknown);
 }
 
-// ─── Notifier ────────────────────────────────────────────────────────────────
+// Notifier.
 
 class AuthStateNotifier extends StateNotifier<AuthState> {
   AuthStateNotifier({SecureTokenExchange? exchange})
-      : _exchange = exchange ?? secureTokenExchange,
-        super(AuthState.unknown) {
+    : _exchange = exchange ?? secureTokenExchange,
+      super(AuthState.unknown) {
     // Fired by the API layer when the refresh token itself is dead.
-    // Re-login is the only recovery — flip to unauthenticated so the
-    // router sends the user to login instead of stranding them in a
-    // zombie session that 401s forever.
     _expirySub = SessionEvents.instance.onSessionExpired.listen((_) async {
       await _store.clearAll();
       state = AuthState.unauthenticated;
     });
-    // Fired by the API layer on 403 ACCOUNT_SUSPENDED. Tokens are KEPT —
-    // the user needs them to file and track an appeal — the router gates
-    // to the suspended interstitial instead. Set suspended regardless of
-    // current status: the interstitial re-checks anyway, and cold-start
-    // probes may fire while status is still unknown.
+    // Fired by the API layer on 403 ACCOUNT_SUSPENDED.
     _suspendedSub = SessionEvents.instance.onSuspended.listen((_) {
       state = state.copyWith(status: AuthStatus.suspended);
     });
@@ -64,8 +54,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
 
   final _store = SecureTokenStore.instance;
 
-  /// Exchange used by the cold-start silent refresh. Injectable for
-  /// tests; production hits Google's securetoken endpoint.
+  /// Exchange used by the cold-start silent refresh.
   final SecureTokenExchange _exchange;
   late final StreamSubscription<void> _expirySub;
   late final StreamSubscription<void> _suspendedSub;
@@ -77,38 +66,19 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     super.dispose();
   }
 
-  /// Called at app start (splash screen). Reads secure storage to determine
-  /// if a valid session exists (stored Firebase ID token + userId), then
-  /// best-effort probes the server so suspended users don't flash app
-  /// content on cold start.
-  ///
-  /// An expired ID token is NOT a logout: Firebase ID tokens live 1 hour
-  /// while the refresh token lives indefinitely, so a returning user
-  /// almost always arrives with an expired ID token. When the ID token
-  /// is expired/missing but a refresh token exists, one silent refresh
-  /// is attempted before routing to login — otherwise every app restart
-  /// after an hour looks like an "automatic logout".
-  ///
-  /// Probe semantics (all fail-open except explicit signals):
-  /// - 200 → keep local authenticated status.
-  /// - 401/unauthorized → dead session → unauthenticated (storage cleared).
-  /// - 403 ACCOUNT_SUSPENDED → suspended.
-  /// - Anything else (offline, timeout, 5xx) → keep local status.
-  /// The probe has a 3s timeout; the happy path resolves fast so cold
-  /// start stays well under budget.
+  /// Called at app start (splash screen).
+  /// An expired ID token is NOT a logout: Firebase ID tokens live 1 hour while the refresh token lives indefinitely.
+  /// Probe semantics (all fail-open except explicit signals): 200 → keep local authenticated status.
   Future<void> checkSession() async {
     final hasSession = await _store.hasValidSession;
     if (!hasSession) {
-      // Definitive outcomes set state inside; transient failure fails
-      // open to authenticated and also returns false (no probe — it
-      // would just 401 on the stale token while offline).
+      // Definitive outcomes set state inside; transient failure fails open to authenticated and also returns false.
       final refreshed = await _silentRefresh();
       if (!refreshed) return;
     }
     final userId = await _store.readUserId();
     state = AuthState(status: AuthStatus.authenticated, userId: userId);
-    // Restore the SDK session too so realtime listeners (chat, typing,
-    // presence) run as the real user instead of anonymous.
+    // Restore the SDK session too so realtime listeners.
     unawaited(RtdbAuthService.instance.ensureSignedIn());
     try {
       await ApiClient.instance.dio
@@ -142,18 +112,11 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       }
       // Any other Dio error (offline/timeout/5xx) → fail open.
     } catch (_) {
-      // TimeoutException, network errors, unexpected shapes → fail open,
-      // keep the local authenticated status.
+      // TimeoutException, network errors, unexpected shapes → fail open, keep the local authenticated status.
     }
   }
 
-  /// One silent refresh attempt for cold starts whose ID token expired
-  /// (or is missing) while a refresh token is still stored. Returns true
-  /// when the caller should continue as authenticated (tokens fresh —
-  /// run the probe); false when state was set here and the caller must
-  /// return: unauthenticated on missing/rotated-out credentials, or
-  /// fail-open authenticated when the network is unusable (the user
-  /// never logged out — the reactive refresh path retries later).
+  /// One silent refresh attempt for cold starts whose ID token expired.
   Future<bool> _silentRefresh() async {
     final refreshToken = await _store.readRefreshToken();
     final userId = await _store.readUserId();
@@ -173,8 +136,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       }
       return true;
     } on UnrecoverableRefreshException {
-      // Refresh token rejected/revoked (or user disabled): the session
-      // is genuinely dead — re-login is the only way out.
+      // Refresh token rejected/revoked (or user disabled): the session is genuinely dead.
       await _store.clearAll();
       state = AuthState.unauthenticated;
       return false;
@@ -186,11 +148,10 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }
 
   /// Called after successful Firebase REST sign-in/register.
-  /// Persists the Firebase ID token (accessToken), refresh token, and userId.
   Future<void> signIn({
-    required String accessToken,   // Firebase ID token
-    required String refreshToken,  // Firebase refresh token
-    required String userId,        // Firebase UID (localId)
+    required String accessToken, // Firebase ID token
+    required String refreshToken, // Firebase refresh token
+    required String userId, // Firebase UID (localId)
   }) async {
     await Future.wait([
       _store.saveAccessToken(accessToken),
@@ -198,16 +159,13 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
       _store.saveUserId(userId),
     ]);
     state = AuthState(status: AuthStatus.authenticated, userId: userId);
-    // Sign the Firebase SDK in as the same user so RTDB listeners are
-    // authenticated. Fire-and-forget: sign-in UX must not wait on it.
+    // Sign the Firebase SDK in as the same user so RTDB listeners are authenticated.
     unawaited(RtdbAuthService.instance.ensureSignedIn());
   }
 
   /// Clears all stored tokens and sets state to unauthenticated.
   Future<void> signOut() async {
-    // Tell the backend we're going offline BEFORE the tokens are
-    // cleared (the write needs the session). Bounded: logout UX must
-    // never hang on a flaky presence write.
+    // Tell the backend we're going offline BEFORE the tokens are cleared (the write needs the session).
     try {
       await RemotePresenceRepository.markOfflineNow().timeout(
         const Duration(seconds: 3),
@@ -221,11 +179,6 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }
 
   /// Re-checks a suspension (the interstitial's "Check again" action).
-  /// A 200 means the account was reactivated → back to authenticated.
-  /// 403-suspended → stay suspended. Anything else (offline/timeout) →
-  /// [SuspensionCheck.unknown] so the UI can distinguish "still
-  /// suspended" from "couldn't reach the server" (never log out on a
-  /// transient failure).
   Future<SuspensionCheck> refreshSuspension() async {
     try {
       await ApiClient.instance.dio.get('/users/me');
@@ -254,7 +207,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   }
 }
 
-// ─── Providers ───────────────────────────────────────────────────────────────
+// Providers.
 
 final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthState>(
   (ref) => AuthStateNotifier(),

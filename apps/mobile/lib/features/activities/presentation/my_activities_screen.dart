@@ -23,27 +23,19 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../activities/domain/activity_model.dart';
 
-// ─── Providers ───────────────────────────────────────────────────────────────
-// keepAlive (bukan autoDispose): pindah tab tidak dispose + fetch ulang.
-// Tab tetap di-cache selama My Games masih di navigation stack.
+// Providers.
+// keepAlive (not autoDispose): switching tabs neither disposes nor refetches.
 
-/// Signed-in uid used by the My Games tabs. Watches the auth uid so an
-/// account switch (logout Benjamin → login Lisa) re-reads secure storage
-/// and cascades a refetch to every tab below — otherwise the keepAlive
-/// tabs keep serving Benjamin's cached UID + cached lists to Lisa.
-/// The backend also derives the viewer from the Bearer token, so an empty
-/// uid still returns the viewer's own lists server-side.
+/// Signed-in uid used by the My Games tabs.
 final myGamesUidProvider = FutureProvider<String>((ref) async {
   ref.watch(authStateProvider.select((s) => s.userId));
   return await SecureTokenStore.instance.readUserId() ?? '';
 });
 
-/// Ukuran satu halaman My Games. List merender bertahap 15-15
-/// agar 100+ activity tidak di-layout sekaligus.
+/// Ukuran satu halaman My Games.
 const _pageSize = 15;
 
-// Public (bukan private) agar layar detail bisa invalidate tab My Games
-// yang relevan setelah mutasi (leave/cancel/approve/dll).
+// Public (not private) so the detail screen can invalidate the affected My Games tab after mutations.
 final joinedGamesProvider = FutureProvider<List<ActivityModel>>((ref) async {
   final uid = await ref.watch(myGamesUidProvider.future);
   return ref.watch(activityRepositoryProvider).joinedByUser(uid);
@@ -63,17 +55,10 @@ final pendingGamesProvider = FutureProvider<List<ActivityModel>>(
   (ref) => ref.watch(activityRepositoryProvider).pendingRequests(),
 );
 
-/// Games the viewer left this session. Leaving deletes the participant
-/// doc server-side, so the game would otherwise vanish from every tab
-/// with no trace — these rows keep Past honest with a LEFT pill.
-/// Session-scoped (in-memory, most-recent-first, capped): a full
-/// history would need backend tombstones.
-final leftGamesProvider = StateProvider<List<ActivityModel>>(
-  (ref) => const [],
-);
+/// Games the viewer left this session.
+final leftGamesProvider = StateProvider<List<ActivityModel>>((ref) => const []);
 
-/// Records a freshly-left game for the Past tab. Call after a
-/// successful `leave()`, before invalidating the tab providers.
+/// Records a freshly-left game for the Past tab.
 void rememberLeftGame(WidgetRef ref, ActivityModel activity) {
   final current = ref.read(leftGamesProvider);
   ref.read(leftGamesProvider.notifier).state = [
@@ -88,7 +73,7 @@ final _unreadNotifCountProvider = FutureProvider.autoDispose<int>((ref) async {
   return all.where((n) => n.unread).length;
 });
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Helpers.
 
 String _relativeDate(DateTime dt) {
   final now = DateTime.now();
@@ -114,8 +99,7 @@ String _dayBadge(DateTime dt) {
   return DateFormat('EEE').format(dt).toUpperCase();
 }
 
-/// Soonest-first for Upcoming / Hosting / Pending (featured card =
-/// the closest game). Most-recent-first for Past.
+/// Soonest-first for Upcoming / Hosting / Pending (featured card = the closest game).
 List<ActivityModel> _sortedForMyGames(
   List<ActivityModel> activities, {
   bool mostRecentFirst = false,
@@ -129,7 +113,7 @@ List<ActivityModel> _sortedForMyGames(
   return sorted;
 }
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class MyActivitiesScreen extends ConsumerStatefulWidget {
   const MyActivitiesScreen({super.key});
@@ -142,8 +126,7 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
   int _tab = 0;
   static const _tabLabels = ['Upcoming', 'Hosting', 'Pending', 'Past'];
 
-  /// Provider behind each tab, in [_tabLabels] order. Used to refresh
-  /// the visited tab (see the tab bar's `onChanged`).
+  /// Provider behind each tab, in [_tabLabels] order.
   static FutureProvider<List<ActivityModel>> _tabProvider(int index) {
     return switch (index) {
       1 => hostedGamesProvider,
@@ -156,8 +139,7 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Same one-shot badge as Messages: re-fetch on (re)show so reads
-    // done on /notifications are reflected.
+    // Same one-shot badge as Messages: re-fetch on (re)show so reads done on /notifications are reflected.
     ref.invalidate(_unreadNotifCountProvider);
   }
 
@@ -183,9 +165,10 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
                 icon: Icons.notifications_none_rounded,
                 semanticLabel: 'Notifications',
                 onTap: () {
-                  NavGuard.push(context, '/notifications').then(
-                    (_) => ref.invalidate(_unreadNotifCountProvider),
-                  );
+                  NavGuard.push(
+                    context,
+                    '/notifications',
+                  ).then((_) => ref.invalidate(_unreadNotifCountProvider));
                 },
                 showDot: unreadCount > 0,
               ),
@@ -203,11 +186,7 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
             child: AppTabBar(
               labels: _tabLabels,
               selectedIndex: _tab,
-              // Refresh-on-visit: approvals, joins and cancellations
-              // happen on other screens/devices (e.g. a host approving
-              // your request moves it Pending → Upcoming). Lists render
-              // stale-while-revalidate, so the cached rows stay visible
-              // while the fresh fetch lands — no skeleton flash.
+              // Refresh-on-visit: approvals, joins and cancellations happen on other screens/devices.
               onChanged: (i) {
                 setState(() => _tab = i);
                 ref.invalidate(_tabProvider(i));
@@ -216,15 +195,12 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
           ),
 
           Expanded(
-            // IndexedStack (bukan AnimatedSwitcher): state + scroll position
-            // tiap tab tetap hidup, tidak rebuild + skeleton ulang tiap tap.
+            // IndexedStack (not AnimatedSwitcher): each tab keeps state and scroll position, no rebuild or skeleton per tap.
             child: IndexedStack(
               index: _tab,
               children: [
                 _UpcomingList(
-                  // In-flight guarded (not time-debounced): the key stays
-                  // reserved until pop, so a duplicate id-keyed page can
-                  // never throw '!keyReservation'. See NavGuard.
+                  // In-flight guarded (not time-debounced): the key stays reserved until pop.
                   onTap: (a) =>
                       NavGuard.push(context, '/joined-activity/${a.id}'),
                 ),
@@ -233,7 +209,8 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
                   onTap: (a) =>
                       NavGuard.push(context, '/manage-activity/${a.id}'),
                   emptyTitle: "You haven't hosted yet",
-                  emptySubtitle: 'Create an activity and invite others to join.',
+                  emptySubtitle:
+                      'Create an activity and invite others to join.',
                   emptyIcon: Icons.emoji_events_outlined,
                   emptyActionLabel: 'Create activity',
                   onEmptyAction: () => NavGuard.push(context, '/create'),
@@ -250,10 +227,8 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
                 ),
                 _SimpleList(
                   provider: pastGamesProvider,
-                  onTap: (a) => NavGuard.push(
-                    context,
-                    '/past-activity/${a.id}/review',
-                  ),
+                  onTap: (a) =>
+                      NavGuard.push(context, '/past-activity/${a.id}/review'),
                   past: true,
                   emptyTitle: 'No past activities',
                   emptySubtitle: 'Your completed activities will appear here.',
@@ -267,11 +242,10 @@ class _MyActivitiesScreenState extends ConsumerState<MyActivitiesScreen> {
     );
   }
 
-  // Tab bodies live in the IndexedStack above so each tab keeps its
-  // scroll position + cached provider data across tab switches.
+  // Tab bodies live in the IndexedStack above so each tab keeps its scroll position + cached provider data across tab.
 }
 
-// ─── Upcoming tab — featured card + "Other Registered" ───────────────────────
+// Upcoming tab — featured card "Other Registered".
 
 class _UpcomingList extends ConsumerStatefulWidget {
   const _UpcomingList({required this.onTap});
@@ -285,8 +259,7 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
     with AutomaticKeepAliveClientMixin {
   int _visibleOthers = _pageSize;
 
-  /// Total "other" rows from the last build. Lets [_onScroll] skip the
-  /// setState storm once everything is already shown.
+  /// Total "other" rows from the last build.
   int _totalOthers = 0;
   final _scroll = ScrollController();
 
@@ -307,10 +280,8 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
 
   void _onScroll() {
     if (!_scroll.hasClients) return;
-    if (_scroll.position.pixels >
-        _scroll.position.maxScrollExtent - 400) {
-      // Fully shown — skip the setState so resting at the bottom of a
-      // short list doesn't rebuild on every scroll event.
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
+      // Fully shown — skip the setState so resting at the bottom of a short list doesn't rebuild on every scroll event.
       if (_visibleOthers >= _totalOthers) return;
       setState(() => _visibleOthers += _pageSize);
     }
@@ -320,8 +291,7 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
   Widget build(BuildContext context) {
     super.build(context);
     final async = ref.watch(joinedGamesProvider);
-    // Stale-while-revalidate: saat refresh, tampilkan data lama
-    // jangan balik ke skeleton kosong.
+    // Stale-while-revalidate: on refresh show old data instead of an empty skeleton.
     if (async.isLoading && async.hasValue) {
       return _buildList(context, ref, async.valueOrNull!, isRefreshing: true);
     }
@@ -353,16 +323,11 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
 
     _precacheCovers(context, activities.take(6));
 
-    // Defensive: backend + repository already sort soonest-first, but
-    // re-sort here so the featured card is always the closest game even
-    // when a mocked/fallback repository returns unsorted rows.
+    // Defensive: backend + repository already sort soonest-first.
     final sorted = _sortedForMyGames(activities);
     final featured = sorted.first;
     final others = sorted.skip(1).toList();
-    // The list can shrink under us (e.g. after leaving a game): clamp
-    // the counter so it can't strand past the end showing nothing new.
-    // Empty resets to the page size so the next non-empty fetch pages
-    // from the top instead of rendering zero rows.
+    // The list can shrink under us.
     _totalOthers = others.length;
     if (others.isEmpty) {
       _visibleOthers = _pageSize;
@@ -376,8 +341,11 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
       onRefresh: () async {
         setState(() => _visibleOthers = _pageSize);
         ref.invalidate(joinedGamesProvider);
-        // Tunggu fetch selesai agar indikator tidak hilang duluan.
-        await ref.read(joinedGamesProvider.future).then((_) {}).catchError((_) {});
+        // Wait for the fetch so the indicator never clears early.
+        await ref
+            .read(joinedGamesProvider.future)
+            .then((_) {})
+            .catchError((_) {});
       },
       color: AppColors.primary,
       child: ListView.builder(
@@ -389,7 +357,10 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
           AppSpacing.x8,
         ),
         // featured + header + shownOthers + loader
-        itemCount: 1 + (shownOthers.isEmpty ? 0 : 1 + shownOthers.length) + (hasMore ? 1 : 0),
+        itemCount:
+            1 +
+            (shownOthers.isEmpty ? 0 : 1 + shownOthers.length) +
+            (hasMore ? 1 : 0),
         itemBuilder: (context, i) {
           if (i == 0) {
             return Stack(
@@ -439,7 +410,7 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
               );
             }
           }
-          // Tail loader saat masih ada sisa yang belum dirender.
+          // Tail loader while unrendered items remain.
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Center(
@@ -456,7 +427,7 @@ class _UpcomingListState extends ConsumerState<_UpcomingList>
   }
 }
 
-// ─── Featured card — left blue accent bar ────────────────────────────────────
+// Featured card — left blue accent bar.
 
 class _FeaturedCard extends StatelessWidget {
   const _FeaturedCard({required this.activity, required this.onTap});
@@ -488,10 +459,7 @@ class _FeaturedCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Left blue accent bar
-                  Container(
-                    width: 4,
-                    color: AppColors.primary,
-                  ),
+                  Container(width: 4, color: AppColors.primary),
 
                   // Card content
                   Expanded(
@@ -541,8 +509,9 @@ class _FeaturedCard extends StatelessWidget {
                             children: [
                               Text(
                                 '${activity.participantCount} / ${activity.capacity} Joined',
-                                style: AppTypography.labelField(context)
-                                    .copyWith(fontSize: 14),
+                                style: AppTypography.labelField(
+                                  context,
+                                ).copyWith(fontSize: 14),
                               ),
                               const Spacer(),
                               Text(
@@ -567,9 +536,7 @@ class _FeaturedCard extends StatelessWidget {
                                   Container(color: context.colors.surfaceMuted),
                                   FractionallySizedBox(
                                     widthFactor: fillRatio,
-                                    child: Container(
-                                      color: AppColors.success,
-                                    ),
+                                    child: Container(color: AppColors.success),
                                   ),
                                 ],
                               ),
@@ -589,14 +556,15 @@ class _FeaturedCard extends StatelessWidget {
   }
 }
 
-// ─── Compact card — thumbnail + info ─────────────────────────────────────────
+// Compact card — thumbnail info.
 
 class _CompactCard extends StatelessWidget {
-  const _CompactCard(
-      {required this.activity,
-      required this.onTap,
-      this.pending = false,
-      this.left = false});
+  const _CompactCard({
+    required this.activity,
+    required this.onTap,
+    this.pending = false,
+    this.left = false,
+  });
   final ActivityModel activity;
   final VoidCallback onTap;
 
@@ -608,9 +576,7 @@ class _CompactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Past-tab rows for ended games. `lifecycleStatus` carries the raw
-    // backend string; payloads without one never match. Completed is
-    // the quiet default (grey) so called-off games stand out in red.
+    // Past-tab rows for ended games. `lifecycleStatus` carries the raw backend string.
     final lifecycle = activity.lifecycleStatus.toLowerCase();
     final isCancelled = lifecycle == 'cancelled';
     final isRemoved = lifecycle == 'removed';
@@ -648,8 +614,7 @@ class _CompactCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sport badge + joined count (pending pill / cancelled
-                    // pill instead where applicable).
+                    // Sport badge + joined count (pending pill / cancelled pill instead where applicable).
                     Row(
                       children: [
                         _SportBadge(label: activity.sportType, small: true),
@@ -662,8 +627,9 @@ class _CompactCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: context.colors.warningBg,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             child: Text(
                               'WAITING APPROVAL',
@@ -714,9 +680,9 @@ class _CompactCard extends StatelessWidget {
                     // Title
                     Text(
                       activity.title,
-                      style: AppTypography.titleMedium(context).copyWith(
-                        fontSize: 15,
-                      ),
+                      style: AppTypography.titleMedium(
+                        context,
+                      ).copyWith(fontSize: 15),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -725,7 +691,8 @@ class _CompactCard extends StatelessWidget {
                     // Time
                     _IconRow(
                       icon: Icons.access_time_rounded,
-                      text: '${DateFormat('E, MMM d').format(activity.dateTime)} · ${DateFormat('h:mm a').format(activity.dateTime)}',
+                      text:
+                          '${DateFormat('E, MMM d').format(activity.dateTime)} · ${DateFormat('h:mm a').format(activity.dateTime)}',
                       color: context.colors.textSecondary,
                     ),
                   ],
@@ -739,14 +706,9 @@ class _CompactCard extends StatelessWidget {
   }
 }
 
-/// Small uppercase status pill for Past-tab rows (CANCELLED / REMOVED /
-/// COMPLETED), sharing one shape with the WAITING APPROVAL pill.
+/// Small uppercase status pill for Past-tab rows (CANCELLED / REMOVED / COMPLETED), sharing one shape with the WAITING.
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({
-    required this.text,
-    required this.bg,
-    required this.fg,
-  });
+  const _StatusPill({required this.text, required this.bg, required this.fg});
   final String text;
   final Color bg;
   final Color fg;
@@ -772,7 +734,7 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-// ─── Simple list (Hosting + Past) ────────────────────────────────────────────
+// Simple list (Hosting Past).
 
 class _SimpleList extends ConsumerStatefulWidget {
   const _SimpleList({
@@ -794,10 +756,7 @@ class _SimpleList extends ConsumerStatefulWidget {
   final IconData emptyIcon;
   final bool past;
 
-  /// Pending-request rows render an amber "waiting approval" badge
-  /// instead of the joined count. Cancelled games (Past tab) render a
-  /// red "cancelled" badge the same way so a called-off game never
-  /// reads as a normal completed one.
+  /// Pending-request rows render an amber "waiting approval" badge instead of the joined count.
   final bool pending;
   final String? emptyActionLabel;
   final VoidCallback? onEmptyAction;
@@ -810,8 +769,7 @@ class _SimpleListState extends ConsumerState<_SimpleList>
     with AutomaticKeepAliveClientMixin {
   int _visible = _pageSize;
 
-  /// Total rows from the last build. Lets [_onScroll] skip the setState
-  /// storm once everything is already shown.
+  /// Total rows from the last build.
   int _total = 0;
   final _scroll = ScrollController();
 
@@ -832,10 +790,8 @@ class _SimpleListState extends ConsumerState<_SimpleList>
 
   void _onScroll() {
     if (!_scroll.hasClients) return;
-    if (_scroll.position.pixels >
-        _scroll.position.maxScrollExtent - 400) {
-      // Fully shown — skip the setState so resting at the bottom of a
-      // short list doesn't rebuild on every scroll event.
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
+      // Fully shown — skip the setState so resting at the bottom of a short list doesn't rebuild on every scroll event.
       if (_visible >= _total) return;
       setState(() => _visible += _pageSize);
     }
@@ -874,15 +830,9 @@ class _SimpleListState extends ConsumerState<_SimpleList>
     }
     _precacheCovers(context, activities.take(6));
 
-    // Same defensive sort as Upcoming: Hosting + Pending soonest-first,
-    // Past most-recent-first.
-    final sorted = _sortedForMyGames(
-      activities,
-      mostRecentFirst: widget.past,
-    );
-    // Past additionally surfaces games left this session (their
-    // participant docs are gone server-side, so the fetch above can
-    // never return them). Most-recent-left first, deduplicated.
+    // Same defensive sort as Upcoming: Hosting + Pending soonest-first, Past most-recent-first.
+    final sorted = _sortedForMyGames(activities, mostRecentFirst: widget.past);
+    // Past additionally surfaces games left this session (their participant docs are gone server-side.
     var merged = sorted;
     Set<String> leftIds = const {};
     if (widget.past) {
@@ -897,9 +847,7 @@ class _SimpleListState extends ConsumerState<_SimpleList>
         ];
       }
     }
-    // The list can shrink under us (e.g. after leaving/cancelling):
-    // clamp the counter so it can't strand past the end. Empty resets
-    // to the page size so the next non-empty fetch pages from the top.
+    // The list can shrink under us.
     _total = merged.length;
     if (merged.isEmpty) {
       _visible = _pageSize;
@@ -923,11 +871,10 @@ class _SimpleListState extends ConsumerState<_SimpleList>
           AppSpacing.x5,
           AppSpacing.x8,
         ),
-        // Optimasi list panjang: matikan keepAlive per-item, nyalakan
-        // repaint boundary agar scroll 100+ card tidak jank.
+        // Long-list tuning: no per-item keepAlive, repaint boundaries on, so 100+ cards scroll without jank.
         addAutomaticKeepAlives: false,
         addRepaintBoundaries: true,
-        // Selalu scrollable agar pull-to-refresh hidup walau item sedikit.
+        // Always scrollable so pull-to-refresh works even with few items.
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: shown.length + (hasMore ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.x3),
@@ -945,8 +892,7 @@ class _SimpleListState extends ConsumerState<_SimpleList>
             );
           }
           final a = shown[i];
-          // Left rows are history, not navigable targets (the review
-          // flow requires membership the viewer no longer has).
+          // Left rows are history, not navigable targets.
           final isLeftRow = leftIds.contains(a.id);
           return RepaintBoundary(
             child: _CompactCard(
@@ -955,11 +901,11 @@ class _SimpleListState extends ConsumerState<_SimpleList>
               left: isLeftRow,
               onTap: isLeftRow
                   ? () => AppSnackbar.show(
-                        context,
-                        message:
-                            'You left "${a.title}". Re-join from Discover to play again.',
-                        variant: AppSnackbarVariant.info,
-                      )
+                      context,
+                      message:
+                          'You left "${a.title}". Re-join from Discover to play again.',
+                      variant: AppSnackbarVariant.info,
+                    )
                   : () => widget.onTap(a),
             ),
           );
@@ -969,10 +915,8 @@ class _SimpleListState extends ConsumerState<_SimpleList>
   }
 }
 
-// ─── Skeleton yang mirror card asli ──────────────────────────────────────────
-// SkeletonList generik (avatar 44px) bentuknya beda dari _CompactCard
-// (thumbnail 72px) sehingga terjadi layout jump. Versi ini memakai
-// ActivityListCardSkeleton agar tinggi tiap placeholder ≈ card asli.
+// Skeleton yang mirror card asli.
+// The generic skeleton list (44px avatar) differs from _CompactCard (72px thumbnail) and would cause a layout jump.
 
 class _MyGamesSkeleton extends StatelessWidget {
   const _MyGamesSkeleton({this.count = 5});
@@ -997,25 +941,22 @@ class _MyGamesSkeleton extends StatelessWidget {
   }
 }
 
-/// Precache cover pertama agar thumbnail tidak muncul satu-satu rebutan
-/// bandwidth saat list pertama render. Pakai [CachedNetworkImageProvider]
-/// agar SHARE cache dengan [AssetImageWithFallback] — jangan NetworkImage
-/// polos (itu fetch dobel di luar cache). Best-effort: gagal precache
-/// dibiarkan, gambar tetap load seperti biasa.
+/// Precache the first cover so thumbnails don't race for bandwidth on first render.
 void _precacheCovers(BuildContext context, Iterable<ActivityModel> items) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (!context.mounted) return;
     for (final a in items) {
       final url = a.coverImageUrl;
       if (url == null || !isRemoteImage(url)) continue;
-      precacheImage(CachedNetworkImageProvider(url), context).catchError(
-        (_) {},
-      );
+      precacheImage(
+        CachedNetworkImageProvider(url),
+        context,
+      ).catchError((_) {});
     }
   });
 }
 
-// ─── Shared widgets ───────────────────────────────────────────────────────────
+// Shared widgets.
 
 class _SportBadge extends StatelessWidget {
   const _SportBadge({required this.label, this.small = false});
@@ -1056,15 +997,15 @@ class _DayBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isToday
-            ? context.colors.errorLight
-            : context.colors.primarySoft,
+        color: isToday ? context.colors.errorLight : context.colors.primarySoft,
         borderRadius: BorderRadius.circular(AppRadius.xs),
       ),
       child: Text(
         label,
         style: AppTypography.chipLabel(context).copyWith(
-          color: isToday ? context.colors.errorText : context.colors.primaryOnSurface,
+          color: isToday
+              ? context.colors.errorText
+              : context.colors.primaryOnSurface,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
@@ -1074,11 +1015,7 @@ class _DayBadge extends StatelessWidget {
 }
 
 class _IconRow extends StatelessWidget {
-  const _IconRow({
-    required this.icon,
-    required this.text,
-    this.color,
-  });
+  const _IconRow({required this.icon, required this.text, this.color});
   final IconData icon;
   final String text;
   final Color? color;
@@ -1093,10 +1030,9 @@ class _IconRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: AppTypography.metaSub(context).copyWith(
-              color: c,
-              fontSize: 13,
-            ),
+            style: AppTypography.metaSub(
+              context,
+            ).copyWith(color: c, fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1114,11 +1050,7 @@ class _ThumbFallback extends StatelessWidget {
       height: 72,
       color: context.colors.surfaceMuted,
       alignment: Alignment.center,
-      child: Icon(
-        Icons.sports,
-        size: 28,
-        color: context.colors.textTertiary,
-      ),
+      child: Icon(Icons.sports, size: 28, color: context.colors.textTertiary),
     );
   }
 }

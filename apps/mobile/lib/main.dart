@@ -17,15 +17,10 @@ import 'firebase_options.dart';
 /// Hive box for the create-activity form draft.
 const String _draftBoxName = 'wizard_draft';
 
-/// Top-level background message handler. Must be a top-level function
-/// annotated with `@pragma('vm:entry-point')` so the engine keeps it
-/// alive when the app is backgrounded. Registered before `runApp` so
-/// it's wired up before any message can arrive.
+/// Top-level background message handler.
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // Background messages don't need to do anything special here — the
-  // OS displays the notification. The hook exists so the background
-  // isolate can be configured (e.g. to load SharedPreferences).
+  // Background messages don't need to do anything special here — the OS displays the notification.
   if (kDebugMode) {
     debugPrint(
       '[FCM] Background message: ${message.notification?.title ?? message.data}',
@@ -36,18 +31,12 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // These three inits are independent of each other (env file read,
-  // Hive box open, Firebase init), so run them concurrently — the old
-  // sequential awaits stacked ~1-2s of disk/plugin I/O in front of the
-  // first frame on every cold start for no reason.
+  // These three inits are independent of each other (env file read, Hive box open, Firebase init).
   await Future.wait([
     Env.load(),
     Hive.initFlutter().then((_) => Hive.openBox(_draftBoxName)),
     (() async {
-      // Initialise Firebase with the generated options (project
-      // matchup-cs734). Wrapped in try/catch so a failure here doesn't
-      // brick the app — chat falls back to HTTP polling and FCM is a
-      // no-op until Firebase is healthy.
+      // Initialise Firebase with the generated options (project matchup-cs734).
       try {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
@@ -60,19 +49,18 @@ Future<void> main() async {
     })(),
   ]);
 
-  // Register the background handler before runApp so the engine keeps
-  // the function reference alive in the background isolate.
+  // Register the background handler before runApp so the engine keeps the function reference alive in the background.
   try {
     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
   } catch (e) {
-    if (kDebugMode) debugPrint('[main] onBackgroundMessage register failed: $e');
+    if (kDebugMode) {
+      debugPrint('[main] onBackgroundMessage register failed: $e');
+    }
   }
 
   final container = ProviderContainer();
 
-  // Initialise push notifications after the provider container is built
-  // so the device repository can be resolved. This is fire-and-forget;
-  // FCM failures must never block the splash screen.
+  // Initialise push notifications after the provider container is built so the device repository can be resolved.
   unawaited(
     PushNotificationService.instance.initialize(
       deviceRepository: container.read(deviceRepositoryProvider),
@@ -82,12 +70,8 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      // PresenceTracker observes app-lifecycle events (resumed → online,
-      // paused/detached → offline) and forwards them to the backend's
-      // presence API. Wrapping MatchUpApp here is enough — no screen
-      // below needs to wire up WidgetsBindingObserver on its own.
+      // PresenceTracker observes app-lifecycle events.
       child: const PresenceTracker(child: MatchUpApp()),
     ),
   );
 }
-

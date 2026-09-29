@@ -3,8 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/dark_colors.dart';
 
-/// Token sizes for [AppIcon]. Pick the closest one instead of an arbitrary
-/// pixel value, the same discipline as [AppSpacing] / [AppRadius].
+/// Token sizes for [AppIcon].
 enum AppIconSize {
   /// 16 — inline with 12–13px caption/meta text.
   sm,
@@ -29,25 +28,13 @@ extension _AppIconSizeX on AppIconSize {
 }
 
 /// Single entry point for every icon in the app.
-///
-/// The app mixes Material Icons and a 45-glyph SVG set with different stroke
-/// weights and optical sizing, which is one of the reasons the UI reads as
-/// inconsistent (PRD Section 1.3). [AppIcon] wraps the SVG set behind a named
-/// catalogue ([AppIcons]) so call sites never type an asset path string, and
-/// gates Material Icons behind the explicit [AppIcon.material] constructor —
-/// visible and greppable, rather than silently mixed in.
-///
-/// ```dart
-/// AppIcon(AppIcons.clock, size: AppIconSize.sm, color: AppColors.textSecondary)
-/// AppIcon.material(Icons.qr_code_scanner_rounded) // only when no SVG exists
-/// ```
+/// The app mixes Material Icons and a 45-glyph SVG set with different stroke weights and optical sizing.
+/// dart AppIcon(AppIcons.clock, size: AppIconSize.sm, color: AppColors.textSecondary).
 class AppIcon extends StatelessWidget {
   const AppIcon(this.asset, {super.key, this.size = AppIconSize.md, this.color})
     : materialIcon = null;
 
-  /// Escape hatch for glyphs the SVG set does not cover. Keep these rare and
-  /// obvious — every use should be easy to find with a search for
-  /// `AppIcon.material`.
+  /// Escape hatch for glyphs the SVG set does not cover.
   const AppIcon.material(
     IconData icon, {
     super.key,
@@ -60,8 +47,7 @@ class AppIcon extends StatelessWidget {
   final IconData? materialIcon;
   final AppIconSize size;
 
-  /// Icon tint. Defaults to `context.colors.textSecondary` (theme-aware)
-  /// when null.
+  /// Icon tint.
   final Color? color;
 
   @override
@@ -80,9 +66,7 @@ class AppIcon extends StatelessWidget {
   }
 }
 
-/// Named catalogue of `assets/images/discovery/icons/*.svg` — the single
-/// source of truth for icon asset paths. Add new entries here rather than
-/// typing a path string at the call site.
+/// Named catalogue of `assets/images/discovery/icons/*.svg` — the single source of truth for icon asset paths.
 class AppIcons {
   AppIcons._();
 

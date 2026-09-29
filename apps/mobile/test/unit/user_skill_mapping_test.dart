@@ -53,10 +53,7 @@ void main() {
 
     test('returns null when nothing usable remains', () {
       expect(dominantSkillLevel(const []), isNull);
-      expect(
-        dominantSkillLevel(const [(sport: 'Tennis', level: '')]),
-        isNull,
-      );
+      expect(dominantSkillLevel(const [(sport: 'Tennis', level: '')]), isNull);
     });
   });
 

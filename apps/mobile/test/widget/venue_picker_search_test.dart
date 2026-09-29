@@ -53,46 +53,45 @@ void main() {
     LocationService.debugGetCurrentLocation = null;
   });
 
-  testWidgets(
-    'search renders ranked results from the places repo',
-    (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            placesRepositoryProvider.overrideWith((_) => _StubPlacesRepository()),
-          ],
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) => Scaffold(
-                body: Center(
-                  child: ElevatedButton(
-                    onPressed: () => VenuePickerSheet.show(context),
-                    child: const Text('open'),
-                  ),
+  testWidgets('search renders ranked results from the places repo', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          placesRepositoryProvider.overrideWith((_) => _StubPlacesRepository()),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => VenuePickerSheet.show(context),
+                  child: const Text('open'),
                 ),
               ),
             ),
           ),
         ),
-      );
-      await tester.tap(find.text('open'));
-      // Don't use pumpAndSettle — the map tile requests fail in
-      // tests and never settle. Use bounded pumps instead.
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 100));
+      ),
+    );
+    await tester.tap(find.text('open'));
+    // Don't use pumpAndSettle — the map tile requests fail in
+    // tests and never settle. Use bounded pumps instead.
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
 
-      // Type a query that matches the stub.
-      await tester.enterText(find.byType(TextField).first, 'stub');
-      // Wait for debounce (350ms) + generous settle.
-      await tester.pump(const Duration(milliseconds: 50));
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 100));
+    // Type a query that matches the stub.
+    await tester.enterText(find.byType(TextField).first, 'stub');
+    // Wait for debounce (350ms) + generous settle.
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 100));
 
-      // The "Searching…" title should be gone and we should see
-      // at least one rendered row.
-      expect(find.text('Searching…'), findsNothing);
-      expect(find.text('Stub Domain'), findsOneWidget);
-      expect(find.text('No matches'), findsNothing);
-    },
-  );
+    // The "Searching…" title should be gone and we should see
+    // at least one rendered row.
+    expect(find.text('Searching…'), findsNothing);
+    expect(find.text('Stub Domain'), findsOneWidget);
+    expect(find.text('No matches'), findsNothing);
+  });
 }

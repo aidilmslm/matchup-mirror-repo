@@ -1,6 +1,4 @@
-/// Domain model for a calendar entry — wraps an [ActivityModel] occurrence
-/// with its scheduled start/end times and whether it has been added to the
-/// device calendar.
+/// Domain model for a calendar entry — wraps an [ActivityModel] occurrence.
 class CalendarEvent {
   final String id;
   final String activityId;
@@ -10,8 +8,7 @@ class CalendarEvent {
   final String location;
   final bool addedToDeviceCalendar;
 
-  /// True when the viewer hosts this activity (populated from the
-  /// hosted source in [RemoteCalendarRepository.upcoming]).
+  /// True when the viewer hosts this activity (populated from the hosted source).
   final bool isHost;
 
   /// True for past/completed activities, routed to the review screen.

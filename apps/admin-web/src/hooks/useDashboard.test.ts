@@ -1,3 +1,4 @@
+// Tests for useDashboard.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
@@ -18,7 +19,16 @@ function makeDashboard(overrides: Partial<DashboardData> = {}): DashboardData {
     kpis: [],
     trend: [],
     moderationQueue: [
-      { id: 'mod1', reporter: 'Alice', target: 'Bob', targetType: 'user', reason: 'spam', activityTitle: '', sport: '', createdAt: '2026-01-01' },
+      {
+        id: 'mod1',
+        reporter: 'Alice',
+        target: 'Bob',
+        targetType: 'user',
+        reason: 'spam',
+        activityTitle: '',
+        sport: '',
+        createdAt: '2026-01-01',
+      },
     ],
     activities: [],
     ...overrides,
@@ -64,7 +74,9 @@ describe('useDashboard', () => {
   });
 
   it('reverts the optimistic removal by reloading on API failure', async () => {
-    fetchDashboardMock.mockResolvedValueOnce(makeDashboard()).mockResolvedValueOnce(makeDashboard());
+    fetchDashboardMock
+      .mockResolvedValueOnce(makeDashboard())
+      .mockResolvedValueOnce(makeDashboard());
     moderationActionMock.mockRejectedValue(new Error('denied'));
     const { result } = renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));

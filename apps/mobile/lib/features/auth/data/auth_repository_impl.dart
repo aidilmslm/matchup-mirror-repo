@@ -1,13 +1,7 @@
 import 'auth_repository.dart';
 
-/// Stub [AuthRepository] used as a graceful-degradation fallback when
-/// the live Firebase REST endpoint is unreachable.
-///
-/// Every method throws — there's no fake "sign in with anything"
-/// behaviour. The production app **always** uses
-/// [RemoteAuthRepository]; this class only exists so the provider
-/// has a non-null value when the env flag is flipped (and so unit
-/// tests can override the binding with a mock).
+/// Stub [AuthRepository] used as a graceful-degradation fallback when the live Firebase REST endpoint is unreachable.
+/// Every method throws — there's no fake "sign in with anything" behaviour.
 class LocalAuthRepository implements AuthRepository {
   @override
   Future<AuthResult> signIn({

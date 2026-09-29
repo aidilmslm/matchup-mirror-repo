@@ -1,11 +1,4 @@
-/**
- * Sports service — database-backed master sports list (Firestore `sports`).
- *
- * Live endpoints (api-server, all admin-gated):
- *   GET   /api/admin/sports      → SportConfig[] (with live activityCount)
- *   PATCH /api/admin/sports/:id  → SportConfig  { enabled?, showInFilter?, showInOnboarding?, canHost? }
- *   PUT   /api/admin/sports      → SportConfig[] (atomic publish)
- */
+/** Sports service — database-backed master sports list (Firestore `sports`). */
 import { apiFetch } from './api';
 import type { SportConfig } from '../types/sports';
 
@@ -24,22 +17,17 @@ export interface SportFlagPatch {
   canHost?: boolean;
 }
 
-export async function updateSport(
-  id: string,
-  patch: SportFlagPatch,
-): Promise<SportConfig> {
-  const res = await apiFetch<SportConfig>(
-    `/api/admin/sports/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body: JSON.stringify(patch) },
-  );
+export async function updateSport(id: string, patch: SportFlagPatch): Promise<SportConfig> {
+  const res = await apiFetch<SportConfig>(`/api/admin/sports/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
   if (!res.ok) throw new Error(res.error.message);
   return res.data;
 }
 
 /** Atomic publish of the whole list (the page's "Publish Changes" flow). */
-export async function replaceSports(
-  sports: SportConfig[],
-): Promise<SportConfig[]> {
+export async function replaceSports(sports: SportConfig[]): Promise<SportConfig[]> {
   const res = await apiFetch<SportConfig[]>('/api/admin/sports', {
     method: 'PUT',
     body: JSON.stringify({

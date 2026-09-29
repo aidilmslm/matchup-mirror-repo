@@ -3,16 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 /// Design tokens for corner radii — keeps every rounded surface consistent.
-///
-/// Use the closest token instead of raw `BorderRadius.circular(n)`:
-///  - [xs]   : active segment in a segmented control
-///  - [sm]   : small controls
-///  - [input]: text inputs, select fields, report button — most-used in Figma
-///  - [md]   : steppers, pickers
-///  - [card] : cards, option pills, meta chips
-///  - [lg]   : skill chips, hero buttons, 40px avatars
-///  - [xl]   : modals, media, hero cards
-///  - [pill] : fully-rounded buttons & badges
+/// Use the closest token instead of raw `BorderRadius.circular(n)`.
 class AppRadius {
   AppRadius._();
 
@@ -58,10 +49,7 @@ class AppSpacing {
 class AppShadows {
   AppShadows._();
 
-  /// Resting cards — two-layer shadow (contact + ambient) that matches how
-  /// modern iOS/Figma cards read: a tight, subtle shadow just below the card
-  /// grounds it, plus a wider soft shadow gives it presence. One-layer
-  /// shadows almost always look flat and CSS-1997.
+  /// Resting cards — two-layer shadow (contact + ambient) that matches how modern iOS/Figma cards read: a tight.
   static const List<BoxShadow> card = [
     BoxShadow(
       color: Color(0x0F0F172A), // 6% slate — contact shadow, tight
@@ -94,8 +82,6 @@ class AppShadows {
   ];
 
   /// Separates a pinned bottom bar from scrollable content above it.
-  /// Negative offset centers the blur upward so the seam reads as a subtle
-  /// ledge rather than a hard line.
   static const List<BoxShadow> bottomBar = [
     BoxShadow(
       color: Color(0x140F172A), // 8% slate
@@ -104,9 +90,7 @@ class AppShadows {
     ),
   ];
 
-  /// Slightly lifted variant of [card] — for a card mid-press or under the
-  /// pointer. Same two-layer shape, just stronger, so the lift reads as
-  /// continuous motion rather than a shadow that pops to a different style.
+  /// Slightly lifted variant of [card] — for a card mid-press or under the pointer.
   static const List<BoxShadow> cardHover = [
     BoxShadow(
       color: Color(0x140F172A), // 8% slate — contact
@@ -120,8 +104,7 @@ class AppShadows {
     ),
   ];
 
-  /// Modal / bottom-sheet shadow — upward-biased since sheets sit above the
-  /// content they cover rather than resting on a surface below them.
+  /// Modal / bottom-sheet shadow — upward-biased since sheets sit above the content they cover rather than resting.
   static const List<BoxShadow> sheet = [
     BoxShadow(
       color: Color(0x1F0F172A), // 12% slate

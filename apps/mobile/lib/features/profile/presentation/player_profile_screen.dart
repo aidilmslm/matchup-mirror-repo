@@ -20,13 +20,10 @@ import '../../../core/widgets/skeleton.dart';
 import '../../report/presentation/report_user_sheet.dart';
 import '../domain/user_model.dart';
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class PlayerProfileScreen extends ConsumerWidget {
-  /// Opens by display name (legacy callers: activity screens). Falls
-  /// back to an exact-name lookup on the backend — names are not
-  /// unique, so prefer [PlayerProfileScreen.byUid] when the auth uid
-  /// is known (e.g. from personal chat).
+  /// Opens by display name (legacy callers: activity screens).
   const PlayerProfileScreen({super.key, required this.playerName})
     : userId = null;
 
@@ -37,20 +34,15 @@ class PlayerProfileScreen extends ConsumerWidget {
   /// Display-name lookup key (legacy route `/player-profile/:name`).
   final String playerName;
 
-  /// Auth-uid lookup key (route `/player-profile/uid/:uid`). When
-  /// set, this wins over [playerName].
+  /// Auth-uid lookup key (route `/player-profile/uid/:uid`).
   final String? userId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lookupKey =
-        (userId != null && userId!.isNotEmpty) ? userId! : playerName;
-    // Name-based lookup has no backend support (no name-search endpoint —
-    // it 404s by design), so a name key can never resolve. Show a proper
-    // empty state with a Back button instead of the raw "not found" line.
-    // (Route-removal recommendation: delete the legacy
-    // `/player-profile/:name` route in router.dart — owned by another
-    // agent — once all callers use `/uid/`.)
+    final lookupKey = (userId != null && userId!.isNotEmpty)
+        ? userId!
+        : playerName;
+    // Name-based lookup has no backend support (no name-search endpoint.
     final isNameLookup = userId == null || userId!.isEmpty;
     final playerAsync = isNameLookup
         ? null
@@ -64,8 +56,7 @@ class PlayerProfileScreen extends ConsumerWidget {
               loading: () => const SkeletonList(count: 6),
               error: (_, _) => ErrorRetry(
                 message: 'Could not load profile.',
-                onRetry: () =>
-                    ref.invalidate(playerProfileProvider(lookupKey)),
+                onRetry: () => ref.invalidate(playerProfileProvider(lookupKey)),
               ),
               data: (user) {
                 if (user == null) {
@@ -85,8 +76,7 @@ class PlayerProfileScreen extends ConsumerWidget {
   }
 }
 
-/// Empty state for the legacy name-based route: the profile can't be
-/// resolved without a uid, so direct the user back to the roster.
+/// Empty state for the legacy name-based route: the profile can't be resolved without a uid.
 class _UnavailableProfile extends StatelessWidget {
   const _UnavailableProfile({required this.onBack});
   final VoidCallback onBack;
@@ -113,16 +103,13 @@ class _UnavailableProfile extends StatelessWidget {
             const SizedBox(height: AppSpacing.x2),
             Text(
               'Open this profile from the roster to see details.',
-              style: AppTypography.bodyMedium(context).copyWith(
-                color: context.colors.textSecondary,
-              ),
+              style: AppTypography.bodyMedium(
+                context,
+              ).copyWith(color: context.colors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.x5),
-            AppButton(
-              label: 'Back',
-              onPressed: onBack,
-            ),
+            AppButton(label: 'Back', onPressed: onBack),
           ],
         ),
       ),
@@ -130,7 +117,7 @@ class _UnavailableProfile extends StatelessWidget {
   }
 }
 
-// ─── Content ─────────────────────────────────────────────────────────────────
+// Content.
 
 class _ProfileContent extends StatelessWidget {
   const _ProfileContent({required this.user});
@@ -149,7 +136,7 @@ class _ProfileContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Top bar: back + more ─────────────────────────────────
+                // Top bar: back more.
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.x4,
@@ -165,25 +152,21 @@ class _ProfileContent extends StatelessWidget {
                       ),
                       _CircleBtn(
                         icon: Icons.more_horiz_rounded,
-                        onTap: () => _ProfileOptionsSheet.show(
-                          context,
-                          user: user,
-                        ),
+                        onTap: () =>
+                            _ProfileOptionsSheet.show(context, user: user),
                         label: 'More options',
                       ),
                     ],
                   ),
                 ),
 
-                // ── Avatar ────────────────────────────────────────────────
+                // Avatar.
                 Center(
                   child: Container(
                     width:
-                        _avatarSize +
-                        2 * (_avatarRingWidth + _avatarRingGap),
+                        _avatarSize + 2 * (_avatarRingWidth + _avatarRingGap),
                     height:
-                        _avatarSize +
-                        2 * (_avatarRingWidth + _avatarRingGap),
+                        _avatarSize + 2 * (_avatarRingWidth + _avatarRingGap),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
@@ -200,8 +183,7 @@ class _ProfileContent extends StatelessWidget {
                       clipBehavior: Clip.antiAlias,
                       child: (user.avatarUrl ?? user.avatarAsset) != null
                           ? AssetImageWithFallback(
-                              imagePath:
-                                  user.avatarUrl ?? user.avatarAsset!,
+                              imagePath: user.avatarUrl ?? user.avatarAsset!,
                               fit: BoxFit.cover,
                             )
                           : _AvatarFallback(name: user.displayName),
@@ -210,7 +192,7 @@ class _ProfileContent extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.x4),
 
-                // ── Name ──────────────────────────────────────────────────
+                // Name.
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.x6,
@@ -220,15 +202,14 @@ class _ProfileContent extends StatelessWidget {
                     child: Text(
                       user.displayName.toUpperCase(),
                       textAlign: TextAlign.center,
-                      style: AppTypography.titleScreen(context).copyWith(
-                        fontSize: 24,
-                        letterSpacing: 0.5,
-                      ),
+                      style: AppTypography.titleScreen(
+                        context,
+                      ).copyWith(fontSize: 24, letterSpacing: 0.5),
                     ),
                   ),
                 ),
 
-                // ── Location ──────────────────────────────────────────────
+                // Location.
                 if (user.location != null) ...[
                   const SizedBox(height: AppSpacing.x1),
                   Center(
@@ -251,9 +232,8 @@ class _ProfileContent extends StatelessWidget {
                 ],
                 const SizedBox(height: AppSpacing.x5),
 
-                // ── Physical chips (age + height, when shared) ──────────
-                // Age derives from dateOfBirth — the raw birthdate is
-                // never shown. Weight stays private by design.
+                // Physical chips (age height, when shared).
+                // Age derives from dateOfBirth — the raw birthdate is never shown.
                 if (user.age != null || user.heightCm != null) ...[
                   Center(
                     child: Wrap(
@@ -277,7 +257,7 @@ class _ProfileContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.x5),
                 ],
 
-                // ── Stat cards ────────────────────────────────────────────
+                // Stat cards.
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.x6,
@@ -331,9 +311,8 @@ class _ProfileContent extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.x5),
 
-                // ── Host rating ─────────────────────────────────────────
-                // Stars received while hosting (separate from the player
-                // rating above). Even a single rating shows.
+                // Host rating.
+                // Stars received while hosting (separate from the player rating above).
                 if (user.overallHostRating != null) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -376,8 +355,9 @@ class _ProfileContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.x5),
                 ],
 
-                // ── Ratings by sport ─────────────────────────────────────
-                if (user.ratingBySport.isNotEmpty) ...[                  Padding(
+                // Ratings by sport.
+                if (user.ratingBySport.isNotEmpty) ...[
+                  Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.x6,
                     ),
@@ -402,8 +382,7 @@ class _ProfileContent extends StatelessWidget {
                           ),
                           child: Column(
                             children: [
-                              for (final entry
-                                  in user.ratingBySport.entries)
+                              for (final entry in user.ratingBySport.entries)
                                 _RatingRow(
                                   sport: entry.key,
                                   average: entry.value.average,
@@ -418,7 +397,7 @@ class _ProfileContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.x5),
                 ],
 
-                // ── Bio ──────────────────────────────────────────────────
+                // Bio.
                 if (user.bio != null && user.bio!.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -450,7 +429,7 @@ class _ProfileContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.x5),
                 ],
 
-                // ── Sports ───────────────────────────────────────────────
+                // Sports.
                 if (user.sports.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -471,9 +450,7 @@ class _ProfileContent extends StatelessWidget {
                             for (var i = 0; i < user.sports.length; i++)
                               _SportChip(
                                 sport: user.sports[i].sport,
-                                // Per-sport levels aren't persisted yet —
-                                // fall back to the general skill level so
-                                // the badge is never an empty pill.
+                                // Per-sport levels aren't persisted yet — fall back to the general skill level.
                                 level: user.sports[i].level.isNotEmpty
                                     ? user.sports[i].level
                                     : (user.skillLevel ?? ''),
@@ -487,7 +464,7 @@ class _ProfileContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.x6),
                 ],
 
-                // ── Action buttons ───────────────────────────────────────
+                // Action buttons.
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.x6,
@@ -501,7 +478,8 @@ class _ProfileContent extends StatelessWidget {
                           size: 18,
                           color: AppColors.textOnPrimary,
                         ),
-                        onPressed: () => NavGuard.push(context,
+                        onPressed: () => NavGuard.push(
+                          context,
                           '/dm/${user.id}',
                           extra: user.displayName,
                         ),
@@ -533,7 +511,7 @@ class _ProfileContent extends StatelessWidget {
   }
 }
 
-// ─── Sub-widgets ─────────────────────────────────────────────────────────────
+// Sub widgets.
 
 class _CircleBtn extends StatelessWidget {
   const _CircleBtn({
@@ -672,7 +650,8 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _SportChip extends StatelessWidget {  const _SportChip({
+class _SportChip extends StatelessWidget {
+  const _SportChip({
     required this.sport,
     required this.level,
     required this.isPrimary,
@@ -690,48 +669,44 @@ class _SportChip extends StatelessWidget {  const _SportChip({
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: context.colors.border),
       ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                sport,
-                style: AppTypography.labelField(
-                  context,
-                ).copyWith(color: context.colors.textPrimary),
-              ),
-              // No badge when neither per-sport nor general level is
-              // known — an empty pill reads as broken UI.
-              if (level.isNotEmpty) ...[
-                const SizedBox(width: AppSpacing.x2),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isPrimary
-                        ? context.colors.primarySoft
-                        : context.colors.surfaceMuted,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                  child: Text(
-                    level.toUpperCase(),
-                    style: AppTypography.chipLabel(context).copyWith(
-                      color: isPrimary
-                          ? context.colors.primaryOnSurface
-                          : context.colors.textSecondary,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            sport,
+            style: AppTypography.labelField(
+              context,
+            ).copyWith(color: context.colors.textPrimary),
           ),
+          // No badge when neither per-sport nor general level is known — an empty pill reads as broken UI.
+          if (level.isNotEmpty) ...[
+            const SizedBox(width: AppSpacing.x2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isPrimary
+                    ? context.colors.primarySoft
+                    : context.colors.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Text(
+                level.toUpperCase(),
+                style: AppTypography.chipLabel(context).copyWith(
+                  color: isPrimary
+                      ? context.colors.primaryOnSurface
+                      : context.colors.textSecondary,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
 
-/// One row of the per-sport rating breakdown: sport name on the
-/// left, "★ 4.8 (12)" on the right. Rendered only for sports the
-/// user has actually been rated in.
+/// One row of the per-sport rating breakdown: sport name on the left, "★ 4.8 (12)" on the right.
 class _RatingRow extends StatelessWidget {
   const _RatingRow({
     required this.sport,
@@ -764,9 +739,9 @@ class _RatingRow extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             '${average.toStringAsFixed(1)} ($count)',
-            style: AppTypography.labelField(context).copyWith(
-              color: context.colors.textSecondary,
-            ),
+            style: AppTypography.labelField(
+              context,
+            ).copyWith(color: context.colors.textSecondary),
           ),
         ],
       ),
@@ -774,10 +749,9 @@ class _RatingRow extends StatelessWidget {
   }
 }
 
-// ─── More-options sheet ───────────────────────────────────────────────────────
+// More options sheet.
 
-/// Bottom sheet behind the header ⋯ button: share the profile or
-/// report it (same [ReportUserSheet] as the dedicated button below).
+/// Bottom sheet behind the header ⋯ button: share the profile or report it (same.
 class _ProfileOptionsSheet extends StatelessWidget {
   const _ProfileOptionsSheet({required this.user});
   final UserModel user;

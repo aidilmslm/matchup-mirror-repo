@@ -6,22 +6,68 @@ import { downloadCsv } from '../../utils/csvExport';
 import { PageSkeleton, PageError, EmptyState, EmptyIcons } from '../../components/ui/PageStates';
 import type { AuditAction, AuditCategory, AuditLogEntry } from '../../services/auditLogService';
 
-// ─── Category badge ───────────────────────────────────────────────────────────
+// Category badge.
 
-// Light/dark colors defined explicitly — Tailwind dark: variants on arbitrary
-// colors are not reliably generated, so we use inline style for dark mode.
-const CATEGORY_META: Record<AuditCategory, {
-  lightBg: string; lightText: string;
-  darkBg: string;  darkText: string;
-  dot: string;
-}> = {
-  Members:    { lightBg: '#dbeafe', lightText: '#0f1a52', darkBg: 'rgba(11,31,138,0.25)', darkText: '#8fadf6', dot: '#0b1f8a' },
-  Activities: { lightBg: '#fef3c7', lightText: '#92400e', darkBg: 'rgba(217,119,6,0.25)',  darkText: '#fcd34d', dot: '#f59e0b' },
-  Appeals:    { lightBg: '#f3e8ff', lightText: '#6b21a8', darkBg: 'rgba(168,85,247,0.2)',  darkText: '#d8b4fe', dot: '#a855f7' },
-  Reports:    { lightBg: '#fee2e2', lightText: '#991b1b', darkBg: 'rgba(220,38,38,0.2)',   darkText: '#fca5a5', dot: '#ef4444' },
-  Broadcasts: { lightBg: '#ffe5d0', lightText: '#b84c00', darkBg: 'rgba(255,107,0,0.2)',  darkText: '#ffab66', dot: '#ff6b00' },
-  Sports:     { lightBg: '#dcfce7', lightText: '#15803d', darkBg: 'rgba(34,197,94,0.2)',   darkText: '#86efac', dot: '#22c55e' },
-  Templates:  { lightBg: '#f1f5f9', lightText: '#475569', darkBg: 'rgba(71,85,105,0.3)',   darkText: '#cbd5e1', dot: '#94a3b8' },
+// Light/dark colors defined explicitly — Tailwind dark: variants on arbitrary colors are not reliably generated.
+const CATEGORY_META: Record<
+  AuditCategory,
+  {
+    lightBg: string;
+    lightText: string;
+    darkBg: string;
+    darkText: string;
+    dot: string;
+  }
+> = {
+  Members: {
+    lightBg: '#dbeafe',
+    lightText: '#0f1a52',
+    darkBg: 'rgba(11,31,138,0.25)',
+    darkText: '#8fadf6',
+    dot: '#0b1f8a',
+  },
+  Activities: {
+    lightBg: '#fef3c7',
+    lightText: '#92400e',
+    darkBg: 'rgba(217,119,6,0.25)',
+    darkText: '#fcd34d',
+    dot: '#f59e0b',
+  },
+  Appeals: {
+    lightBg: '#f3e8ff',
+    lightText: '#6b21a8',
+    darkBg: 'rgba(168,85,247,0.2)',
+    darkText: '#d8b4fe',
+    dot: '#a855f7',
+  },
+  Reports: {
+    lightBg: '#fee2e2',
+    lightText: '#991b1b',
+    darkBg: 'rgba(220,38,38,0.2)',
+    darkText: '#fca5a5',
+    dot: '#ef4444',
+  },
+  Broadcasts: {
+    lightBg: '#ffe5d0',
+    lightText: '#b84c00',
+    darkBg: 'rgba(255,107,0,0.2)',
+    darkText: '#ffab66',
+    dot: '#ff6b00',
+  },
+  Sports: {
+    lightBg: '#dcfce7',
+    lightText: '#15803d',
+    darkBg: 'rgba(34,197,94,0.2)',
+    darkText: '#86efac',
+    dot: '#22c55e',
+  },
+  Templates: {
+    lightBg: '#f1f5f9',
+    lightText: '#475569',
+    darkBg: 'rgba(71,85,105,0.3)',
+    darkText: '#cbd5e1',
+    dot: '#94a3b8',
+  },
 };
 
 function CategoryBadge({ category, isDark }: { category: AuditCategory; isDark: boolean }) {
@@ -40,7 +86,7 @@ function CategoryBadge({ category, isDark }: { category: AuditCategory; isDark: 
   );
 }
 
-// ─── Action verb + color ──────────────────────────────────────────────────────
+// Action verb color.
 
 const ACTION_VERB: Record<AuditAction, string> = {
   'member.status_change': 'Updated status',
@@ -61,10 +107,17 @@ const ACTION_VERB: Record<AuditAction, string> = {
 };
 
 const DESTRUCTIVE_ACTIONS: readonly AuditAction[] = [
-  'member.delete', 'activity.delete', 'appeal.reject', 'broadcast.delete',
+  'member.delete',
+  'activity.delete',
+  'appeal.reject',
+  'broadcast.delete',
 ];
 const POSITIVE_ACTIONS: readonly AuditAction[] = [
-  'appeal.approve', 'report.resolve', 'broadcast.create', 'broadcast.send', 'sport.replace',
+  'appeal.approve',
+  'report.resolve',
+  'broadcast.create',
+  'broadcast.send',
+  'sport.replace',
 ];
 
 function verbColor(action: AuditAction, isDark: boolean): string {
@@ -86,9 +139,17 @@ function detailEntries(entry: AuditLogEntry): [string, string][] {
   return pairs;
 }
 
-// ─── Log row ──────────────────────────────────────────────────────────────────
+// Log row.
 
-function LogRow({ entry, index, isDark }: { entry: AuditLogEntry; index: number; isDark: boolean }) {
+function LogRow({
+  entry,
+  index,
+  isDark,
+}: {
+  entry: AuditLogEntry;
+  index: number;
+  isDark: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const details = detailEntries(entry);
   const hasDetails = details.length > 0;
@@ -123,15 +184,27 @@ function LogRow({ entry, index, isDark }: { entry: AuditLogEntry; index: number;
             </div>
             <time className="shrink-0 text-xs font-medium text-ink-500">
               {new Date(entry.createdAt).toLocaleString('en-US', {
-                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
               })}
             </time>
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-600">
             <span className="flex items-center gap-1">
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                <circle cx="6" cy="4" r="2.5" /><path d="M1 11c0-2.76 2.24-4 5-4s5 1.24 5 4" />
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              >
+                <circle cx="6" cy="4" r="2.5" />
+                <path d="M1 11c0-2.76 2.24-4 5-4s5 1.24 5 4" />
               </svg>
               {entry.adminEmail ?? entry.adminUid}
             </span>
@@ -168,10 +241,16 @@ function LogRow({ entry, index, isDark }: { entry: AuditLogEntry; index: number;
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page.
 
 const ALL_CATEGORIES: AuditCategory[] = [
-  'Members', 'Activities', 'Appeals', 'Reports', 'Broadcasts', 'Sports', 'Templates',
+  'Members',
+  'Activities',
+  'Appeals',
+  'Reports',
+  'Broadcasts',
+  'Sports',
+  'Templates',
 ];
 const PAGE_SIZE = 10;
 
@@ -190,9 +269,13 @@ export function AuditLogPage() {
   function handleExport() {
     downloadCsv(
       entries.map((e) => ({
-        ID: e.id, Action: e.action, Category: e.category,
-        Description: e.description, Target: e.targetLabel,
-        Admin: e.adminEmail ?? e.adminUid, Date: e.createdAt,
+        ID: e.id,
+        Action: e.action,
+        Category: e.category,
+        Description: e.description,
+        Target: e.targetLabel,
+        Admin: e.adminEmail ?? e.adminUid,
+        Date: e.createdAt,
       })),
       'matchup-audit-log.csv',
     );
@@ -212,8 +295,14 @@ export function AuditLogPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  function applyCategory(c: AuditCategory | 'All') { setCategoryFilter(c); setPage(1); }
-  function applySearch(s: string) { setSearch(s); setPage(1); }
+  function applyCategory(c: AuditCategory | 'All') {
+    setCategoryFilter(c);
+    setPage(1);
+  }
+  function applySearch(s: string) {
+    setSearch(s);
+    setPage(1);
+  }
 
   const breakdown = ALL_CATEGORIES.map((c) => ({
     category: c,
@@ -233,7 +322,10 @@ export function AuditLogPage() {
             Complete record of all admin actions for accountability and debugging
           </p>
         </div>
-        <button onClick={handleExport} className="btn-outline rounded-lg px-3 py-1.5 text-sm self-start sm:self-auto">
+        <button
+          onClick={handleExport}
+          className="btn-outline rounded-lg px-3 py-1.5 text-sm self-start sm:self-auto"
+        >
           Export CSV
         </button>
       </div>
@@ -243,7 +335,9 @@ export function AuditLogPage() {
           { label: 'Total Actions', value: entries.length },
           {
             label: 'Today',
-            value: entries.filter((e) => new Date(e.createdAt).toDateString() === new Date().toDateString()).length,
+            value: entries.filter(
+              (e) => new Date(e.createdAt).toDateString() === new Date().toDateString(),
+            ).length,
           },
           {
             label: 'This Week',
@@ -265,7 +359,9 @@ export function AuditLogPage() {
               <button
                 onClick={() => applyCategory('All')}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  categoryFilter === 'All' ? 'bg-brand-500 text-white' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
+                  categoryFilter === 'All'
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
                 }`}
               >
                 All
@@ -275,7 +371,9 @@ export function AuditLogPage() {
                   key={cat}
                   onClick={() => applyCategory(cat)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    categoryFilter === cat ? 'bg-brand-500 text-white' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
+                    categoryFilter === cat
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
                   }`}
                 >
                   {cat}
@@ -283,8 +381,17 @@ export function AuditLogPage() {
               ))}
             </div>
             <div className="flex items-center gap-2 rounded-full bg-ink-50 dark:bg-ink-700/50 px-3 py-1.5 w-full sm:w-auto">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                <circle cx="6" cy="6" r="4" /><path d="M11 11l-2.5-2.5" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              >
+                <circle cx="6" cy="6" r="4" />
+                <path d="M11 11l-2.5-2.5" />
               </svg>
               <input
                 type="text"
@@ -304,14 +411,17 @@ export function AuditLogPage() {
             />
           ) : (
             <div className="divide-y divide-ink-100 dark:divide-ink-700">
-              {paginated.map((e, i) => <LogRow key={e.id} entry={e} index={i} isDark={isDark} />)}
+              {paginated.map((e, i) => (
+                <LogRow key={e.id} entry={e} index={i} isDark={isDark} />
+              ))}
             </div>
           )}
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-ink-100 dark:border-ink-700 px-6 py-3">
               <p className="text-xs text-ink-400">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}{' '}
+                of {filtered.length}
               </p>
               <div className="flex gap-1">
                 <button
@@ -326,7 +436,9 @@ export function AuditLogPage() {
                     key={i}
                     onClick={() => setPage(i + 1)}
                     className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                      page === i + 1 ? 'bg-brand-500 text-white' : 'text-ink-500 hover:bg-ink-100 dark:hover:bg-ink-700'
+                      page === i + 1
+                        ? 'bg-brand-500 text-white'
+                        : 'text-ink-500 hover:bg-ink-100 dark:hover:bg-ink-700'
                     }`}
                   >
                     {i + 1}
@@ -359,13 +471,19 @@ export function AuditLogPage() {
                   >
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="flex items-center gap-1.5 font-medium text-ink-700">
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: m.dot }} />
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: m.dot }}
+                        />
                         {category}
                       </span>
                       <span className="text-ink-500">{count}</span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-100 dark:bg-ink-700">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: m.dot }} />
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, backgroundColor: m.dot }}
+                      />
                     </div>
                   </button>
                 );
@@ -378,11 +496,17 @@ export function AuditLogPage() {
             <div className="space-y-2">
               {entries.slice(0, 5).map((e) => (
                 <div key={e.id} className="flex items-start gap-2">
-                  <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: CATEGORY_META[e.category].dot }} />
+                  <div
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: CATEGORY_META[e.category].dot }}
+                  />
                   <div className="min-w-0">
                     <p className="text-xs text-ink-700 truncate">{e.description}</p>
                     <p className="text-[10px] text-ink-500">
-                      {new Date(e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {new Date(e.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </p>
                   </div>
                 </div>

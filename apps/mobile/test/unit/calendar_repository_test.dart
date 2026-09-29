@@ -15,21 +15,20 @@ ActivityModel _game({
   required String id,
   required DateTime start,
   int durationMinutes = 120,
-}) =>
-    ActivityModel(
-      id: id,
-      title: 'Game $id',
-      sportType: 'Tennis',
-      description: '',
-      location: 'Courts',
-      distanceKm: 1.0,
-      dateTime: start,
-      skillLevel: 'Beginner',
-      capacity: 4,
-      participantCount: 2,
-      hostName: 'Sam',
-      durationMinutes: durationMinutes,
-    );
+}) => ActivityModel(
+  id: id,
+  title: 'Game $id',
+  sportType: 'Tennis',
+  description: '',
+  location: 'Courts',
+  distanceKm: 1.0,
+  dateTime: start,
+  skillLevel: 'Beginner',
+  capacity: 4,
+  participantCount: 2,
+  hostName: 'Sam',
+  durationMinutes: durationMinutes,
+);
 
 class _FakeActivities implements ActivityRepository {
   _FakeActivities({required this.joined, required this.hosted});
@@ -43,8 +42,7 @@ class _FakeActivities implements ActivityRepository {
     filter,
     bool forceRefresh = false,
     bool strict = false,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<List<ActivityModel>> joinedByUser(
@@ -71,22 +69,20 @@ class _ThrowingActivities implements ActivityRepository {
     String userId, {
     int limit = 20,
     int offset = 0,
-  }) async =>
-      throw const ApiException(
-        statusCode: null,
-        userMessage: 'Cannot reach the server.',
-      );
+  }) async => throw const ApiException(
+    statusCode: null,
+    userMessage: 'Cannot reach the server.',
+  );
 
   @override
   Future<List<ActivityModel>> hostedByUser(
     String userId, {
     int limit = 20,
     int offset = 0,
-  }) async =>
-      throw const ApiException(
-        statusCode: null,
-        userMessage: 'Cannot reach the server.',
-      );
+  }) async => throw const ApiException(
+    statusCode: null,
+    userMessage: 'Cannot reach the server.',
+  );
 
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
@@ -144,98 +140,106 @@ void main() {
     dotenv.testLoad(fileInput: 'API_BASE_URL=http://localhost:4000');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-      (call) async => null,
-    );
+          const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+          (call) async => null,
+        );
   });
 
-  group('RemoteCalendarRepository.upcoming (endpoint first, derive on 404)', () {
-    test('404 falls back to joined + hosted, sorted, skips past', () async {
-      final now = DateTime.now();
-      final repo = RemoteCalendarRepository(
-        client: _clientFor(_notFoundDio()),
-        activities: _FakeActivities(
-          joined: [
-            _game(id: 'past', start: now.subtract(const Duration(days: 2))),
-            _game(id: 'j1', start: now.add(const Duration(days: 2))),
-          ],
-          hosted: [
-            _game(id: 'h1', start: now.add(const Duration(days: 1))),
-            // Duplicate id across both lists appears once.
-            _game(id: 'j1', start: now.add(const Duration(days: 2))),
-          ],
-        ),
-      );
-
-      final events = await repo.upcoming(days: 30);
-
-      expect(events.map((e) => e.activityId), ['h1', 'j1']);
-      expect(events.first.title, 'Game h1');
-      expect(events.first.addedToDeviceCalendar, isFalse);
-    });
-
-    test('respects the horizon', () async {
-      final now = DateTime.now();
-      final repo = RemoteCalendarRepository(
-        client: _clientFor(_notFoundDio()),
-        activities: _FakeActivities(
-          joined: [_game(id: 'far', start: now.add(const Duration(days: 60)))],
-          hosted: const [],
-        ),
-      );
-
-      expect(await repo.upcoming(days: 30), isEmpty);
-    });
-
-    test('a live endpoint answer is used verbatim', () async {
-      final repo = RemoteCalendarRepository(
-        client: _clientFor(
-          _cannedDio({
-            'ok': true,
-            'data': [
-              {
-                'id': 's1',
-                'activity_id': 'a1',
-                'title': 'Server Game',
-                'start': DateTime.now()
-                    .add(const Duration(days: 1))
-                    .toUtc()
-                    .toIso8601String(),
-                'end': DateTime.now()
-                    .add(const Duration(days: 1, hours: 2))
-                    .toUtc()
-                    .toIso8601String(),
-                'location': 'Server Courts',
-              },
+  group(
+    'RemoteCalendarRepository.upcoming (endpoint first, derive on 404)',
+    () {
+      test('404 falls back to joined + hosted, sorted, skips past', () async {
+        final now = DateTime.now();
+        final repo = RemoteCalendarRepository(
+          client: _clientFor(_notFoundDio()),
+          activities: _FakeActivities(
+            joined: [
+              _game(id: 'past', start: now.subtract(const Duration(days: 2))),
+              _game(id: 'j1', start: now.add(const Duration(days: 2))),
             ],
-          }),
-        ),
-        activities: _FakeActivities(joined: const [], hosted: const []),
+            hosted: [
+              _game(id: 'h1', start: now.add(const Duration(days: 1))),
+              // Duplicate id across both lists appears once.
+              _game(id: 'j1', start: now.add(const Duration(days: 2))),
+            ],
+          ),
+        );
+
+        final events = await repo.upcoming(days: 30);
+
+        expect(events.map((e) => e.activityId), ['h1', 'j1']);
+        expect(events.first.title, 'Game h1');
+        expect(events.first.addedToDeviceCalendar, isFalse);
+      });
+
+      test('respects the horizon', () async {
+        final now = DateTime.now();
+        final repo = RemoteCalendarRepository(
+          client: _clientFor(_notFoundDio()),
+          activities: _FakeActivities(
+            joined: [
+              _game(id: 'far', start: now.add(const Duration(days: 60))),
+            ],
+            hosted: const [],
+          ),
+        );
+
+        expect(await repo.upcoming(days: 30), isEmpty);
+      });
+
+      test('a live endpoint answer is used verbatim', () async {
+        final repo = RemoteCalendarRepository(
+          client: _clientFor(
+            _cannedDio({
+              'ok': true,
+              'data': [
+                {
+                  'id': 's1',
+                  'activity_id': 'a1',
+                  'title': 'Server Game',
+                  'start': DateTime.now()
+                      .add(const Duration(days: 1))
+                      .toUtc()
+                      .toIso8601String(),
+                  'end': DateTime.now()
+                      .add(const Duration(days: 1, hours: 2))
+                      .toUtc()
+                      .toIso8601String(),
+                  'location': 'Server Courts',
+                },
+              ],
+            }),
+          ),
+          activities: _FakeActivities(joined: const [], hosted: const []),
+        );
+
+        final events = await repo.upcoming(days: 30);
+
+        expect(events, hasLength(1));
+        expect(events.first.title, 'Server Game');
+      });
+
+      test(
+        'offline derivation failure resolves to empty, never throws',
+        () async {
+          final repo = RemoteCalendarRepository(
+            client: _clientFor(_notFoundDio()),
+            activities: _ThrowingActivities(),
+          );
+
+          expect(await repo.upcoming(days: 30), isEmpty);
+        },
       );
 
-      final events = await repo.upcoming(days: 30);
+      test('legacy mode without a source resolves to empty', () async {
+        final repo = RemoteCalendarRepository(
+          client: _clientFor(_notFoundDio()),
+        );
 
-      expect(events, hasLength(1));
-      expect(events.first.title, 'Server Game');
-    });
-
-    test('offline derivation failure resolves to empty, never throws', () async {
-      final repo = RemoteCalendarRepository(
-        client: _clientFor(_notFoundDio()),
-        activities: _ThrowingActivities(),
-      );
-
-      expect(await repo.upcoming(days: 30), isEmpty);
-    });
-
-    test('legacy mode without a source resolves to empty', () async {
-      final repo = RemoteCalendarRepository(
-        client: _clientFor(_notFoundDio()),
-      );
-
-      expect(await repo.upcoming(days: 30), isEmpty);
-    });
-  });
+        expect(await repo.upcoming(days: 30), isEmpty);
+      });
+    },
+  );
 
   group('LocalCalendarRepository (offline)', () {
     test('upcoming is empty and device sync reports false', () async {
@@ -248,10 +252,10 @@ void main() {
 }
 
 CalendarEvent _eventForSyncTest() => CalendarEvent(
-      id: 'e1',
-      activityId: 'a1',
-      title: 'Sync probe',
-      start: DateTime.now().add(const Duration(days: 1)),
-      end: DateTime.now().add(const Duration(days: 1, hours: 2)),
-      location: 'Courts',
-    );
+  id: 'e1',
+  activityId: 'a1',
+  title: 'Sync probe',
+  start: DateTime.now().add(const Duration(days: 1)),
+  end: DateTime.now().add(const Duration(days: 1, hours: 2)),
+  location: 'Courts',
+);

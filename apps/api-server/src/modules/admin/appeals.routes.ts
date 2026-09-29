@@ -1,23 +1,14 @@
+// Routes for appeals.
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import {
-    approveAppealHandler,
-    listAppealsHandler,
-    rejectAppealHandler,
+  approveAppealHandler,
+  listAppealsHandler,
+  rejectAppealHandler,
 } from '../appeals/appeals.controller.js';
 
 export const adminAppealsRouter = Router();
 
 adminAppealsRouter.get('/', requireAuth, requireAdmin, listAppealsHandler);
-adminAppealsRouter.post(
-    '/:id/approve',
-    requireAuth,
-    requireAdmin,
-    approveAppealHandler,
-);
-adminAppealsRouter.post(
-    '/:id/reject',
-    requireAuth,
-    requireAdmin,
-    rejectAppealHandler,
-);
+adminAppealsRouter.post('/:id/approve', requireAuth, requireAdmin, approveAppealHandler);
+adminAppealsRouter.post('/:id/reject', requireAuth, requireAdmin, rejectAppealHandler);

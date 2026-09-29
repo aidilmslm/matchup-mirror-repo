@@ -1,8 +1,5 @@
 /// A user's swipe decision on a single activity card.
-///
 /// `pass` = the user dismissed the card (left swipe on the discovery deck).
-/// `join` = the user expressed interest (right swipe). Saving a `join`
-/// decision also triggers the backend to notify the activity host.
 enum SwipeDecision {
   pass,
   join;

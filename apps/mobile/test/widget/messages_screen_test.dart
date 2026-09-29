@@ -20,7 +20,7 @@ class _MockNotificationRepository extends Mock
 
 class _FakeDmRepository implements DmRepository {
   _FakeDmRepository({List<ChatConversation>? threads})
-      : _threads = List.of(threads ?? []);
+    : _threads = List.of(threads ?? []);
 
   final List<ChatConversation> _threads;
 
@@ -52,7 +52,6 @@ class _FakeDmRepository implements DmRepository {
   }) async {
     throw UnimplementedError();
   }
-
 
   @override
   Stream<List<ChatMessage>> watchMessages(String otherUid) async* {
@@ -254,9 +253,7 @@ void main() {
         expect(find.text('DM u-9'), findsOneWidget);
       });
 
-      testWidgets('should show an empty state with no threads', (
-        tester,
-      ) async {
+      testWidgets('should show an empty state with no threads', (tester) async {
         await pumpWithDm(tester, threads: const []);
 
         await tester.tap(find.text('Direct'));

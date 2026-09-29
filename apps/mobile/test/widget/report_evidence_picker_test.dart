@@ -79,8 +79,8 @@ void main() {
   void mockPickerThrows(String code) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pickerChannel, (call) async {
-      throw PlatformException(code: code);
-    });
+          throw PlatformException(code: code);
+        });
   }
 
   Future<void> pumpPicker(
@@ -140,23 +140,24 @@ void main() {
     expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
   });
 
-  testWidgets('camera permission denial shows a specific error and adds nothing', (
-    tester,
-  ) async {
-    mockPickerThrows('camera_access_denied');
-    final changed = <List<String>>[];
-    await pumpPicker(tester, onChanged: changed.add, onBusyChanged: (_) {});
+  testWidgets(
+    'camera permission denial shows a specific error and adds nothing',
+    (tester) async {
+      mockPickerThrows('camera_access_denied');
+      final changed = <List<String>>[];
+      await pumpPicker(tester, onChanged: changed.add, onBusyChanged: (_) {});
 
-    await tapAdd(tester, 'Camera');
+      await tapAdd(tester, 'Camera');
 
-    expect(
-      find.text(
-        'Could not access the camera. Check camera permissions and try again.',
-      ),
-      findsOneWidget,
-    );
-    expect(changed, isEmpty);
-  });
+      expect(
+        find.text(
+          'Could not access the camera. Check camera permissions and try again.',
+        ),
+        findsOneWidget,
+      );
+      expect(changed, isEmpty);
+    },
+  );
 
   testWidgets('gallery permission denial shows a specific error', (
     tester,
@@ -174,20 +175,21 @@ void main() {
     );
   });
 
-  testWidgets('an oversized pick fails validation before upload and shows the size error', (
-    tester,
-  ) async {
-    final path = await oversizedJpegFile(tester, kMaxEvidenceBytes);
-    mockPickerReturns(path);
-    await pumpPicker(tester, onChanged: (_) {}, onBusyChanged: (_) {});
+  testWidgets(
+    'an oversized pick fails validation before upload and shows the size error',
+    (tester) async {
+      final path = await oversizedJpegFile(tester, kMaxEvidenceBytes);
+      mockPickerReturns(path);
+      await pumpPicker(tester, onChanged: (_) {}, onBusyChanged: (_) {});
 
-    await tapAdd(tester, 'Gallery');
+      await tapAdd(tester, 'Gallery');
 
-    expect(find.textContaining('Maximum is'), findsOneWidget);
-    // Too-large is rejected before ever reaching the upload step, so no
-    // retry affordance is offered — remove and pick a smaller file instead.
-    expect(find.text('Retry'), findsNothing);
-  });
+      expect(find.textContaining('Maximum is'), findsOneWidget);
+      // Too-large is rejected before ever reaching the upload step, so no
+      // retry affordance is offered — remove and pick a smaller file instead.
+      expect(find.text('Retry'), findsNothing);
+    },
+  );
 
   testWidgets('upload failure shows Retry and reports busy while uploading', (
     tester,

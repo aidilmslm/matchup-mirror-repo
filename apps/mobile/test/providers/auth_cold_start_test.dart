@@ -27,27 +27,27 @@ void main() {
     dotenv.testLoad(fileInput: 'API_BASE_URL=http://localhost:4000');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-      (call) async {
-        final args =
-            (call.arguments as Map?)?.cast<String, dynamic>() ?? const {};
-        switch (call.method) {
-          case 'read':
-            return backing[args['key'] as String];
-          case 'write':
-            backing[args['key'] as String] = args['value'] as String;
-            return null;
-          case 'delete':
-            backing.remove(args['key'] as String);
-            return null;
-          case 'deleteAll':
-            backing.clear();
-            return null;
-          default:
-            return null;
-        }
-      },
-    );
+          const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+          (call) async {
+            final args =
+                (call.arguments as Map?)?.cast<String, dynamic>() ?? const {};
+            switch (call.method) {
+              case 'read':
+                return backing[args['key'] as String];
+              case 'write':
+                backing[args['key'] as String] = args['value'] as String;
+                return null;
+              case 'delete':
+                backing.remove(args['key'] as String);
+                return null;
+              case 'deleteAll':
+                backing.clear();
+                return null;
+              default:
+                return null;
+            }
+          },
+        );
   });
 
   setUp(() => backing.clear());
@@ -72,8 +72,7 @@ void main() {
       () async {
         await seed(
           access: jwt(
-            expMs:
-                DateTime.now().millisecondsSinceEpoch - 60 * 60 * 1000,
+            expMs: DateTime.now().millisecondsSinceEpoch - 60 * 60 * 1000,
           ),
           refresh: 'live-refresh',
           uid: 'u-1',
@@ -84,10 +83,8 @@ void main() {
           expMs: DateTime.now().millisecondsSinceEpoch + 60 * 60 * 1000,
         );
         final notifier = AuthStateNotifier(
-          exchange: (_) async => SecureTokenPair(
-            idToken: fresh,
-            refreshToken: 'rotated-refresh',
-          ),
+          exchange: (_) async =>
+              SecureTokenPair(idToken: fresh, refreshToken: 'rotated-refresh'),
         );
         addTearDown(notifier.dispose);
 
@@ -100,71 +97,55 @@ void main() {
       },
     );
 
-    test(
-      'expired ID with no refresh token logs out',
-      () async {
-        await seed(
-          access: jwt(
-            expMs: DateTime.now().millisecondsSinceEpoch - 1000,
-          ),
-          uid: 'u-1',
-        );
-        final notifier = AuthStateNotifier(
-          exchange: (_) async => throw StateError('must not be called'),
-        );
-        addTearDown(notifier.dispose);
+    test('expired ID with no refresh token logs out', () async {
+      await seed(
+        access: jwt(expMs: DateTime.now().millisecondsSinceEpoch - 1000),
+        uid: 'u-1',
+      );
+      final notifier = AuthStateNotifier(
+        exchange: (_) async => throw StateError('must not be called'),
+      );
+      addTearDown(notifier.dispose);
 
-        await notifier.checkSession();
+      await notifier.checkSession();
 
-        expect(notifier.state.status, AuthStatus.unauthenticated);
-      },
-    );
+      expect(notifier.state.status, AuthStatus.unauthenticated);
+    });
 
-    test(
-      'rejected refresh token clears storage and logs out',
-      () async {
-        await seed(
-          access: jwt(
-            expMs: DateTime.now().millisecondsSinceEpoch - 1000,
-          ),
-          refresh: 'dead-refresh',
-          uid: 'u-1',
-        );
-        final notifier = AuthStateNotifier(
-          exchange: (_) async =>
-              throw const UnrecoverableRefreshException('revoked'),
-        );
-        addTearDown(notifier.dispose);
+    test('rejected refresh token clears storage and logs out', () async {
+      await seed(
+        access: jwt(expMs: DateTime.now().millisecondsSinceEpoch - 1000),
+        refresh: 'dead-refresh',
+        uid: 'u-1',
+      );
+      final notifier = AuthStateNotifier(
+        exchange: (_) async =>
+            throw const UnrecoverableRefreshException('revoked'),
+      );
+      addTearDown(notifier.dispose);
 
-        await notifier.checkSession();
+      await notifier.checkSession();
 
-        expect(notifier.state.status, AuthStatus.unauthenticated);
-        expect(backing, isEmpty);
-      },
-    );
+      expect(notifier.state.status, AuthStatus.unauthenticated);
+      expect(backing, isEmpty);
+    });
 
-    test(
-      'offline refresh failure fails open (stays logged in)',
-      () async {
-        await seed(
-          access: jwt(
-            expMs: DateTime.now().millisecondsSinceEpoch - 1000,
-          ),
-          refresh: 'good-refresh',
-          uid: 'u-1',
-        );
-        final notifier = AuthStateNotifier(
-          exchange: (_) async =>
-              throw const TransientRefreshException('offline'),
-        );
-        addTearDown(notifier.dispose);
+    test('offline refresh failure fails open (stays logged in)', () async {
+      await seed(
+        access: jwt(expMs: DateTime.now().millisecondsSinceEpoch - 1000),
+        refresh: 'good-refresh',
+        uid: 'u-1',
+      );
+      final notifier = AuthStateNotifier(
+        exchange: (_) async => throw const TransientRefreshException('offline'),
+      );
+      addTearDown(notifier.dispose);
 
-        await notifier.checkSession();
+      await notifier.checkSession();
 
-        expect(notifier.state.isAuthenticated, isTrue);
-        expect(notifier.state.userId, 'u-1');
-        expect(backing['auth_refresh_token'], 'good-refresh');
-      },
-    );
+      expect(notifier.state.isAuthenticated, isTrue);
+      expect(notifier.state.userId, 'u-1');
+      expect(backing['auth_refresh_token'], 'good-refresh');
+    });
   });
 }

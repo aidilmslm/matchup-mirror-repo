@@ -1,10 +1,4 @@
-/**
- * Notification-templates service — database-backed (Firestore `notifTemplates`).
- *
- * Live endpoints (api-server, all admin-gated):
- *   GET   /api/admin/templates      → NotifTemplate[]
- *   PATCH /api/admin/templates/:id  → NotifTemplate  { title?, body?, enabled? }
- */
+/** Notification-templates service — database-backed (Firestore `notifTemplates`). */
 import { apiFetch } from './api';
 import type { NotifTemplate } from '../types/templates';
 
@@ -22,14 +16,11 @@ export interface TemplatePatch {
   enabled?: boolean;
 }
 
-export async function updateTemplate(
-  id: string,
-  patch: TemplatePatch,
-): Promise<NotifTemplate> {
-  const res = await apiFetch<NotifTemplate>(
-    `/api/admin/templates/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body: JSON.stringify(patch) },
-  );
+export async function updateTemplate(id: string, patch: TemplatePatch): Promise<NotifTemplate> {
+  const res = await apiFetch<NotifTemplate>(`/api/admin/templates/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
   if (!res.ok) throw new Error(res.error.message);
   return res.data;
 }

@@ -169,8 +169,9 @@ void main() {
           final model = ActivityModel.fromJson({
             ...baseJson,
             'status': 'available',
-            'date_time':
-                DateTime.now().add(const Duration(days: 1)).toIso8601String(),
+            'date_time': DateTime.now()
+                .add(const Duration(days: 1))
+                .toIso8601String(),
           });
           expect(model.isChatArchived, isFalse);
         });

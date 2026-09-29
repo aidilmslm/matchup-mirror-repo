@@ -99,9 +99,8 @@ void main() {
         ),
         GoRoute(
           path: '/discovery',
-          builder: (_, _) => const Scaffold(
-            body: Center(child: Text('Discovery')),
-          ),
+          builder: (_, _) =>
+              const Scaffold(body: Center(child: Text('Discovery'))),
         ),
         GoRoute(
           path: '/player-profile/uid/:uid',
@@ -150,74 +149,65 @@ void main() {
       },
     );
 
-    testWidgets(
-      'back button falls back to discovery when reached via go() '
-      '(regression: "tombol back gabisa dipencet")',
-      (tester) async {
-        await pumpViaRealNavigation(
-          tester,
-          repo: repo,
-          via: (context) => context.go('/activity/a-1'),
-        );
+    testWidgets('back button falls back to discovery when reached via go() '
+        '(regression: "tombol back gabisa dipencet")', (tester) async {
+      await pumpViaRealNavigation(
+        tester,
+        repo: repo,
+        via: (context) => context.go('/activity/a-1'),
+      );
 
-        await tester.tap(find.bySemanticsLabel('Back'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Back'));
+      await tester.pumpAndSettle();
 
-        // go() wipes the stack, so there is nothing to pop — the button
-        // must fall back to Discover instead of dead-tapping.
-        expect(find.text('Discovery'), findsOneWidget);
-        expect(find.byType(ActivityDetailScreen), findsNothing);
-      },
-    );
+      // go() wipes the stack, so there is nothing to pop — the button
+      // must fall back to Discover instead of dead-tapping.
+      expect(find.text('Discovery'), findsOneWidget);
+      expect(find.byType(ActivityDetailScreen), findsNothing);
+    });
 
-    testWidgets(
-      'host card opens the host profile when tapped',
-      (tester) async {
-        when(() => repo.byId(any())).thenAnswer(
-          (_) async => _fixture().copyWith(hostId: 'host-1'),
-        );
+    testWidgets('host card opens the host profile when tapped', (tester) async {
+      when(
+        () => repo.byId(any()),
+      ).thenAnswer((_) async => _fixture().copyWith(hostId: 'host-1'));
 
-        await pumpViaRealNavigation(
-          tester,
-          repo: repo,
-          via: (context) => context.push('/activity/a-1'),
-        );
+      await pumpViaRealNavigation(
+        tester,
+        repo: repo,
+        via: (context) => context.push('/activity/a-1'),
+      );
 
-        await tester.tap(find.text('James Wilson'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('James Wilson'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Host profile host-1'), findsOneWidget);
-      },
-    );
+      expect(find.text('Host profile host-1'), findsOneWidget);
+    });
 
-    testWidgets(
-      'rapid taps on the host card never duplicate the profile page '
-      '(regression: keyReservation red screen)',
-      (tester) async {
-        when(() => repo.byId(any())).thenAnswer(
-          (_) async => _fixture().copyWith(hostId: 'host-1'),
-        );
+    testWidgets('rapid taps on the host card never duplicate the profile page '
+        '(regression: keyReservation red screen)', (tester) async {
+      when(
+        () => repo.byId(any()),
+      ).thenAnswer((_) async => _fixture().copyWith(hostId: 'host-1'));
 
-        await pumpViaRealNavigation(
-          tester,
-          repo: repo,
-          via: (context) => context.push('/activity/a-1'),
-        );
+      await pumpViaRealNavigation(
+        tester,
+        repo: repo,
+        via: (context) => context.push('/activity/a-1'),
+      );
 
-        // Three taps with no settling between them: without the
-        // in-flight guard the second push would create a duplicate
-        // `player-profile-uid-host-1` page and red-screen.
-        await tester.tap(find.text('James Wilson'));
-        await tester.pump(const Duration(milliseconds: 50));
-        await tester.tap(find.text('James Wilson'));
-        await tester.pump(const Duration(milliseconds: 50));
-        await tester.tap(find.text('James Wilson'));
-        await tester.pumpAndSettle();
+      // Three taps with no settling between them: without the
+      // in-flight guard the second push would create a duplicate
+      // `player-profile-uid-host-1` page and red-screen.
+      await tester.tap(find.text('James Wilson'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('James Wilson'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('James Wilson'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Host profile host-1'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
+      expect(find.text('Host profile host-1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets(
       'dislike (X) button actually returns to the previous screen when reached via push',
@@ -269,7 +259,9 @@ void main() {
     testWidgets(
       'approval activity shows Request to Join and files a request on tap',
       (tester) async {
-        when(() => repo.byId(any())).thenAnswer((_) async => _approvalFixture());
+        when(
+          () => repo.byId(any()),
+        ).thenAnswer((_) async => _approvalFixture());
         when(() => repo.requestJoin(any())).thenAnswer((_) async {});
 
         await pumpViaRealNavigation(
@@ -291,60 +283,58 @@ void main() {
       },
     );
 
-    testWidgets(
-      'started activity disables join with Already started label',
-      (tester) async {
-        // Backdate the fixture past its start time.
-        when(() => repo.byId(any())).thenAnswer(
-          (_) async => ActivityModel(
-            id: 'a-1',
-            title: 'Saturday Afternoon 5v5 Basketball',
-            sportType: 'Basketball',
-            description: 'Looking for intermediate players.',
-            location: 'Central Park Court B',
-            distanceKm: 2.4,
-            dateTime: DateTime.now().subtract(const Duration(hours: 1)),
-            skillLevel: 'Intermediate',
-            capacity: 10,
-            participantCount: 6,
-            hostName: 'James Wilson',
-          ),
-        );
+    testWidgets('started activity disables join with Already started label', (
+      tester,
+    ) async {
+      // Backdate the fixture past its start time.
+      when(() => repo.byId(any())).thenAnswer(
+        (_) async => ActivityModel(
+          id: 'a-1',
+          title: 'Saturday Afternoon 5v5 Basketball',
+          sportType: 'Basketball',
+          description: 'Looking for intermediate players.',
+          location: 'Central Park Court B',
+          distanceKm: 2.4,
+          dateTime: DateTime.now().subtract(const Duration(hours: 1)),
+          skillLevel: 'Intermediate',
+          capacity: 10,
+          participantCount: 6,
+          hostName: 'James Wilson',
+        ),
+      );
 
-        await pumpViaRealNavigation(
-          tester,
-          repo: repo,
-          via: (context) => context.push('/activity/a-1'),
-        );
+      await pumpViaRealNavigation(
+        tester,
+        repo: repo,
+        via: (context) => context.push('/activity/a-1'),
+      );
 
-        expect(find.text('Already started'), findsOneWidget);
-        verifyNever(() => repo.join(any()));
-      },
-    );
+      expect(find.text('Already started'), findsOneWidget);
+      verifyNever(() => repo.join(any()));
+    });
 
-    testWidgets(
-      'approval activity shows waiting count under participants',
-      (tester) async {
-        when(() => repo.byId(any())).thenAnswer(
-          (_) async => _approvalFixture().copyWith(pendingRequestCount: 3),
-        );
+    testWidgets('approval activity shows waiting count under participants', (
+      tester,
+    ) async {
+      when(() => repo.byId(any())).thenAnswer(
+        (_) async => _approvalFixture().copyWith(pendingRequestCount: 3),
+      );
 
-        await pumpViaRealNavigation(
-          tester,
-          repo: repo,
-          via: (context) => context.push('/activity/a-2'),
-        );
+      await pumpViaRealNavigation(
+        tester,
+        repo: repo,
+        via: (context) => context.push('/activity/a-2'),
+      );
 
-        expect(find.text('3 waiting for approval'), findsOneWidget);
-      },
-    );
+      expect(find.text('3 waiting for approval'), findsOneWidget);
+    });
 
     testWidgets(
       'pending request renders a disabled pill and never calls requestJoin',
       (tester) async {
-        when(
-          () => repo.byId(any()),
-        ).thenAnswer((_) async => _approvalFixture(joinRequestStatus: 'pending'));
+        when(() => repo.byId(any())).thenAnswer(
+          (_) async => _approvalFixture(joinRequestStatus: 'pending'),
+        );
         when(() => repo.requestJoin(any())).thenAnswer((_) async {});
 
         await pumpViaRealNavigation(

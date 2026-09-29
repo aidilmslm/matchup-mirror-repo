@@ -15,7 +15,7 @@ import '../../sports/domain/sport_config.dart';
 import '../domain/discovery_filter.dart';
 import 'discovery_screen.dart' show discoveryFilterProvider;
 
-// ─── Models ───────────────────────────────────────────────────────────────────
+// Models.
 
 enum _DatePreset { today, tomorrow, thisWeekend, thisWeek, custom }
 
@@ -36,8 +36,6 @@ extension _DatePresetLabel on _DatePreset {
   }
 }
 
-
-
 extension _DiscoverySkillLevelLabel on DiscoverySkillLevel {
   String get label {
     switch (this) {
@@ -53,7 +51,7 @@ extension _DiscoverySkillLevelLabel on DiscoverySkillLevel {
   }
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// Screen.
 
 class FilterScreen extends ConsumerStatefulWidget {
   const FilterScreen({super.key});
@@ -77,8 +75,6 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
   ];
 
   /// Admin-curated filter list; bundled fallback while loading/offline.
-  /// Refreshed on every build (build watches the provider); event
-  /// handlers read the last-built value via [_sports].
   late List<String> _sportsLive = _fallbackSports;
   List<String> get _sports => _sportsLive;
 
@@ -101,13 +97,10 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
     });
   }
 
-  /// Toggles are keyed by sport NAME, not list index: the server list
-  /// can churn between build and tap, so a stale index could toggle
-  /// the wrong sport.
+  /// Toggles are keyed by sport NAME, not list index: the server list can churn between build and tap.
   void _toggleSport(String sport) {
     setState(() {
-      final existing = _draft.sportSkills
-          .indexWhere((s) => s.sport == sport);
+      final existing = _draft.sportSkills.indexWhere((s) => s.sport == sport);
       if (existing >= 0) {
         _draft = _draft.copyWith(
           sportSkills: List.of(_draft.sportSkills)..removeAt(existing),
@@ -116,10 +109,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
         _draft = _draft.copyWith(
           sportSkills: [
             ..._draft.sportSkills,
-            DiscoverySportSkill(
-              sport: sport,
-              skill: DiscoverySkillLevel.any,
-            ),
+            DiscoverySportSkill(sport: sport, skill: DiscoverySkillLevel.any),
           ],
         );
       }
@@ -157,14 +147,23 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
     );
     if (range != null) {
       setState(() {
-        // A custom range wins over any preset highlight: reset the
-        // preset to anyTime while keeping the explicit dates.
+        // A custom range wins over any preset highlight: reset the preset to anyTime while keeping the explicit dates.
         _draft = _draft.copyWith(
           datePreset: DiscoveryDatePreset.anyTime,
           startAfter: DateTime(
-              range.start.year, range.start.month, range.start.day),
-          startBefore: DateTime(range.end.year, range.end.month,
-              range.end.day, 23, 59, 59, 999),
+            range.start.year,
+            range.start.month,
+            range.start.day,
+          ),
+          startBefore: DateTime(
+            range.end.year,
+            range.end.month,
+            range.end.day,
+            23,
+            59,
+            59,
+            999,
+          ),
         );
       });
     }
@@ -182,27 +181,25 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
     return _draft.datePreset.label;
   }
 
-  String get _distanceLabel =>
-      _draft.maxDistanceKm == null ? 'Any' : 'Within ${_draft.maxDistanceKm!.round()} km';
+  String get _distanceLabel => _draft.maxDistanceKm == null
+      ? 'Any'
+      : 'Within ${_draft.maxDistanceKm!.round()} km';
 
   String get _sportsLabel => _draft.sportSkills.isEmpty
       ? 'All sports'
       : _draft.sportSkills.length == 1
-          ? _draft.sportSkills.first.sport
-          : '${_draft.sportSkills.length} sports';
+      ? _draft.sportSkills.first.sport
+      : '${_draft.sportSkills.length} sports';
 
   void _onDatePresetSelected(_DatePreset preset) {
     if (preset == _DatePreset.custom) {
       _pickCustomRange();
       return;
     }
-    // Map the local-widget enum to the wire-typed enum. The two share
-    // a 1:1 `name` mapping (today, tomorrow, thisWeekend, thisWeek);
-    // byName is non-null for any string the local enum can produce.
+    // Map the local-widget enum to the wire-typed enum.
     final wirePreset = DiscoveryDatePreset.values.byName(preset.name);
     setState(() {
-      // Selecting a preset drops any custom range: `clearDates` is the
-      // only way to clear dates through copyWith (null means "keep").
+      // Selecting a preset drops any custom range: `clearDates` is the only way to clear dates through copyWith.
       _draft = _draft.copyWith(
         datePreset: _draft.datePreset == wirePreset
             ? DiscoveryDatePreset.anyTime
@@ -219,14 +216,9 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
       'maxDistanceKm=${_draft.maxDistanceKm} '
       'isEmpty=${_draft.isEmpty}',
     );
-    // Always write to the provider — even when the draft is empty,
-    // because the Discovery screen's `ref.listenManual` listener
-    // treats that as "user cleared the filter" and reloads with the
-    // legacy (non-discover) feed path. Skipping the write on empty
-    // would leave a stale filter active and confuse the user.
+    // Always write to the provider — even when the draft is empty, because the Discovery screen's `ref.listenManual`.
     ref.read(discoveryFilterProvider.notifier).state = _draft;
-    // On a deep link there may be nothing to pop — fall back to the
-    // discovery tab instead of stranding the user on the sheet.
+    // On a deep link there may be nothing to pop.
     if (await Navigator.of(context).maybePop() == false && mounted) {
       context.go('/discovery');
     }
@@ -240,10 +232,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
       (s) => s.showInFilter,
       _fallbackSports,
     );
-    // Drop skill selections whose sport vanished from the server list
-    // (silent prune — no snackbar). Assigned directly (same pattern as
-    // `_sportsLive` above): we're still inside build, so the current
-    // frame renders the pruned draft with no extra setState.
+    // Drop skill selections whose sport vanished from the server list (silent prune — no snackbar).
     if (_draft.sportSkills.any((s) => !_sportsLive.contains(s.sport))) {
       _draft = _draft.copyWith(
         sportSkills: [
@@ -303,18 +292,16 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                   _SectionCard(
                     header: const _SectionHeader(title: 'When'),
                     child: _DatePresetGrid(
-                      // A custom range clears the preset highlight, so it
-                      // selects the "Pick dates" pill instead.
+                      // A custom range clears the preset highlight, so it selects the "Pick dates" pill instead.
                       selected:
                           _draft.startAfter != null ||
-                                  _draft.startBefore != null
-                              ? _DatePreset.custom
-                              : _draft.datePreset ==
-                                      DiscoveryDatePreset.anyTime
-                                  ? null
-                                  : _DatePreset.values
-                                      .byName(_draft.datePreset.name),
-                      hasCustomRange: _draft.startAfter != null ||
+                              _draft.startBefore != null
+                          ? _DatePreset.custom
+                          : _draft.datePreset == DiscoveryDatePreset.anyTime
+                          ? null
+                          : _DatePreset.values.byName(_draft.datePreset.name),
+                      hasCustomRange:
+                          _draft.startAfter != null ||
                           _draft.startBefore != null,
                       onSelect: _onDatePresetSelected,
                     ),
@@ -349,10 +336,10 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                               onTap: _draft.maxDistanceKm == null
                                   ? null
                                   : () => setState(() {
-                                        _draft = _draft.copyWith(
-                                          clearDistance: true,
-                                        );
-                                      }),
+                                      _draft = _draft.copyWith(
+                                        clearDistance: true,
+                                      );
+                                    }),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: AppSpacing.x3,
@@ -362,8 +349,9 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                                   color: _draft.maxDistanceKm == null
                                       ? AppColors.primary
                                       : context.colors.surfaceMuted,
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.pill),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.pill,
+                                  ),
                                   border: Border.all(
                                     color: _draft.maxDistanceKm == null
                                         ? AppColors.primary
@@ -372,17 +360,16 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
                                 ),
                                 child: Text(
                                   'Any',
-                                  style:
-                                      AppTypography.chipLabel(context).copyWith(
-                                    fontSize: 12,
-                                    color: _draft.maxDistanceKm == null
-                                        ? AppColors.textOnPrimary
-                                        : context.colors.textSecondary,
-                                    fontWeight:
-                                        _draft.maxDistanceKm == null
+                                  style: AppTypography.chipLabel(context)
+                                      .copyWith(
+                                        fontSize: 12,
+                                        color: _draft.maxDistanceKm == null
+                                            ? AppColors.textOnPrimary
+                                            : context.colors.textSecondary,
+                                        fontWeight: _draft.maxDistanceKm == null
                                             ? FontWeight.w700
                                             : FontWeight.w400,
-                                  ),
+                                      ),
                                 ),
                               ),
                             ),
@@ -415,7 +402,7 @@ class _FilterScreenState extends ConsumerState<FilterScreen> {
   }
 }
 
-// ─── Sports + inline skill level ─────────────────────────────────────────────
+// Sports inline skill level.
 
 class _SportsWithSkills extends StatelessWidget {
   const _SportsWithSkills({
@@ -427,9 +414,7 @@ class _SportsWithSkills extends StatelessWidget {
 
   final List<String> sports;
 
-  /// Selected sport+skill entries from the parent state, in the
-  /// order they were added (so the per-sport skill rows render in
-  /// the order the user picked them).
+  /// Selected sport+skill entries from the parent state, in the order they were added.
   final List<DiscoverySportSkill> selected;
   final ValueChanged<String> onToggleSport;
   final void Function(String sport, DiscoverySkillLevel level) onSetSkill;
@@ -443,18 +428,15 @@ class _SportsWithSkills extends StatelessWidget {
         Wrap(
           spacing: AppSpacing.x2,
           runSpacing: AppSpacing.x2,
-          children: List.generate(
-            sports.length,
-            (i) {
-              final sport = sports[i];
-              final isSelected = selected.any((s) => s.sport == sport);
-              return _SportPill(
-                label: sport,
-                selected: isSelected,
-                onTap: () => onToggleSport(sport),
-              );
-            },
-          ),
+          children: List.generate(sports.length, (i) {
+            final sport = sports[i];
+            final isSelected = selected.any((s) => s.sport == sport);
+            return _SportPill(
+              label: sport,
+              selected: isSelected,
+              onTap: () => onToggleSport(sport),
+            );
+          }),
         ),
 
         // Per-sport skill rows — render one card per selected sport.
@@ -463,8 +445,7 @@ class _SportsWithSkills extends StatelessWidget {
           const _SkillDivider(),
           const SizedBox(height: AppSpacing.x3),
           ...selected.map((entry) {
-            // Keyed by name (not index): entries pruned from the
-            // server list never reach here, and indices can't go stale.
+            // Keyed by name (not index): entries pruned from the server list never reach here, and indices can't go.
             if (!sports.contains(entry.sport)) {
               return const SizedBox.shrink();
             }
@@ -538,15 +519,13 @@ class _SkillSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Four segments ("Intermediate" is long) overflow narrow screens,
-    // so the row scrolls horizontally. Segments keep an equal share
-    // of the full width when it fits, with a minimum width forcing
-    // the scroll when it doesn't.
+    // Four segments ("Intermediate" is long) overflow narrow screens, so the row scrolls horizontally.
     return LayoutBuilder(
       builder: (context, constraints) {
         const minSeg = 108.0;
-        final full =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : minSeg * 4;
+        final full = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : minSeg * 4;
         final segW = (full / 4).clamp(minSeg, 220.0);
         final innerW = segW * 4;
         return SingleChildScrollView(
@@ -572,8 +551,9 @@ class _SkillSegment extends StatelessWidget {
                       duration: const Duration(milliseconds: 150),
                       margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
-                        color:
-                            isSelected ? AppColors.primary : Colors.transparent,
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       alignment: Alignment.center,
@@ -603,7 +583,7 @@ class _SkillSegment extends StatelessWidget {
   }
 }
 
-// ─── Section card wrapper ─────────────────────────────────────────────────────
+// Section card wrapper.
 
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.header, required this.child});
@@ -648,7 +628,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── Alert banner ─────────────────────────────────────────────────────────────
+// Alert banner.
 
 class _NoBannerHint extends StatelessWidget {
   @override
@@ -683,8 +663,10 @@ class _NoBannerHint extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('No sports selected',
-                    style: AppTypography.labelField(context)),
+                Text(
+                  'No sports selected',
+                  style: AppTypography.labelField(context),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'Pick the sports you play to discover games',
@@ -699,7 +681,7 @@ class _NoBannerHint extends StatelessWidget {
   }
 }
 
-// ─── Sport pill ───────────────────────────────────────────────────────────────
+// Sport pill.
 
 class _SportPill extends StatelessWidget {
   const _SportPill({
@@ -764,7 +746,7 @@ class _SportPill extends StatelessWidget {
   }
 }
 
-// ─── Date preset grid ─────────────────────────────────────────────────────────
+// Date preset grid.
 
 class _DatePresetGrid extends StatelessWidget {
   const _DatePresetGrid({
@@ -773,13 +755,10 @@ class _DatePresetGrid extends StatelessWidget {
     required this.onSelect,
   });
 
-  /// Local-widget enum (today / tomorrow / etc.) for the pill UI. The
-  /// wire enum is [DiscoveryDatePreset] — they're bridged via the
-  /// `toLocal()` extension defined on the model.
+  /// Local-widget enum (today / tomorrow / etc.) for the pill UI.
   final _DatePreset? selected;
 
-  /// Whether the user has picked a custom date range. Drives the
-  /// "Pick dates" pill label so the user can see their selection.
+  /// Whether the user has picked a custom date range.
   final bool hasCustomRange;
   final ValueChanged<_DatePreset> onSelect;
 
@@ -794,8 +773,8 @@ class _DatePresetGrid extends StatelessWidget {
         final isSelected = selected == preset;
         final label =
             (preset == _DatePreset.custom && isSelected && hasCustomRange)
-                ? 'Custom range'
-                : preset.label;
+            ? 'Custom range'
+            : preset.label;
 
         return AppTappable(
           semanticLabel: preset.label,
@@ -826,8 +805,11 @@ class _DatePresetGrid extends StatelessWidget {
                 if (preset == _DatePreset.custom)
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
-                    child: Icon(Icons.calendar_month_rounded, size: 13,
-                        color: context.colors.primaryOnSurface),
+                    child: Icon(
+                      Icons.calendar_month_rounded,
+                      size: 13,
+                      color: context.colors.primaryOnSurface,
+                    ),
                   ),
                 Text(
                   label,
@@ -848,7 +830,7 @@ class _DatePresetGrid extends StatelessWidget {
   }
 }
 
-// ─── Distance pill label ──────────────────────────────────────────────────────
+// Distance pill label.
 
 class _DistancePill extends StatelessWidget {
   const _DistancePill({required this.km});
@@ -860,23 +842,25 @@ class _DistancePill extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x3, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.x3,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Text(
         'Within $km km',
-        style: AppTypography.chipLabel(context).copyWith(
-          color: AppColors.textOnPrimary,
-          fontSize: 12,
-        ),
+        style: AppTypography.chipLabel(
+          context,
+        ).copyWith(color: AppColors.textOnPrimary, fontSize: 12),
       ),
     );
   }
 }
 
-// ─── Distance slider ──────────────────────────────────────────────────────────
+// Distance slider.
 
 class _DistanceSlider extends StatelessWidget {
   const _DistanceSlider({required this.distanceKm, required this.onChanged});
@@ -925,7 +909,7 @@ class _DistanceSlider extends StatelessWidget {
   }
 }
 
-// ─── Apply bar ────────────────────────────────────────────────────────────────
+// Apply bar.
 
 class _ApplyBar extends StatelessWidget {
   const _ApplyBar({

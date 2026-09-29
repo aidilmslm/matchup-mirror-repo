@@ -16,24 +16,17 @@ class RankedPlace {
   final PlaceSuggestion suggestion;
 
   /// How well the suggestion matches the query, 0..1.
-  /// 1.0 = exact/perfect match, 0.0 = no useful signal.
   final double relevance;
 
   /// Distance from the user's current map centre, in km.
   final double distanceKm;
 
-  /// Char ranges inside [PlaceSuggestion.label] that match the
-  /// query (for in-row highlighting). Sorted, non-overlapping.
+  /// Char ranges inside [PlaceSuggestion.label] that match the query (for in-row highlighting).
   final List<(int, int)> matchedRanges;
 
-  /// Combined score used for final ordering. Higher is better.
-  /// `0.65 * relevance + 0.35 * decay` where
-  /// `decay = exp(-distanceKm / 5km)`.
-  ///
-  /// At 0 km the decay is 1.0, at 5 km ~0.37, at 10 km ~0.14,
-  /// at 25 km ~0.007 — so "walkable first, city-wide second".
-  double get combined =>
-      0.65 * relevance + 0.35 * _decayedFor(distanceKm);
+  /// Combined score used for final ordering.
+  /// At 0 km the decay is 1.0, at 5 km ~0.37, at 10 km ~0.14, at 25 km ~0.007 — so "walkable first, city-wide second".
+  double get combined => 0.65 * relevance + 0.35 * _decayedFor(distanceKm);
 
   static double _decayedFor(double km) {
     // exp(-km / 5km)
@@ -41,26 +34,25 @@ class RankedPlace {
     return _exp(v);
   }
 
-  // Hand-rolled exp() so we don't pull in dart:math at the top
-  // (keeps this file cheap to import on cold start).
+  // Hand-rolled exp() so we don't pull in dart:math at the top (keeps this file cheap to import on cold start).
   static double _exp(double x) {
-    // Use the identity exp(x) = e^x. We use a Taylor series for
-    // modest precision; the result is clamped to [0, 1] downstream.
+    // Use the identity exp(x) = e^x.
     var sum = 1.0;
     var term = 1.0;
     for (var n = 1; n < 18; n++) {
       term *= x / n;
       sum += term;
     }
-    return sum < 0 ? 0 : sum > 1.5 ? 1 : sum;
+    return sum < 0
+        ? 0
+        : sum > 1.5
+        ? 1
+        : sum;
   }
 }
 
-/// Ranks venue autocomplete results by combining textual
-/// relevance with distance from the user's current map view.
-///
-/// The pure ranking function lives here so it can be unit-tested
-/// without spinning up Flutter widgets.
+/// Ranks venue autocomplete results by combining textual relevance with distance from the user's current map view.
+/// The pure ranking function lives here so it can be unit-tested without spinning up Flutter widgets.
 class PlacesRanker {
   const PlacesRanker();
 
@@ -74,12 +66,14 @@ class PlacesRanker {
     if (q.isEmpty) {
       // No query → distance-only ordering.
       return suggestions
-          .map((s) => RankedPlace(
-                suggestion: s,
-                relevance: 0,
-                distanceKm: _km(s, origin),
-                matchedRanges: const [],
-              ))
+          .map(
+            (s) => RankedPlace(
+              suggestion: s,
+              relevance: 0,
+              distanceKm: _km(s, origin),
+              matchedRanges: const [],
+            ),
+          )
           .toList()
         ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
     }
@@ -97,12 +91,14 @@ class PlacesRanker {
         query: _normalize(q),
       );
       if (rel <= 0) continue;
-      scored.add(RankedPlace(
-        suggestion: s,
-        relevance: rel,
-        distanceKm: _km(s, origin),
-        matchedRanges: ranges,
-      ));
+      scored.add(
+        RankedPlace(
+          suggestion: s,
+          relevance: rel,
+          distanceKm: _km(s, origin),
+          matchedRanges: ranges,
+        ),
+      );
     }
     scored.sort((a, b) {
       final byScore = b.combined.compareTo(a.combined);
@@ -112,7 +108,7 @@ class PlacesRanker {
     return scored;
   }
 
-  // ── tokenisation ──────────────────────────────────────────────────────
+  // tokenisation.
 
   static final _tokenSplit = RegExp(r"[\s,/\-\.\(\)\[\]'’]+");
   static final _nonAlnum = RegExp(r"[^a-z0-9\u00C0-\u024F]+");
@@ -132,7 +128,7 @@ class PlacesRanker {
         .toList(growable: false);
   }
 
-  // ── relevance scoring ─────────────────────────────────────────────────
+  // relevance scoring.
 
   static double _relevance({
     required List<String> queryTokens,
@@ -158,18 +154,15 @@ class PlacesRanker {
     if (everyTokenPrefixHit) return 0.85;
 
     // Tier 4: every query token appears somewhere in the label tokens.
-    final everyTokenHit =
-        queryTokens.every((qt) => labelSet.contains(qt));
+    final everyTokenHit = queryTokens.every((qt) => labelSet.contains(qt));
     if (everyTokenHit) return 0.75;
 
-    // Tier 5: most query tokens hit (>= 50%) with token-level
-    // coverage as the score.
+    // Tier 5: most query tokens hit (>= 50%) with token-level coverage as the score.
     final hits = queryTokens.where(labelSet.contains).length;
     final coverage = hits / queryTokens.length;
     if (coverage >= 0.5) return 0.55 + 0.2 * coverage;
 
-    // Tier 6: secondary line (e.g. "Auckland, NZ") has any of the
-    // query tokens — useful when the venue's secondary is a city.
+    // Tier 6: secondary line.
     final secondarySet = secondaryTokens.toSet();
     final secondaryHit = queryTokens.any(secondarySet.contains);
     if (secondaryHit) return 0.4;
@@ -201,12 +194,12 @@ class PlacesRanker {
     return 0;
   }
 
-  // ── distance ──────────────────────────────────────────────────────────
+  // distance.
 
   static double _km(PlaceSuggestion s, LatLng origin) =>
       haversineKm(origin.latitude, origin.longitude, s.latitude, s.longitude);
 
-  // ── matched ranges (for label highlighting) ──────────────────────────
+  // matched ranges (for label highlighting).
 
   static List<(int, int)> _matchedRanges(
     String label,
@@ -232,8 +225,10 @@ class PlacesRanker {
       if (merged.isNotEmpty) {
         final last = merged.last;
         if (r.$1 <= last.$2) {
-          merged[merged.length - 1] =
-              (last.$1, r.$2 > last.$2 ? r.$2 : last.$2);
+          merged[merged.length - 1] = (
+            last.$1,
+            r.$2 > last.$2 ? r.$2 : last.$2,
+          );
           continue;
         }
       }
@@ -242,7 +237,7 @@ class PlacesRanker {
     return merged;
   }
 
-  // ── Levenshtein distance (bounded to 32 for speed) ────────────────────
+  // Levenshtein distance (bounded to 32 for speed).
 
   static int _levenshtein(String a, String b) {
     if (a == b) return 0;

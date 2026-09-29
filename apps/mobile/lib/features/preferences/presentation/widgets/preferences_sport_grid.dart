@@ -7,8 +7,7 @@ import '../../../../core/theme/dark_colors.dart';
 import '../../../../core/widgets/app_tappable.dart';
 import 'preference_types.dart';
 
-/// 3-column grid of sport cards, each showing its selected skill level
-/// abbreviation (or a plain "+" affordance when unselected).
+/// 3-column grid of sport cards, each showing its selected skill level abbreviation (or a plain "+" affordance when.
 class PreferencesSportGrid extends StatelessWidget {
   const PreferencesSportGrid({
     super.key,
@@ -28,12 +27,7 @@ class PreferencesSportGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        // Tighter gutters (was 12px) so the grid reads as one connected
-        // block instead of loosely scattered cards. 0.86 (was 0.88) keeps
-        // just enough card height for the bigger 56px icon + label + skill
-        // row below without overflowing — the empty-space complaint was
-        // from the padding/icon size, not this ratio, so it only moved a
-        // little.
+        // Tighter gutters (was 12px) so the grid reads as one connected block instead of loosely scattered cards.
         crossAxisSpacing: AppSpacing.x2,
         mainAxisSpacing: AppSpacing.x2,
         childAspectRatio: 0.86,
@@ -75,9 +69,7 @@ class _SportCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: AppDurations.fast,
         curve: Curves.easeOut,
-        // Was 8/14 — the icon well only needed 44px of that but the card
-        // kept ~24px of dead air above and below it. Trimming this is most
-        // of the fix: the same icon now reads as filling the card.
+        // Was 8/14 — the icon well only needed 44px of that but the card kept ~24px of dead air above and below it.
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.x2,
           vertical: AppSpacing.x2,
@@ -94,9 +86,7 @@ class _SportCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 56px well + 26px glyph (was 44px / 22px) — the icon is the
-            // card's main content, it should read that way at a glance
-            // instead of floating small in the middle.
+            // 56px well + 26px glyph (was 44px / 22px).
             Container(
               width: 56,
               height: 56,

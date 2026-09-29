@@ -30,16 +30,17 @@ final _fullProvider = FutureProvider.autoDispose.family<_FullData, String>((
   final activity = await repo.byId(activityId);
   if (activity == null) throw StateError('Activity not found');
   final matches = await repo.search(sport: activity.sportType);
-  final similar = matches
-      .where(
-        (a) =>
-            a.id != activityId &&
-            !a.isFull &&
-            !a.isParticipant &&
-            !a.isHost,
-      )
-      .toList()
-    ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+  final similar =
+      matches
+          .where(
+            (a) =>
+                a.id != activityId &&
+                !a.isFull &&
+                !a.isParticipant &&
+                !a.isHost,
+          )
+          .toList()
+        ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
   return (activity: activity, similar: similar.take(3).toList());
 });
 
@@ -277,9 +278,10 @@ class _ActivityCard extends StatelessWidget {
                             ),
                             child: Text(
                               'Full',
-                              style: AppTypography.chipLabel(
-                                context,
-                              ).copyWith(fontSize: 11, color: context.colors.errorText),
+                              style: AppTypography.chipLabel(context).copyWith(
+                                fontSize: 11,
+                                color: context.colors.errorText,
+                              ),
                             ),
                           ),
                         ],
@@ -419,8 +421,7 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-/// Neutral participant placeholders — generic person icons sized by
-/// the live [count]. No fake faces or invented initials.
+/// Neutral participant placeholders — generic person icons sized by the live [count].
 class _AvatarStack extends StatelessWidget {
   const _AvatarStack({required this.count});
   final int count;
@@ -445,8 +446,7 @@ class _AvatarStack extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: context.colors.surfaceMuted,
-                  border:
-                      Border.all(color: context.colors.border, width: 2),
+                  border: Border.all(color: context.colors.border, width: 2),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
@@ -630,11 +630,9 @@ class _ActionsState extends ConsumerState<_Actions> {
   @override
   Widget build(BuildContext context) {
     final activity = widget.activity;
-    // Approval-gated games can still take requests while full (the
-    // host may approve when a spot frees up). Open games have no
-    // waiting list — the button stays disabled instead of faking it.
-    // Either way the game must not have started yet.
-    final canRequest = activity.requiresApproval &&
+    // Approval-gated games can still take requests while full (the host may approve when a spot frees up).
+    final canRequest =
+        activity.requiresApproval &&
         !activity.hasPendingRequest &&
         !activity.hasStarted;
     final isFullButton = !activity.requiresApproval;
@@ -644,21 +642,20 @@ class _ActionsState extends ConsumerState<_Actions> {
           label: activity.hasPendingRequest
               ? 'Request pending'
               : activity.requiresApproval
-                  ? 'Request to Join'
-                  : 'Activity Full',
+              ? 'Request to Join'
+              : 'Activity Full',
           onPressed: canRequest ? _requestJoin : null,
           loading: _sending,
           size: AppButtonSize.lg,
         ),
-        // Explainer under the disabled full-state button, pointing at
-        // the alternatives below.
+        // Explainer under the disabled full-state button, pointing at the alternatives below.
         if (isFullButton && !canRequest) ...[
           const SizedBox(height: AppSpacing.x2),
           Text(
             'This game is full — check similar games below',
-            style: AppTypography.bodySmall(context).copyWith(
-              color: context.colors.textSecondary,
-            ),
+            style: AppTypography.bodySmall(
+              context,
+            ).copyWith(color: context.colors.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],

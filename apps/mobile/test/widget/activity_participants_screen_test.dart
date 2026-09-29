@@ -202,7 +202,10 @@ void main() {
       verify(
         () => repo.removeParticipant(activityId: '1', uid: 'u2'),
       ).called(1);
-      expect(find.text('Omar Farouk removed from the activity.'), findsOneWidget);
+      expect(
+        find.text('Omar Farouk removed from the activity.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('non-host viewers see no Remove buttons', (tester) async {

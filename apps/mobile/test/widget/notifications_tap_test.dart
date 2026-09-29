@@ -63,8 +63,9 @@ void main() {
 
   setUp(() => repo = _MockNotificationRepository());
 
-  testWidgets('chat notification tap marks read and opens the chat',
-      (tester) async {
+  testWidgets('chat notification tap marks read and opens the chat', (
+    tester,
+  ) async {
     await _pump(tester, repo, [
       _notif(
         id: 'n-1',
@@ -81,9 +82,9 @@ void main() {
     expect(find.text('Chat a-1'), findsOneWidget);
   });
 
-  testWidgets(
-      'system notification tap marks read and opens the full message',
-      (tester) async {
+  testWidgets('system notification tap marks read and opens the full message', (
+    tester,
+  ) async {
     await _pump(tester, repo, [
       _notif(id: 'n-2', title: 'Welcome!', backendType: 'system'),
     ]);

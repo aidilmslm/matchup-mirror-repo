@@ -1,3 +1,5 @@
+// GPS check-in: two on-device gates at tap time — time window (30 min early) + venue proximity (200 m).
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,29 +23,23 @@ import '../../../core/widgets/skeleton.dart';
 import '../../discovery/domain/activity_model.dart';
 import 'my_activities_screen.dart';
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+// Provider.
 
 final _checkInActivityProvider = FutureProvider.autoDispose
     .family<ActivityModel, String>((ref, activityId) async {
-  final activity =
-      await ref.watch(activityRepositoryProvider).byId(activityId);
-  if (activity == null) throw StateError('Activity not found');
-  return activity;
-});
+      final activity = await ref
+          .watch(activityRepositoryProvider)
+          .byId(activityId);
+      if (activity == null) throw StateError('Activity not found');
+      return activity;
+    });
 
-// ─── Status enum ─────────────────────────────────────────────────────────────
+// Status enum.
 
 enum _CheckInStatus { notCheckedIn, locating, checkedIn, locationDenied }
 
-// ─── Check-in policy ─────────────────────────────────────────────────────────
-//
-// Two gates, both enforced on-device at tap time:
-//
-//   1. Time window — opens 30 minutes before the scheduled start, closes
-//      at the activity end.
-//   2. Proximity — the device must be within [_checkInRadiusM] of the
-//      venue coordinates. Venues without coordinates skip this gate
-//      (nothing to verify against); the time gate still applies.
+// Check in policy.
+// Two gates, both enforced on-device at tap time: Time window.
 
 /// How close (metres) the device must be to the venue to check in.
 const double _checkInRadiusM = 200;
@@ -53,11 +49,12 @@ const Duration _checkInWindow = Duration(minutes: 30);
 
 /// Why check-in is (not) currently allowed.
 class _Gate {
-  const _Gate(
-      {required this.canCheckIn,
-      required this.icon,
-      required this.title,
-      required this.body});
+  const _Gate({
+    required this.canCheckIn,
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
   final bool canCheckIn;
   final IconData icon;
   final String title;
@@ -96,9 +93,7 @@ _Gate _gateFor(ActivityModel activity, Position? position) {
   final lat = activity.latitude;
   final lng = activity.longitude;
   if (lat == null || lng == null) {
-    // No venue coordinates to verify against — the proximity gate is
-    // intentionally skipped and the time gate alone decides. The body
-    // copy says so explicitly so the user knows no walk-up check ran.
+    // No venue coordinates to verify against — the proximity gate is intentionally skipped and the time gate alone.
     return const _Gate(
       canCheckIn: true,
       icon: Icons.check_circle_outline_rounded,
@@ -131,7 +126,7 @@ String _formatDistance(double metres) {
   return '${(metres / 1000).toStringAsFixed(1)} km';
 }
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key, required this.activityId});
@@ -154,9 +149,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     });
   }
 
-  /// Restores already-persisted check-in state so a returning user sees
-  /// "Checked in" immediately instead of being asked to check in again.
-  /// Best-effort: failures leave the normal location-gate flow untouched.
+  /// Restores already-persisted check-in state so a returning user sees "Checked in" immediately instead of being.
   Future<void> _restoreCheckIn() async {
     try {
       final checkedIn = await ref
@@ -170,8 +163,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   }
 
   /// Resolves the device position once (initial load + manual refresh).
-  /// Never throws — a null position (or a GPS timeout) simply closes
-  /// the proximity gate until the user retries.
   Future<void> _resolveLocation() async {
     Position? pos;
     try {
@@ -191,12 +182,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   }
 
   Future<void> _onCheckIn() async {
-    final activity =
-        ref.read(_checkInActivityProvider(widget.activityId)).valueOrNull;
+    final activity = ref
+        .read(_checkInActivityProvider(widget.activityId))
+        .valueOrNull;
     if (activity == null || !mounted) return;
     setState(() => _status = _CheckInStatus.locating);
-    // Fresh fix at tap time — the cached one may be stale. A GPS
-    // timeout is transient: offer a retry, not the permissions gate.
+    // Fresh fix at tap time — the cached one may be stale.
     Position? pos;
     try {
       pos = await LocationService.instance.getCurrentLocation();
@@ -231,7 +222,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
     }
     // Gate passed — persist server-side before flipping to checkedIn.
     try {
-      await ref.read(activityRepositoryProvider).checkIn(
+      await ref
+          .read(activityRepositoryProvider)
+          .checkIn(
             activityId: widget.activityId,
             latitude: effective?.latitude,
             longitude: effective?.longitude,
@@ -299,7 +292,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   }
 }
 
-// ─── Body ─────────────────────────────────────────────────────────────────────
+// Body.
 
 class _Body extends StatelessWidget {
   const _Body({
@@ -321,23 +314,21 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Compute the gate once per build and pass it down — calling
-    // _gateFor at each use site would re-run DateTime.now() and risk
-    // inconsistent results within a single frame.
+    // Compute the gate once per build and pass it down.
     final gate = _gateFor(activity, position);
     return Column(
       children: [
         Expanded(
           child: Stack(
             children: [
-              // ── Hero ──────────────────────────────────────────────────
+              // Hero.
               SizedBox(
                 height: _heroHeight,
                 width: double.infinity,
                 child: _Hero(activity: activity),
               ),
 
-              // ── White card ────────────────────────────────────────────
+              // White card.
               Positioned(
                 top: _heroHeight - _overlapAmount,
                 left: 0,
@@ -397,16 +388,11 @@ class _Body extends StatelessWidget {
                         _DetailsCard(activity: activity),
                         const SizedBox(height: AppSpacing.x4),
 
-                        // Status panel — reflects the live gate
-                        // (time window + proximity), not just tap state.
-                        _StatusPanel(
-                          status: status,
-                          gate: gate,
-                        ),
+                        // Status panel — reflects the live gate (time window + proximity), not just tap state.
+                        _StatusPanel(status: status, gate: gate),
                         const SizedBox(height: AppSpacing.x4),
 
-                        // Check In button — enabled only when the
-                        // gate is green.
+                        // Check In button — enabled only when the gate is green.
                         _CheckInButton(
                           status: status,
                           enabled: gate.canCheckIn,
@@ -433,12 +419,12 @@ class _Body extends StatelessWidget {
                                   const SizedBox(width: 6),
                                   Text(
                                     'Refresh my location',
-                                    style: AppTypography.labelField(
-                                      context,
-                                    ).copyWith(
-                                      color: context.colors.primaryOnSurface,
-                                      fontSize: 14,
-                                    ),
+                                    style: AppTypography.labelField(context)
+                                        .copyWith(
+                                          color:
+                                              context.colors.primaryOnSurface,
+                                          fontSize: 14,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -458,16 +444,15 @@ class _Body extends StatelessWidget {
 
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
-    final isToday = dt.year == now.year &&
-        dt.month == now.month &&
-        dt.day == now.day;
+    final isToday =
+        dt.year == now.year && dt.month == now.month && dt.day == now.day;
     final prefix = isToday ? 'Today' : DateFormat('EEE, MMM d').format(dt);
     final time = DateFormat('h:mm a').format(dt);
     return '$prefix, $time';
   }
 }
 
-// ─── Hero ─────────────────────────────────────────────────────────────────────
+// Hero.
 
 class _Hero extends StatelessWidget {
   const _Hero({required this.activity});
@@ -521,9 +506,9 @@ class _Hero extends StatelessWidget {
                     child: Center(
                       child: Text(
                         'Check-In',
-                        style: AppTypography.titleSheet(context).copyWith(
-                          color: AppColors.textOnPrimary,
-                        ),
+                        style: AppTypography.titleSheet(
+                          context,
+                        ).copyWith(color: AppColors.textOnPrimary),
                       ),
                     ),
                   ),
@@ -556,10 +541,9 @@ class _Hero extends StatelessWidget {
                 ),
                 child: Text(
                   activity.sportType.toUpperCase(),
-                  style: AppTypography.chipLabel(context).copyWith(
-                    color: AppColors.textPrimary,
-                    fontSize: 11,
-                  ),
+                  style: AppTypography.chipLabel(
+                    context,
+                  ).copyWith(color: AppColors.textPrimary, fontSize: 11),
                 ),
               ),
               // Distance — green pill (hidden when unknown).
@@ -658,7 +642,7 @@ class _HeroBtn extends StatelessWidget {
   }
 }
 
-// ─── Details card ─────────────────────────────────────────────────────────────
+// Details card.
 
 class _DetailsCard extends StatelessWidget {
   const _DetailsCard({required this.activity});
@@ -714,13 +698,13 @@ class _DetailsCard extends StatelessWidget {
             title: !activity.isPaid
                 ? 'Free Activity'
                 : activity.isSplitCost
-                    ? 'Split Cost'
-                    : 'Paid Activity',
+                ? 'Split Cost'
+                : 'Paid Activity',
             subtitle: !activity.isPaid
                 ? 'No cost to join'
                 : activity.splitExplainer ??
-                    activity.feeLabel ??
-                    'Fee required to join',
+                      activity.feeLabel ??
+                      'Fee required to join',
             trailingChip: _FeeChip(isPaid: activity.isPaid),
           ),
         ],
@@ -757,10 +741,7 @@ class _DetailRow extends StatelessWidget {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
             alignment: Alignment.center,
             child: Icon(icon, size: 18, color: iconColor),
           ),
@@ -801,10 +782,12 @@ class _FeeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor =
-        isPaid ? context.colors.warningBg : context.colors.statusSuccessBg;
-    final fgColor =
-        isPaid ? context.colors.warningText : context.colors.successText;
+    final bgColor = isPaid
+        ? context.colors.warningBg
+        : context.colors.statusSuccessBg;
+    final fgColor = isPaid
+        ? context.colors.warningText
+        : context.colors.successText;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -813,17 +796,15 @@ class _FeeChip extends StatelessWidget {
       ),
       child: Text(
         isPaid ? 'Paid' : 'Free',
-        style: AppTypography.chipLabel(context).copyWith(
-          color: fgColor,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-        ),
+        style: AppTypography.chipLabel(
+          context,
+        ).copyWith(color: fgColor, fontWeight: FontWeight.w700, fontSize: 12),
       ),
     );
   }
 }
 
-// ─── Status panel ─────────────────────────────────────────────────────────────
+// Status panel.
 
 class _StatusPanel extends StatelessWidget {
   const _StatusPanel({required this.status, required this.gate});
@@ -832,42 +813,42 @@ class _StatusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    /// Accent resolution per (status, theme): all semantic accents come
-    /// from theme-aware tokens (successText, warningText, errorText) so
-    /// both light and dark mode hit WCAG AA on the corresponding status
-    /// background without per-call branching. When idle, the panel
-    /// mirrors the live gate (time window + proximity) so the user
-    /// always knows *why* the button is (dis)abled.
-    final (Color bg, Color accent, IconData icon, String title, String body) =
-        switch (status) {
+    /// Accent resolution per (status, theme): all semantic accents come from theme-aware tokens (successText.
+    final (
+      Color bg,
+      Color accent,
+      IconData icon,
+      String title,
+      String body,
+    ) = switch (status) {
       _CheckInStatus.notCheckedIn => (
-          context.colors.warningBg,
-          context.colors.warningText,
-          gate.icon,
-          gate.title,
-          gate.body,
-        ),
+        context.colors.warningBg,
+        context.colors.warningText,
+        gate.icon,
+        gate.title,
+        gate.body,
+      ),
       _CheckInStatus.locating => (
-          context.colors.primarySoft,
-          context.colors.primaryOnSurface,
-          Icons.my_location_rounded,
-          'Locating…',
-          'We are verifying that you are at the activity venue.',
-        ),
+        context.colors.primarySoft,
+        context.colors.primaryOnSurface,
+        Icons.my_location_rounded,
+        'Locating…',
+        'We are verifying that you are at the activity venue.',
+      ),
       _CheckInStatus.checkedIn => (
-          context.colors.statusSuccessBg,
-          context.colors.successText,
-          Icons.check_circle_rounded,
-          'Checked in!',
-          'Your attendance has been confirmed. Enjoy the game!',
-        ),
+        context.colors.statusSuccessBg,
+        context.colors.successText,
+        Icons.check_circle_rounded,
+        'Checked in!',
+        'Your attendance has been confirmed. Enjoy the game!',
+      ),
       _CheckInStatus.locationDenied => (
-          context.colors.warningBg,
-          context.colors.warningText,
-          Icons.location_off_rounded,
-          'Location permission needed',
-          'Enable location access so we can verify your attendance.',
-        ),
+        context.colors.warningBg,
+        context.colors.warningText,
+        Icons.location_off_rounded,
+        'Location permission needed',
+        'Enable location access so we can verify your attendance.',
+      ),
     };
 
     return Container(
@@ -889,19 +870,16 @@ class _StatusPanel extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: AppTypography.labelField(context).copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTypography.labelField(
+                    context,
+                  ).copyWith(color: accent, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: AppTypography.metaSub(context).copyWith(
-                    color: accent,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+                  style: AppTypography.metaSub(
+                    context,
+                  ).copyWith(color: accent, fontSize: 13, height: 1.4),
                 ),
               ],
             ),
@@ -912,11 +890,14 @@ class _StatusPanel extends StatelessWidget {
   }
 }
 
-// ─── Check In button ──────────────────────────────────────────────────────────
+// Check In button.
 
 class _CheckInButton extends StatelessWidget {
-  const _CheckInButton(
-      {required this.status, required this.enabled, required this.onCheckIn});
+  const _CheckInButton({
+    required this.status,
+    required this.enabled,
+    required this.onCheckIn,
+  });
   final _CheckInStatus status;
   final bool enabled;
   final Future<void> Function() onCheckIn;
@@ -935,40 +916,37 @@ class _CheckInButton extends StatelessWidget {
           width: double.infinity,
           height: 56,
           decoration: BoxDecoration(
-            color: isDone
-                ? AppColors.statusSuccessText
-                : AppColors.primary,
+            color: isDone ? AppColors.statusSuccessText : AppColors.primary,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             boxShadow: isDone ? null : AppShadows.glowPrimary,
           ),
-        alignment: Alignment.center,
-        child: isLocating
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation(AppColors.textOnPrimary),
+          alignment: Alignment.center,
+          child: isLocating
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation(AppColors.textOnPrimary),
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isDone
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.location_on_rounded,
+                      size: 20,
+                      color: AppColors.textOnPrimary,
+                    ),
+                    const SizedBox(width: AppSpacing.x2),
+                    Text(
+                      isDone ? 'Checked In' : 'Check In',
+                      style: AppTypography.buttonPrimary,
+                    ),
+                  ],
                 ),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isDone
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.location_on_rounded,
-                    size: 20,
-                    color: AppColors.textOnPrimary,
-                  ),
-                  const SizedBox(width: AppSpacing.x2),
-                  Text(
-                    isDone ? 'Checked In' : 'Check In',
-                    style: AppTypography.buttonPrimary,
-                  ),
-                ],
-              ),
         ),
       ),
     );

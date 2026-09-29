@@ -22,15 +22,8 @@ import 'my_activities_screen.dart';
 import 'widgets/venue_field.dart';
 
 /// Host-only edit screen for an existing activity.
-///
-/// Prefills every field from the loaded activity and PATCHes only what
-/// the host changed (venue coordinates travel along when the venue is
-/// re-picked). Returns `true` via pop on success so the caller
-/// (manage screen) can refresh its detail provider.
-///
-/// Layout follows the same visual language as [CreateActivityScreen]:
-/// icon-led setting cards, choice cards for skill / join policy, and a
-/// pinned bottom CTA — so Edit never drifts from Create.
+/// Prefills every field from the loaded activity and PATCHes only what the host changed.
+/// Layout follows the same visual language as [CreateActivityScreen].
 class EditActivityScreen extends ConsumerStatefulWidget {
   const EditActivityScreen({super.key, required this.activityId});
   final String activityId;
@@ -41,8 +34,8 @@ class EditActivityScreen extends ConsumerStatefulWidget {
 
 final _editActivityProvider = FutureProvider.autoDispose
     .family<ActivityModel?, String>((ref, id) {
-  return ref.watch(activityRepositoryProvider).byId(id);
-});
+      return ref.watch(activityRepositoryProvider).byId(id);
+    });
 
 class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
   static const _sportOptions = [
@@ -82,7 +75,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
     'Beginner': (icon: Icons.eco_outlined, subtitle: 'Just starting out'),
     'Intermediate': (
       icon: Icons.trending_up_outlined,
-      subtitle: 'Knows the basics'
+      subtitle: 'Knows the basics',
     ),
     'Advanced': (icon: Icons.bolt_outlined, subtitle: 'Competitive play'),
   };
@@ -90,11 +83,11 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
   static const _joinPolicyMeta = <String, ({IconData icon, String subtitle})>{
     'open': (
       icon: Icons.lock_open_outlined,
-      subtitle: 'Anyone can join instantly'
+      subtitle: 'Anyone can join instantly',
     ),
     'approval': (
       icon: Icons.verified_outlined,
-      subtitle: 'You approve each request'
+      subtitle: 'You approve each request',
     ),
   };
 
@@ -224,8 +217,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
         _priceController.text != _origPrice;
   }
 
-  /// ✕ pressed — pop straight away when nothing changed, otherwise confirm
-  /// so an accidental tap never throws edits away silently.
+  /// ✕ pressed — pop straight away when nothing changed, otherwise confirm so an accidental tap never throws edits.
   Future<void> _onClose() async {
     if (_saving) return;
     if (!_isDirty) {
@@ -273,13 +265,15 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
     FocusScope.of(context).unfocus();
     final err = _error();
     if (err != null) {
-      AppSnackbar.show(context,
-          message: err, variant: AppSnackbarVariant.error);
+      AppSnackbar.show(
+        context,
+        message: err,
+        variant: AppSnackbarVariant.error,
+      );
       return;
     }
     if (_saving) return;
-    // The date picker still opens at today, so a host correcting an
-    // already-started game gets a heads-up instead of a silent no-op.
+    // The date picker still opens at today, so hosts fixing a started game get a heads-up.
     if (original.dateTime.isBefore(DateTime.now())) {
       AppSnackbar.show(
         context,
@@ -292,7 +286,9 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
       final venue = _venue!;
       final start = _date!;
       final paid = _feeType == 1;
-      await ref.read(activityRepositoryProvider).updateActivity(
+      await ref
+          .read(activityRepositoryProvider)
+          .updateActivity(
             activityId: widget.activityId,
             title: _titleController.text.trim(),
             sportType: _sport,
@@ -314,8 +310,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
       ref.invalidate(joinedGamesProvider);
       if (!mounted) return;
       HapticFeedback.mediumImpact();
-      // Pop silent — the manage screen shows the confirmation snackbar
-      // (a snackbar shown here would die with this route).
+      // Pop silent — the manage screen shows the confirmation snackbar.
       Navigator.of(context).pop(true);
     } catch (_) {
       if (!mounted) return;
@@ -380,8 +375,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
               AppSpacing.x5,
               AppSpacing.x3,
               AppSpacing.x5,
-              AppSpacing.x6 +
-                  MediaQuery.of(sheetContext).viewPadding.bottom,
+              AppSpacing.x6 + MediaQuery.of(sheetContext).viewPadding.bottom,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -400,17 +394,17 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
                 ),
                 Text(
                   title,
-                  style: AppTypography.titleLarge(context).copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: AppTypography.titleLarge(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w800),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: AppTypography.bodyMedium(context).copyWith(
-                      color: context.colors.textSecondary,
-                    ),
+                    style: AppTypography.bodyMedium(
+                      context,
+                    ).copyWith(color: context.colors.textSecondary),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.x4),
@@ -439,11 +433,9 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: isCurrent ? c.primarySoft : c.surface,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.card),
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                             border: Border.all(
-                              color:
-                                  isCurrent ? c.primaryOnSurface : c.border,
+                              color: isCurrent ? c.primaryOnSurface : c.border,
                               width: isCurrent ? 1.5 : 1,
                             ),
                           ),
@@ -474,29 +466,26 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
                               ],
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       opt,
-                                      style: AppTypography.bodyMedium(
-                                        context,
-                                      ).copyWith(
-                                        fontSize: 15,
-                                        fontWeight: isCurrent
-                                            ? FontWeight.w700
-                                            : FontWeight.w600,
-                                        color: isCurrent
-                                            ? c.primaryOnSurface
-                                            : c.textPrimary,
-                                      ),
+                                      style: AppTypography.bodyMedium(context)
+                                          .copyWith(
+                                            fontSize: 15,
+                                            fontWeight: isCurrent
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
+                                            color: isCurrent
+                                                ? c.primaryOnSurface
+                                                : c.textPrimary,
+                                          ),
                                     ),
                                     if (sub != null) ...[
                                       const SizedBox(height: 1),
                                       Text(
                                         sub,
-                                        style:
-                                            AppTypography.metaSub(context),
+                                        style: AppTypography.metaSub(context),
                                       ),
                                     ],
                                   ],
@@ -581,8 +570,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
           );
         }
         if (!_initialised) {
-          // Prefill once — guarded so typing never gets clobbered
-          // by a provider rebuild.
+          // Prefill once — guarded so typing never gets clobbered by a provider rebuild.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !_initialised) {
               setState(() => _initFrom(activity));
@@ -601,10 +589,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
           title: 'Edit Activity',
           leading: _CloseButton(onPressed: _onClose),
           actions: [
-            _SaveAction(
-              enabled: !_saving,
-              onTap: () => _save(activity),
-            ),
+            _SaveAction(enabled: !_saving, onTap: () => _save(activity)),
           ],
           // Outside ShellRoute (no tab bar) so this draws its own indicator.
           showHomeIndicator: true,
@@ -658,8 +643,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
             ),
             current: _sport,
             onSelect: (v) => setState(() => _sport = v),
-            iconFor: (o) =>
-                _sportIcons[o] ?? Icons.sports_basketball_outlined,
+            iconFor: (o) => _sportIcons[o] ?? Icons.sports_basketball_outlined,
           ),
           value: Text(_sport, style: _valueStyle(context)),
           trailing: _chevron(context),
@@ -694,16 +678,14 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
                 icon: Icons.remove,
                 enabled: _durationMinutes > 30,
                 semanticLabel: 'Shorten duration',
-                onTap: () =>
-                    setState(() => _durationMinutes -= 15),
+                onTap: () => setState(() => _durationMinutes -= 15),
               ),
               _CounterBtn(
                 icon: Icons.add,
                 enabled: _durationMinutes < 480,
                 emphasised: true,
                 semanticLabel: 'Extend duration',
-                onTap: () =>
-                    setState(() => _durationMinutes += 15),
+                onTap: () => setState(() => _durationMinutes += 15),
               ),
             ],
           ),
@@ -715,10 +697,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
         _SettingCard(
           icon: Icons.group_outlined,
           label: 'Max Participants',
-          value: Text(
-            '$_capacity players',
-            style: _valueStyle(context),
-          ),
+          value: Text('$_capacity players', style: _valueStyle(context)),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -806,10 +785,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
         const SizedBox(height: AppSpacing.x5),
         _FieldLabel('Entry Fee'),
         const SizedBox(height: 2),
-        Text(
-          'Is there a cost to join?',
-          style: AppTypography.metaSub(context),
-        ),
+        Text('Is there a cost to join?', style: AppTypography.metaSub(context)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -855,9 +831,9 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
               children: [
                 Text(
                   '\$',
-                  style: _inputStyle(context).copyWith(
-                    color: context.colors.textSecondary,
-                  ),
+                  style: _inputStyle(
+                    context,
+                  ).copyWith(color: context.colors.textSecondary),
                 ),
                 const SizedBox(width: AppSpacing.x1),
                 Expanded(
@@ -884,10 +860,7 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
             const SizedBox(width: 6),
             Text('(Optional)', style: AppTypography.metaSub(context)),
             const Spacer(),
-            Text(
-              '$_descLen/300',
-              style: AppTypography.metaSub(context),
-            ),
+            Text('$_descLen/300', style: AppTypography.metaSub(context)),
           ],
         ),
         const SizedBox(height: 6),
@@ -937,10 +910,10 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
   }
 
   Widget _chevron(BuildContext context) => Icon(
-        Icons.chevron_right_rounded,
-        size: 20,
-        color: context.colors.textTertiary,
-      );
+    Icons.chevron_right_rounded,
+    size: 20,
+    color: context.colors.textTertiary,
+  );
 
   TextStyle _valueStyle(BuildContext context) =>
       AppTypography.bodyMedium(context).copyWith(
@@ -958,10 +931,9 @@ class _EditActivityScreenState extends ConsumerState<EditActivityScreen> {
   }
 }
 
-// ─── Building blocks (same language as Create) ───────────────────────────────
+// Building blocks (same language as Create).
 
-/// ✕ button that cancels the edit — same 44px circle treatment as the
-/// standard back button so the header keeps its rhythm.
+/// ✕ button that cancels the edit — same 44px circle treatment as the standard back button so the header keeps its.
 class _CloseButton extends StatelessWidget {
   const _CloseButton({required this.onPressed});
   final VoidCallback onPressed;
@@ -1048,9 +1020,9 @@ class _SectionHeading extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           subtitle,
-          style: AppTypography.bodyMedium(context).copyWith(
-            color: context.colors.textSecondary,
-          ),
+          style: AppTypography.bodyMedium(
+            context,
+          ).copyWith(color: context.colors.textSecondary),
         ),
       ],
     );
@@ -1095,11 +1067,7 @@ class _SettingCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.input),
             ),
             alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: 19,
-              color: context.colors.primaryOnSurface,
-            ),
+            child: Icon(icon, size: 19, color: context.colors.primaryOnSurface),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
@@ -1107,10 +1075,7 @@ class _SettingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: AppTypography.metaSub(context)),
-                if (value != null) ...[
-                  const SizedBox(height: 2),
-                  value!,
-                ],
+                if (value != null) ...[const SizedBox(height: 2), value!],
               ],
             ),
           ),
@@ -1136,8 +1101,7 @@ class _FieldLabel extends StatelessWidget {
       Text(text, style: AppTypography.labelField(context));
 }
 
-/// Stepper button — 32px visual inside a 44px touch target. Decrement is
-/// neutral outlined, increment is filled `primarySoft`. Matches Create.
+/// Stepper button — 32px visual inside a 44px touch target.
 class _CounterBtn extends StatelessWidget {
   const _CounterBtn({
     required this.icon,
@@ -1280,20 +1244,19 @@ class _ChoiceCard extends StatelessWidget {
   }
 }
 
-TextStyle _inputStyle(BuildContext context) =>
-    AppTypography.bodyFormSecondary(context).copyWith(
-      color: context.colors.textPrimary,
-    );
+TextStyle _inputStyle(BuildContext context) => AppTypography.bodyFormSecondary(
+  context,
+).copyWith(color: context.colors.textPrimary);
 
 InputDecoration _dec(BuildContext context, String hint) => InputDecoration(
-      hintText: hint,
-      hintStyle: AppTypography.bodyFormSecondary(context).copyWith(
-        color: context.colors.textTertiary,
-      ),
-      filled: false,
-      border: InputBorder.none,
-      enabledBorder: InputBorder.none,
-      focusedBorder: InputBorder.none,
-      isDense: true,
-      contentPadding: EdgeInsets.zero,
-    );
+  hintText: hint,
+  hintStyle: AppTypography.bodyFormSecondary(
+    context,
+  ).copyWith(color: context.colors.textTertiary),
+  filled: false,
+  border: InputBorder.none,
+  enabledBorder: InputBorder.none,
+  focusedBorder: InputBorder.none,
+  isDense: true,
+  contentPadding: EdgeInsets.zero,
+);

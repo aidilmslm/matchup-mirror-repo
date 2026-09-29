@@ -38,59 +38,44 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         statusBarBrightness: Brightness.dark,
       ),
     );
-    // 2200ms is well beyond AppDurations.emphasized (320ms) — deliberately
-    // so. This isn't a UI transition being animated, it's the wordmark
-    // reveal shown once per cold start; the emphasized cap governs
-    // route/element motion, not a one-time brand moment. Navigation
-    // itself does NOT wait for the full animation (see below).
+    // 2200ms is well beyond AppDurations.emphasized (320ms).
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
     )..forward();
 
-    // Route as soon as the session check finishes, with only a short
-    // minimum dwell (800ms) for the brand moment — never a fixed 2s
-    // wait. checkSession() is just two secure-storage reads (no
-    // network), so on a warm device cold start now costs <1s instead
-    // of 2s+. Minimized-and-resumed apps never reach here at all: the
-    // OS keeps the process alive, so Flutter resumes the existing
-    // route with zero re-init.
+    // Route as soon as the session check finishes, with only a short minimum dwell (800ms) for the brand moment.
     Future.wait([
-      ref.read(authStateProvider.notifier).checkSession(),
-      Future.delayed(const Duration(milliseconds: 800)),
-    ]).timeout(const Duration(seconds: 8)).then((_) {
-      if (!mounted) return;
-      _routeBySession();
-    }).catchError((_) {
-      // Session check failed or hung (a never-completing secure-storage
-      // read pins `Future.wait` forever — `.catchError` alone can't
-      // cover that, hence the 8s wall-clock timeout above) — fall back
-      // to onboarding instead of hanging on the splash screen forever.
-      if (!mounted) return;
-      context.go('/onboarding');
-    });
+          ref.read(authStateProvider.notifier).checkSession(),
+          Future.delayed(const Duration(milliseconds: 800)),
+        ])
+        .timeout(const Duration(seconds: 8))
+        .then((_) {
+          if (!mounted) return;
+          _routeBySession();
+        })
+        .catchError((_) {
+          // Session check failed or hung (a never-completing secure-storage read pins `Future.wait` forever.
+          if (!mounted) return;
+          context.go('/onboarding');
+        });
   }
 
   Future<void> _routeBySession() async {
     if (!mounted) return;
     final status = ref.read(authStatusProvider);
     if (status == AuthStatus.authenticated) {
-      // Session survived (cold start logged-in): make sure this device
-      // is registered for push — startup registration ran logged-out.
+      // Session survived (cold start logged-in): make sure this device is registered for push.
       unawaited(
         PushNotificationService.instance.refreshRegistration(
           deviceRepository: ref.read(deviceRepositoryProvider),
         ),
       );
-      // New accounts must finish onboarding: gtk_done_<uid>==false
-      // resumes GTK. The flag is scoped per account so a second user on
-      // a shared device never inherits the first user's completion.
-      // Missing/null = old account (flag never written) or unknown uid
-      // → treated as done, fail-open so existing users aren't trapped
-      // in onboarding.
+      // New accounts must finish onboarding: gtk_done_<uid>==false resumes GTK.
       bool? gtkDone;
       try {
-        final uid = ref.read(authStateProvider).userId ??
+        final uid =
+            ref.read(authStateProvider).userId ??
             await SecureTokenStore.instance.readUserId() ??
             '';
         if (uid.isEmpty) {
@@ -107,16 +92,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         context.go('/get-to-know-1');
         return;
       }
-      // Restore the last visited route so the user continues where they
-      // left off after minimize or OS kill. Falls back to /discovery if
-      // nothing was saved (first install) or the stored path is no longer
-      // valid.
+      // Restore the last visited route so the user continues where they left off after minimize or OS kill.
       final lastRoute = await RouteStore.instance.read();
       if (!mounted) return;
       context.go(lastRoute ?? '/discovery');
     } else {
-      // On logout or first run, clear any stale stored route so the next
-      // login always starts fresh at /discovery.
+      // On logout or first run, clear any stale stored route so the next login always starts fresh at /discovery.
       await RouteStore.instance.clear();
       if (!mounted) return;
       context.go('/onboarding');
@@ -131,9 +112,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Deliberate deviation from the shared auth-shell pattern (PRD 2.1
-    // principle 1): the splash screen is a full-bleed gradient with no
-    // one screen in the auth flow with nothing to scroll.
+    // Deliberate deviation from the shared auth-shell pattern (PRD 2.1 principle 1): the splash screen is a full-bleed.
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -183,7 +162,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             borderRadius: BorderRadius.circular(AppRadius.xl),
                             boxShadow: AppShadows.floating,
                           ),
-                           child: ClipRRect(
+                          child: ClipRRect(
                             borderRadius: BorderRadius.circular(AppRadius.xl),
                             child: Image.asset(
                               'assets/images/splash/logo-badge.png',
@@ -209,9 +188,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ],
                     ),
                   ),
-                  // Progress bar loader. 90px inset is a fixed Figma
-                  // component width, not a layout gutter — acceptable per
-                  // PRD Appendix D.5 (pin exact component dimensions).
+                  // Progress bar loader.
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 90),
                     child: AnimatedBuilder(
@@ -262,8 +239,7 @@ class _DecorationSvg extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      // flutter_svg 2.x has no errorBuilder — placeholderBuilder covers
-      // decode failures with an empty box instead of crashing.
+      // flutter_svg 2.x has no errorBuilder — placeholderBuilder covers decode failures.
       child: SvgPicture.asset(
         path,
         fit: BoxFit.contain,

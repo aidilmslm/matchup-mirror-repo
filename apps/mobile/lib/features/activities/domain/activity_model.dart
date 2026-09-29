@@ -8,9 +8,7 @@ class ActivityModel {
   /// Venue name — the primary location line (e.g. `Brooklyn Public Courts`).
   final String location;
 
-  /// Street-level address shown beneath [location] on the detail screen
-  /// (e.g. `Court #3, Prospect Park, NY`). When null the UI falls back to
-  /// showing [distanceKm] instead, so the second line is never blank.
+  /// Street-level address shown beneath [location] on the detail screen.
   final String? addressLine;
 
   final double distanceKm;
@@ -22,107 +20,61 @@ class ActivityModel {
   final String? coverImageUrl;
   final ActivityStatus status;
 
-  /// How long the activity runs, in minutes. Defaults to 120 (2h) — the same
-  /// assumption the detail screen used to hardcode as `start + 2h` before
-  /// this field existed. Create Activity now captures it explicitly via a
-  /// Duration segmented control (1h / 1.5h / 2h / 3h — PRD Section 1.4).
+  /// How long the activity runs, in minutes.
   final int durationMinutes;
 
-  /// Whether joining costs money. Drives the Free/Paid chip on the discovery
-  /// card. Defaults to false (Free) since most pickup games are.
+  /// Whether joining costs money.
   final bool isPaid;
 
-  /// Joining fee amount, set only when [isPaid] is true. Null for free
-  /// games and for payloads written before the field existed.
-  ///
-  /// Semantics depend on [feeMode]: `fixed` = price per person,
-  /// `split` = worst-case price per person (`totalCost / minPlayers`).
-  /// Old clients ignore the mode and just render this number, so every
-  /// write path must keep it populated.
+  /// Joining fee amount, set only when [isPaid] is true.
+  /// Semantics depend on [feeMode]: `fixed` = price per person, `split` = worst-case price per person (`totalCost /.
   final double? fee;
 
-  /// Pricing mode for paid games: `'fixed'` (flat price per person,
-  /// the default) or `'split'` (total venue cost shared among players).
-  /// Defaults to fixed for payloads written before the field existed.
+  /// Pricing mode for paid games: `'fixed'` (flat price per person, the default) or `'split'` (total venue cost.
   final String feeMode;
 
-  /// Total cost to split (venue booking etc.), set only for `split`
-  /// mode. Null otherwise.
+  /// Total cost to split (venue booking etc.), set only for `split` mode.
   final double? totalCost;
 
-  /// Minimum players the host needs for the game to run. Only
-  /// meaningful for `split` mode — the displayed per-person price is
-  /// `totalCost / minPlayers` (worst case; cheaper when full).
-  /// Null means "full capacity".
+  /// Minimum players the host needs for the game to run.
   final int? minPlayers;
 
-  /// Host's average rating (0–5) for this activity's sport, read from
-  /// `hostProfile.ratingBySport[sportType]` which the backend maintains
-  /// on every rating submit — plus the number of games they've hosted.
-  /// Null when the host has no ratings yet (UI shows "New host").
-  /// Never a placeholder: there is no fake 4.8 anywhere in this app.
+  /// Host's average rating (0–5) for this activity's sport.
   final double? hostRating;
   final int hostGamesCount;
 
-  /// Host-role average for this activity's sport, from
-  /// `hostProfile.hostRatingBySport[sportType]` (stars received while
-  /// hosting — separate from [hostRating], the mixed player-role
-  /// aggregate). Null until the first host-role rating lands; even a
-  /// single rating shows.
+  /// Host-role average for this activity's sport, from `hostProfile.hostRatingBySport[sportType]`.
   final double? hostHostRating;
   final int hostHostRatingCount;
-  /// Short atmosphere/expectation tags shown as small chips ("Friendly
-  /// people", "Great vibes", "Arrive 15m early"). Purely descriptive.
+
+  /// Short atmosphere/expectation tags shown as small chips ("Friendly people", "Great vibes", "Arrive 15m early").
   final List<String> vibeTags;
 
-  /// Backend viewer context (see `ActivityViewerContext` in the api
-  /// server). `isHost` / `isParticipant` say whether the signed-in
-  /// user hosts or joined this activity; `mySwipeDecision` is the
-  /// user's swipe (`'join'`, `'pass'`, or null when unswiped).
+  /// Backend viewer context (see `ActivityViewerContext` in the api server).
   final bool isParticipant;
   final bool isHost;
   final String? mySwipeDecision;
 
-  /// Backend host uid (`ActivityRecord.hostId`). Used for host-only
-  /// actions and "message host" flows.
+  /// Backend host uid (`ActivityRecord.hostId`).
   final String hostId;
 
-  /// Raw venue coordinates from the backend. Nullable because seed-era
-  /// and hand-built payloads (including this model's own legacy
-  /// fixtures) don't carry them — repositories fill [distanceKm] from
-  /// these when a device location is available.
+  /// Raw venue coordinates from the backend.
   final double? latitude;
   final double? longitude;
 
-  /// How new members get in (`ActivityRecord.joinPolicy`): `'open'`
-  /// means instant join, `'approval'` parks the user in a pending join
-  /// request. Defaults to open for payloads written before the field
-  /// existed — same default the backend applies.
+  /// How new members get in (`ActivityRecord.joinPolicy`): `'open'` means instant join, `'approval'` parks the user.
   final String joinPolicy;
 
-  /// The viewer's join-request state on approval-gated activities
-  /// (`'none'`, `'pending'`, `'approved'`, `'declined'`). Null when the
-  /// backend didn't send viewer context (e.g. hand-built fixtures).
+  /// The viewer's join-request state on approval-gated activities (`'none'`, `'pending'`, `'approved'`, `'declined'`).
   final String? joinRequestStatus;
 
-  /// Denormalized count of pending join requests
-  /// (`ActivityRecord.pendingRequestCount`). Drives the public "N
-  /// waiting" display on approval-gated activities. Defaults to 0 for
-  /// payloads written before the field existed.
+  /// Denormalized count of pending join requests (`ActivityRecord.pendingRequestCount`).
   final int pendingRequestCount;
 
-  /// Raw backend lifecycle string (`open` / `full` / `cancelled` /
-  /// `completed` / `removed`) as sent in `json['status']`, preserved
-  /// verbatim. [status] collapses `cancelled` / `completed` / `removed`
-  /// all into [ActivityStatus.past] (and viewer context then overrides to
-  /// `hosted` / `joined`), so without this field the UI cannot tell a
-  /// cancelled game from a completed one. Empty when the payload carried
-  /// no status (e.g. hand-built fixtures).
+  /// Raw backend lifecycle string (`open` / `full` / `cancelled` / `completed` / `removed`).
   final String lifecycleStatus;
 
   /// Weather snapshot captured at creation (Open-Meteo, best-effort).
-  /// Null on legacy rows / when the forecast was unavailable.
-  /// Detail screens prefer this, falling back to a live lookup.
   final double? weatherTemp;
   final int? weatherCode;
   final String? weatherDesc;
@@ -173,8 +125,7 @@ class ActivityModel {
   /// The activity's end time, derived from [dateTime] + [durationMinutes].
   DateTime get endTime => dateTime.add(Duration(minutes: durationMinutes));
 
-  /// Compact duration label for the discovery card meta row, e.g. `~2h`,
-  /// `~1.5h`, `~45m`.
+  /// Compact duration label for the discovery card meta row.
   String get durationLabel {
     if (durationMinutes % 60 == 0) return '~${durationMinutes ~/ 60}h';
     if (durationMinutes > 60) {
@@ -183,13 +134,10 @@ class ActivityModel {
     return '~${durationMinutes}m';
   }
 
-  /// True when the game splits a total cost instead of charging a
-  /// flat per-person price.
+  /// True when the game splits a total cost instead of charging a flat per-person price.
   bool get isSplitCost => isPaid && feeMode == 'split';
 
-  /// Per-person price the joiner sees. Fixed mode: [fee] as-is.
-  /// Split mode: worst case (`totalCost / minPlayers`, or full capacity
-  /// when no minimum set) — the game only gets cheaper from here.
+  /// Per-person price the joiner sees.
   double? get displayFee {
     if (!isPaid) return null;
     if (!isSplitCost) return fee;
@@ -198,8 +146,7 @@ class ActivityModel {
     return totalCost! / divisor;
   }
 
-  /// Short price label for detail rows, e.g. `$10.00 /person` or
-  /// `≈$12.50 /person · split`. Null when free or amount unknown.
+  /// Short price label for detail rows.
   String? get feeLabel {
     final amount = displayFee;
     if (amount == null) return null;
@@ -207,14 +154,13 @@ class ActivityModel {
     return isSplitCost ? '≈$formatted · split' : formatted;
   }
 
-  /// One-line split explainer for detail screens, e.g.
-  /// `Total $60 · min 4 · max $15 each, cheaper when full`.
-  /// Null when not split or total unknown.
+  /// One-line split explainer for detail screens.
   String? get splitExplainer {
     if (!isSplitCost || totalCost == null) return null;
     final min = minPlayers ?? capacity;
     final worst = displayFee;
-    final total = '\$${totalCost!.toStringAsFixed(totalCost! == totalCost!.roundToDouble() ? 0 : 2)}';
+    final total =
+        '\$${totalCost!.toStringAsFixed(totalCost! == totalCost!.roundToDouble() ? 0 : 2)}';
     final each = worst != null ? '\$${worst.toStringAsFixed(2)}' : '—';
     return 'Total $total · min $min · max $each each, cheaper when full';
   }
@@ -283,8 +229,7 @@ class ActivityModel {
       hostRating: hostRating ?? this.hostRating,
       hostGamesCount: hostGamesCount ?? this.hostGamesCount,
       hostHostRating: hostHostRating ?? this.hostHostRating,
-      hostHostRatingCount:
-          hostHostRatingCount ?? this.hostHostRatingCount,
+      hostHostRatingCount: hostHostRatingCount ?? this.hostHostRatingCount,
       vibeTags: vibeTags ?? this.vibeTags,
       isParticipant: isParticipant ?? this.isParticipant,
       isHost: isHost ?? this.isHost,
@@ -308,19 +253,13 @@ class ActivityModel {
 
   int get spotsLeft => (capacity - participantCount).clamp(0, capacity);
 
-  /// True when newcomers must be approved by the host instead of
-  /// joining instantly.
+  /// True when newcomers must be approved by the host instead of joining instantly.
   bool get requiresApproval => joinPolicy == 'approval';
 
-  /// True once the start time has passed. Joining/requesting is
-  /// server-cut off at this point, so the UI disables join actions
-  /// instead of letting the backend 409.
+  /// True once the start time has passed.
   bool get hasStarted => !dateTime.isAfter(DateTime.now());
 
-  /// True when this activity's chat is read-only archived. Archived once
-  /// the activity is past its end by more than the 7-day grace window
-  /// (`CHAT_ARCHIVE_GRACE_MS` on the backend). History stays readable,
-  /// writes stop.
+  /// True when this activity's chat is read-only archived.
   bool get isChatArchived {
     if (status == ActivityStatus.past) {
       final threshold = DateTime.now().subtract(const Duration(days: 7));
@@ -329,8 +268,7 @@ class ActivityModel {
     return false;
   }
 
-  /// True when the viewer already has a pending request on an
-  /// approval-gated activity.
+  /// True when the viewer already has a pending request on an approval-gated activity.
   bool get hasPendingRequest => joinRequestStatus == 'pending';
 
   /// True when a weather snapshot was saved at creation.
@@ -341,8 +279,6 @@ class ActivityModel {
       weatherRain != null;
 
   /// Serialises to the API wire format (snake_case).
-  /// Used by [RemoteActivityRepository] for request bodies and
-  /// as the canonical JSON representation of this model.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -387,32 +323,15 @@ class ActivityModel {
   }
 
   /// Deserialises from an API response map.
-  ///
-  /// Accepts **both** the snake_case format used by the mobile app's own
-  /// [toJson] and the camelCase format returned by the backend
-  /// (`sportType`, `locationName`, `startTime`, `coverImageUrl`, etc.).
-  /// The backend's [ActivityWithId] wraps the host profile under
-  /// `hostProfile.displayName` — that nested object is flattened to
-  /// [hostName] here so downstream code can stay schema-agnostic.
-  ///
-  /// If `startTime` and `endTime` are both present, [durationMinutes] is
-  /// computed from their difference; otherwise it falls back to whatever
-  /// `duration_minutes` / `durationMinutes` the payload carries, and
-  /// finally to the 120-minute default.
-  ///
-  /// All [RemoteActivityRepository] methods call this instead of
-  /// maintaining their own private `_parse` — one parsing path, one place
-  /// to update.
+  /// Accepts **both** the snake_case format used by the mobile app's own.
+  /// If `startTime` and `endTime` are both present, [durationMinutes] is computed from their difference.
+  /// All [RemoteActivityRepository] methods call this instead of maintaining their own private `_parse`.
   factory ActivityModel.fromJson(Map<String, dynamic> json) {
-    final startRaw = json['startTime'] as String? ?? json['date_time'] as String?;
+    final startRaw =
+        json['startTime'] as String? ?? json['date_time'] as String?;
     final endRaw = json['endTime'] as String? ?? json['end_time'] as String?;
 
-    // Backend sends UTC ISO (`Z`); convert to device-local ONCE here so
-    // every downstream formatter renders correct local times with no
-    // per-site `.toLocal()` calls.
-    // Unparseable start falls back to a far-future sentinel (NOT now) so
-    // corrupt rows sort last in soonest-first lists instead of
-    // masquerading as starting-now ghost live cards.
+    // Backend sends UTC ISO (`Z`); convert to device-local ONCE here so every downstream formatter renders correct.
     final start =
         DateTime.tryParse(startRaw ?? '')?.toLocal() ?? DateTime(2100);
     final end = endRaw == null ? null : DateTime.tryParse(endRaw)?.toLocal();
@@ -421,38 +340,33 @@ class ActivityModel {
     if (end != null && end.isAfter(start)) {
       resolvedDuration = end.difference(start).inMinutes;
     } else {
-      resolvedDuration = (json['duration_minutes'] as num?)?.toInt() ??
+      resolvedDuration =
+          (json['duration_minutes'] as num?)?.toInt() ??
           (json['durationMinutes'] as num?)?.toInt() ??
           120;
     }
 
     // Backend returns host info under a nested `hostProfile` object.
-    // Fall back to flat `hostName` / `host_name` for older payloads.
     final hostProfile = json['hostProfile'] as Map<String, dynamic>?;
-    final hostName = hostProfile?['displayName'] as String? ??
+    final hostName =
+        hostProfile?['displayName'] as String? ??
         json['host_name'] as String? ??
         json['hostName'] as String? ??
         '';
 
     // Viewer context straight from the backend (`ActivityViewerContext`).
-    // Accepts both camelCase and the snake_case form this model's own
-    // [toJson] emits so round-trips stay lossless.
     final latitude = (json['latitude'] as num?)?.toDouble();
     final longitude = (json['longitude'] as num?)?.toDouble();
-    final isHost =
-        json['isHost'] as bool? ?? json['is_host'] as bool? ?? false;
-    final isParticipant = json['isParticipant'] as bool? ??
+    final isHost = json['isHost'] as bool? ?? json['is_host'] as bool? ?? false;
+    final isParticipant =
+        json['isParticipant'] as bool? ??
         json['is_participant'] as bool? ??
         false;
-    final mySwipeDecision = json['mySwipeDecision'] as String? ??
+    final mySwipeDecision =
+        json['mySwipeDecision'] as String? ??
         json['my_swipe_decision'] as String?;
 
-    // Backend lifecycle states (`open`/`full`/`cancelled`/`completed`/
-    // `removed`) map onto the mobile enum; the viewer's relationship
-    // then wins — a host always sees `hosted`, a joiner always sees
-    // `joined`, regardless of lifecycle. The raw string is preserved on
-    // [lifecycleStatus] so the UI can still tell cancelled apart from
-    // completed.
+    // Backend lifecycle states (`open`/`full`/`cancelled`/`completed`/ `removed`) map onto the mobile enum.
     final rawLifecycle = json['status']?.toString() ?? '';
     final sport =
         json['sportType'] as String? ?? json['sport_type'] as String? ?? '';
@@ -470,27 +384,33 @@ class ActivityModel {
       description: json['description'] as String? ?? '',
       location:
           json['locationName'] as String? ?? json['location'] as String? ?? '',
-      addressLine: json['address'] as String? ?? json['address_line'] as String?,
+      addressLine:
+          json['address'] as String? ?? json['address_line'] as String?,
       distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0.0,
       dateTime: start,
       skillLevel:
           json['skillLevel'] as String? ?? json['skill_level'] as String? ?? '',
       capacity: (json['capacity'] as num?)?.toInt() ?? 10,
-      participantCount: (json['participantCount'] as num?)?.toInt() ??
+      participantCount:
+          (json['participantCount'] as num?)?.toInt() ??
           (json['participant_count'] as num?)?.toInt() ??
           0,
       hostName: hostName,
-      coverImageUrl: json['coverImageUrl'] as String? ??
+      coverImageUrl:
+          json['coverImageUrl'] as String? ??
           json['cover_image_url'] as String?,
       status: status,
       durationMinutes: resolvedDuration,
       isPaid: json['is_paid'] as bool? ?? json['isPaid'] as bool? ?? false,
       fee: (json['fee'] as num?)?.toDouble(),
       feeMode: _feeModeFromString(
-          json['fee_mode'] as String? ?? json['feeMode'] as String?),
-      totalCost: (json['total_cost'] as num?)?.toDouble() ??
+        json['fee_mode'] as String? ?? json['feeMode'] as String?,
+      ),
+      totalCost:
+          (json['total_cost'] as num?)?.toDouble() ??
           (json['totalCost'] as num?)?.toDouble(),
-      minPlayers: (json['min_players'] as num?)?.toInt() ??
+      minPlayers:
+          (json['min_players'] as num?)?.toInt() ??
           (json['minPlayers'] as num?)?.toInt(),
       hostRating: _hostRatingFor(json, sport),
       hostGamesCount: _hostGamesFor(json),
@@ -505,34 +425,38 @@ class ActivityModel {
       hostId: json['hostId']?.toString() ?? json['host_id']?.toString() ?? '',
       latitude: latitude,
       longitude: longitude,
-      joinPolicy: json['joinPolicy'] as String? ?? json['join_policy'] as String? ?? 'open',
-      joinRequestStatus: json['joinRequestStatus'] as String? ??
+      joinPolicy:
+          json['joinPolicy'] as String? ??
+          json['join_policy'] as String? ??
+          'open',
+      joinRequestStatus:
+          json['joinRequestStatus'] as String? ??
           json['join_request_status'] as String?,
-      pendingRequestCount: (json['pendingRequestCount'] as num?)?.toInt() ??
+      pendingRequestCount:
+          (json['pendingRequestCount'] as num?)?.toInt() ??
           (json['pending_request_count'] as num?)?.toInt() ??
           0,
       lifecycleStatus: rawLifecycle,
-      weatherTemp: (json['weatherTemp'] as num?)?.toDouble() ??
+      weatherTemp:
+          (json['weatherTemp'] as num?)?.toDouble() ??
           (json['weather_temp'] as num?)?.toDouble(),
-      weatherCode: (json['weatherCode'] as num?)?.toInt() ??
+      weatherCode:
+          (json['weatherCode'] as num?)?.toInt() ??
           (json['weather_code'] as num?)?.toInt(),
-      weatherDesc: json['weatherDesc'] as String? ??
-          json['weather_desc'] as String?,
-      weatherRain: (json['weatherRain'] as num?)?.toInt() ??
+      weatherDesc:
+          json['weatherDesc'] as String? ?? json['weather_desc'] as String?,
+      weatherRain:
+          (json['weatherRain'] as num?)?.toInt() ??
           (json['weather_rain'] as num?)?.toInt(),
     );
   }
 
   static String _feeModeFromString(String? s) => switch (s) {
-        'split' => 'split',
-        _ => 'fixed',
-      };
+    'split' => 'split',
+    _ => 'fixed',
+  };
 
-  /// Real host rating for [sport] from `hostProfile.ratingBySport`
-  /// (`{average, count}` per sport, maintained server-side on every
-  /// rating submit). Null when the host has no ratings for the sport —
-  /// callers render "New host". The flat `host_rating` fallback only
-  /// exists for this model's own [toJson] round-trips.
+  /// Real host rating for [sport] from `hostProfile.ratingBySport`.
   static double? _hostRatingFor(Map<String, dynamic> json, String sport) {
     final profile = json['hostProfile'];
     final buckets = profile is Map<String, dynamic>
@@ -552,9 +476,7 @@ class ActivityModel {
         (json['hostRating'] as num?)?.toDouble();
   }
 
-  /// Host-role rating bucket for [sport] from
-  /// `hostProfile.hostRatingBySport` (`{average, count}`, maintained on
-  /// every rating submit). Null entry when none yet.
+  /// Host-role rating bucket for [sport] from `hostProfile.hostRatingBySport` (`{average, count}`, maintained on every.
   static Map<String, dynamic>? _hostBucketFor(
     Map<String, dynamic> json,
     String sport,
@@ -571,8 +493,7 @@ class ActivityModel {
     return null;
   }
 
-  /// Host-role average for [sport]. Null until the first host-role
-  /// rating — even one rating shows (no minimum count).
+  /// Host-role average for [sport].
   static double? _hostHostRatingFor(Map<String, dynamic> json, String sport) {
     final bucket = _hostBucketFor(json, sport);
     if (bucket != null) {
@@ -587,10 +508,7 @@ class ActivityModel {
   }
 
   /// Host-role rating count for [sport].
-  static int _hostHostRatingCountFor(
-    Map<String, dynamic> json,
-    String sport,
-  ) {
+  static int _hostHostRatingCountFor(Map<String, dynamic> json, String sport) {
     final bucket = _hostBucketFor(json, sport);
     if (bucket != null) {
       return (bucket['count'] as num?)?.toInt() ?? 0;
@@ -600,13 +518,12 @@ class ActivityModel {
         0;
   }
 
-  /// Real hosted-games count from `hostProfile.hostedCount`
-  /// (falling back to `activitiesCount`, then legacy flat fields).
+  /// Real hosted-games count from `hostProfile.hostedCount`.
   static int _hostGamesFor(Map<String, dynamic> json) {
     final profile = json['hostProfile'];
     final counts = profile is Map<String, dynamic>
         ? ((profile['hostedCount'] as num?)?.toInt() ??
-            (profile['activitiesCount'] as num?)?.toInt())
+              (profile['activitiesCount'] as num?)?.toInt())
         : null;
     return counts ??
         (json['host_games_count'] as num?)?.toInt() ??

@@ -25,7 +25,7 @@ import '../domain/activity_participant.dart';
 import '../../discovery/domain/activity_model.dart';
 import 'my_activities_screen.dart';
 
-// ─── Data type ───────────────────────────────────────────────────────────────
+// Data type.
 
 typedef _ManageData = ({
   ActivityModel activity,
@@ -33,13 +33,14 @@ typedef _ManageData = ({
   List<ActivityParticipant> requests,
 });
 
-final _manageProvider = FutureProvider.autoDispose
-    .family<_ManageData, String>((ref, activityId) async {
+final _manageProvider = FutureProvider.autoDispose.family<_ManageData, String>((
+  ref,
+  activityId,
+) async {
   final repo = ref.watch(activityRepositoryProvider);
   final activity = await repo.byId(activityId);
   if (activity == null) throw StateError('Activity not found');
-  // joinRequests is host-gated server-side; non-hosts (and offline)
-  // get an empty list, so this is safe to always request.
+  // joinRequests is host-gated server-side; non-hosts (and offline) get an empty list.
   final (roster, requests) = await (
     repo.participants(activityId),
     repo.joinRequests(activityId),
@@ -47,7 +48,7 @@ final _manageProvider = FutureProvider.autoDispose
   return (activity: activity, roster: roster, requests: requests);
 });
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class ManageActivityScreen extends ConsumerStatefulWidget {
   const ManageActivityScreen({super.key, required this.activityId});
@@ -59,24 +60,20 @@ class ManageActivityScreen extends ConsumerStatefulWidget {
 }
 
 class _ManageActivityScreenState extends ConsumerState<ManageActivityScreen> {
-  /// Uids with an approve/decline decision currently in flight. Both
-  /// buttons of a busy row are disabled until its uid is removed in
-  /// `finally`, so rapid double-taps can't fire duplicate decisions.
+  /// Uids with an approve/decline decision currently in flight.
   final Set<String> _deciding = {};
 
-  /// Uids with a kick (host removal) currently in flight. Same
-  /// double-tap protection as [_deciding], tracked separately so a
-  /// kick never disables the approve/decline buttons and vice versa.
+  /// Uids with a kick (host removal) currently in flight.
   final Set<String> _kicking = {};
 
   String get activityId => widget.activityId;
 
-  /// Opens the edit screen; refreshes the detail provider and confirms
-  /// when the host saved changes (the edit screen pops `true`, silent,
-  /// because its own snackbar would die with its route).
+  /// Opens the edit screen; refreshes the detail provider and confirms when the host saved changes.
   Future<void> _openEdit(BuildContext context) async {
-    final updated =
-        await NavGuard.pushT<bool>(context, '/edit-activity/$activityId');
+    final updated = await NavGuard.pushT<bool>(
+      context,
+      '/edit-activity/$activityId',
+    );
     if (updated != true || !context.mounted) return;
     ref.invalidate(_manageProvider(activityId));
     ref.invalidate(hostedGamesProvider);
@@ -92,7 +89,8 @@ class _ManageActivityScreenState extends ConsumerState<ManageActivityScreen> {
     final confirmed = await AppDialog.confirm(
       context,
       title: 'Cancel Activity?',
-      body: 'This will permanently cancel the activity and notify all participants. This cannot be undone.',
+      body:
+          'This will permanently cancel the activity and notify all participants. This cannot be undone.',
       confirmLabel: 'Cancel Activity',
       cancelLabel: 'Keep it',
       destructive: true,
@@ -181,10 +179,9 @@ class _ManageActivityScreenState extends ConsumerState<ManageActivityScreen> {
     if (_kicking.contains(uid)) return;
     setState(() => _kicking.add(uid));
     try {
-      await ref.read(activityRepositoryProvider).removeParticipant(
-            activityId: activityId,
-            uid: uid,
-          );
+      await ref
+          .read(activityRepositoryProvider)
+          .removeParticipant(activityId: activityId, uid: uid);
       ref.invalidate(_manageProvider(activityId));
       ref.invalidate(hostedGamesProvider);
       ref.invalidate(joinedGamesProvider);
@@ -210,7 +207,8 @@ class _ManageActivityScreenState extends ConsumerState<ManageActivityScreen> {
     final confirmed = await AppDialog.confirm(
       context,
       title: 'Mark as Completed?',
-      body: 'This closes the activity so no one else can join. You can still see it in your history.',
+      body:
+          'This closes the activity so no one else can join. You can still see it in your history.',
       confirmLabel: 'Mark Completed',
       cancelLabel: 'Not yet',
     );
@@ -274,7 +272,7 @@ class _ManageActivityScreenState extends ConsumerState<ManageActivityScreen> {
   }
 }
 
-// ─── Body ─────────────────────────────────────────────────────────────────────
+// Body.
 
 class _ManageBody extends StatelessWidget {
   const _ManageBody({
@@ -324,9 +322,7 @@ class _ManageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Raw backend lifecycle (open/full/cancelled/completed/removed),
-    // preserved on ActivityModel.lifecycleStatus — status alone
-    // collapses cancelled/completed/removed all into `past`.
+    // Raw backend lifecycle (open/full/cancelled/completed/removed), preserved on ActivityModel.lifecycleStatus.
     final lc = activity.lifecycleStatus.toLowerCase();
     final String badgeLabel;
     if (lc == 'cancelled' || lc == 'removed') {
@@ -336,9 +332,7 @@ class _ManageBody extends StatelessWidget {
     } else if (lc == 'full') {
       badgeLabel = 'FULL';
     } else if (activity.status == ActivityStatus.past) {
-      // Payloads without a raw lifecycle (hand-built fixtures): a past
-      // game whose end already passed reads as completed, otherwise
-      // cancelled.
+      // Payloads without a raw lifecycle (hand-built fixtures).
       badgeLabel = activity.endTime.isBefore(DateTime.now())
           ? 'COMPLETED'
           : 'CANCELLED';
@@ -348,38 +342,31 @@ class _ManageBody extends StatelessWidget {
     final Color badgeBg = badgeLabel == 'CANCELLED'
         ? context.colors.errorLight
         : badgeLabel == 'COMPLETED'
-            ? context.colors.surfaceMuted
-            : badgeLabel == 'FULL'
-                ? context.colors.warningBg
-                : context.colors.statusSuccessBg;
+        ? context.colors.surfaceMuted
+        : badgeLabel == 'FULL'
+        ? context.colors.warningBg
+        : context.colors.statusSuccessBg;
     final Color badgeFg = badgeLabel == 'CANCELLED'
         ? context.colors.errorText
         : badgeLabel == 'COMPLETED'
-            ? context.colors.textSecondary
-            : badgeLabel == 'FULL'
-                ? context.colors.warningText
-                // successText, not raw avatarSecondary: #097044 on the
-                // dark success bg is 2.4:1; the token clears AA both
-                // themes.
-                : context.colors.successText;
-    // "Mark as completed" is available once the game started and while
-    // its lifecycle is still open (not cancelled/completed/removed).
-    final bool showComplete =
-        !_isTerminalLifecycle(lc) && activity.hasStarted;
+        ? context.colors.textSecondary
+        : badgeLabel == 'FULL'
+        ? context.colors.warningText
+        // successText, not raw avatarSecondary: #097044 on the dark success bg is 2.4:1.
+        : context.colors.successText;
+    // "Mark as completed" is available once the game started and while its lifecycle is still open.
+    final bool showComplete = !_isTerminalLifecycle(lc) && activity.hasStarted;
 
     return Stack(
       children: [
-        // ── Hero ────────────────────────────────────────────────────────
+        // Hero.
         SizedBox(
           height: _heroHeight,
           width: double.infinity,
-          child: _Hero(
-            activity: activity,
-            onEdit: onEdit,
-          ),
+          child: _Hero(activity: activity, onEdit: onEdit),
         ),
 
-        // ── White card ──────────────────────────────────────────────────
+        // White card.
         Positioned(
           top: _heroHeight - _overlapAmount,
           left: 0,
@@ -423,11 +410,11 @@ class _ManageBody extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.x4),
 
-                  // Capacity progress card (server-truth count, not the
-                  // locally loaded roster slice).
+                  // Capacity progress card (server-truth count, not the locally loaded roster slice).
                   _CapacityCard(
-                      activity: activity,
-                      joined: activity.participantCount),
+                    activity: activity,
+                    joined: activity.participantCount,
+                  ),
                   const SizedBox(height: AppSpacing.x3),
 
                   // Meta card — date + location
@@ -446,17 +433,14 @@ class _ManageBody extends StatelessWidget {
                   _ParticipantsSection(
                     activityId: activityId,
                     roster: roster,
-                    // Kicking only makes sense while the game is still
-                    // live — same terminal rule as Cancel/Complete.
+                    // Kicking only makes sense while the game is still live — same terminal rule as Cancel/Complete.
                     canKick: !_isTerminalLifecycle(lc),
                     kicking: kicking,
                     onKick: onKick,
                   ),
                   const SizedBox(height: AppSpacing.x5),
 
-                  // Pending join requests (approval policy only). Always
-                  // rendered so an empty queue shows a hint instead of
-                  // vanishing.
+                  // Pending join requests (approval policy only).
                   if (requests.isNotEmpty) ...[
                     _JoinRequestsSection(
                       requests: requests,
@@ -466,9 +450,7 @@ class _ManageBody extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.x5),
                   ] else ...[
-                    _EmptyRequestsHint(
-                      isApproval: activity.requiresApproval,
-                    ),
+                    _EmptyRequestsHint(isApproval: activity.requiresApproval),
                     const SizedBox(height: AppSpacing.x5),
                   ],
 
@@ -476,19 +458,13 @@ class _ManageBody extends StatelessWidget {
                   _DetailsSection(activity: activity),
                   const SizedBox(height: AppSpacing.x5),
 
-                  // Mark as completed — once the game started and while
-                  // its lifecycle is still open. Host-only; the backend
-                  // rejects the status update from non-hosts with
-                  // FORBIDDEN.
+                  // Mark as completed — once the game started and while its lifecycle is still open.
                   if (showComplete) ...[
                     _CompleteButton(onTap: onComplete),
                     const SizedBox(height: AppSpacing.x3),
                   ],
 
-                  // Cancel — hidden once terminal, same rule as Mark as
-                  // Completed above: a cancelled/completed/removed game
-                  // has no further host transitions, so offering "Cancel
-                  // Activity" again would just 409/fail server-side.
+                  // Cancel — hidden once terminal, same rule as Mark as Completed above.
                   if (!_isTerminalLifecycle(lc)) ...[
                     _CancelButton(onTap: onCancel),
                   ],
@@ -502,7 +478,7 @@ class _ManageBody extends StatelessWidget {
   }
 }
 
-// ─── Hero ─────────────────────────────────────────────────────────────────────
+// Hero.
 
 class _Hero extends StatelessWidget {
   const _Hero({required this.activity, required this.onEdit});
@@ -663,16 +639,15 @@ class _PillBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTypography.chipLabel(context).copyWith(
-          color: textColor,
-          fontSize: 11,
-        ),
+        style: AppTypography.chipLabel(
+          context,
+        ).copyWith(color: textColor, fontSize: 11),
       ),
     );
   }
 }
 
-// ─── Capacity card ────────────────────────────────────────────────────────────
+// Capacity card.
 
 class _CapacityCard extends StatelessWidget {
   const _CapacityCard({required this.activity, required this.joined});
@@ -700,8 +675,11 @@ class _CapacityCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.people_outline_rounded,
-                      size: 18, color: context.colors.primaryOnSurface),
+                  Icon(
+                    Icons.people_outline_rounded,
+                    size: 18,
+                    color: context.colors.primaryOnSurface,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '$joined joined',
@@ -737,7 +715,7 @@ class _CapacityCard extends StatelessWidget {
   }
 }
 
-// ─── Meta card (date + location) ─────────────────────────────────────────────
+// Meta card (date location).
 
 class _MetaCard extends StatelessWidget {
   const _MetaCard({required this.activity});
@@ -778,11 +756,7 @@ class _MetaCard extends StatelessWidget {
 }
 
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({
-    required this.icon,
-    required this.title,
-    required this.sub,
-  });
+  const _MetaRow({required this.icon, required this.title, required this.sub});
   final IconData icon;
   final String title;
   final String sub;
@@ -804,8 +778,7 @@ class _MetaRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 18,
-                color: context.colors.primaryOnSurface),
+            child: Icon(icon, size: 18, color: context.colors.primaryOnSurface),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
@@ -824,7 +797,7 @@ class _MetaRow extends StatelessWidget {
   }
 }
 
-// ─── Quick actions ────────────────────────────────────────────────────────────
+// Quick actions.
 
 class _QuickActions extends StatelessWidget {
   const _QuickActions({
@@ -835,8 +808,7 @@ class _QuickActions extends StatelessWidget {
   final String activityId;
   final ActivityModel activity;
 
-  /// Opens the full-screen edit screen (no tab bar, ✕ to cancel) — the
-  /// single edit path, shared with the hero "Edit activity" button.
+  /// Opens the full-screen edit screen (no tab bar, ✕ to cancel).
   final VoidCallback onEdit;
 
   @override
@@ -881,7 +853,10 @@ class _QuickActions extends StatelessWidget {
                 label: 'Roster',
                 iconColor: context.colors.textPrimary,
                 bgColor: context.colors.surfaceMuted,
-                onTap: () => NavGuard.push(context, '/activity/$activityId/participants'),
+                onTap: () => NavGuard.push(
+                  context,
+                  '/activity/$activityId/participants',
+                ),
               ),
             ),
             Expanded(
@@ -963,7 +938,7 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-// ─── Share sheet ──────────────────────────────────────────────────────────────
+// Share sheet.
 
 class _ShareSheet extends StatelessWidget {
   const _ShareSheet({required this.activity});
@@ -1024,9 +999,9 @@ class _ShareSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     link,
-                    style: AppTypography.metaSub(context).copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTypography.metaSub(
+                      context,
+                    ).copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
                 AppTappable(
@@ -1155,7 +1130,7 @@ class _ShareOption extends StatelessWidget {
   }
 }
 
-// ─── Announce sheet ───────────────────────────────────────────────────────────
+// Announce sheet.
 
 class _AnnounceSheet extends ConsumerStatefulWidget {
   const _AnnounceSheet({required this.activityId});
@@ -1187,8 +1162,7 @@ class _AnnounceSheetState extends ConsumerState<_AnnounceSheet> {
     super.dispose();
   }
 
-  bool get _canSend =>
-      !_sending && _msgCtrl.text.trim().isNotEmpty;
+  bool get _canSend => !_sending && _msgCtrl.text.trim().isNotEmpty;
 
   Future<void> _send() async {
     final text = _msgCtrl.text.trim();
@@ -1217,9 +1191,7 @@ class _AnnounceSheetState extends ConsumerState<_AnnounceSheet> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text(
-              'Could not send announcement. Please try again.',
-            ),
+            content: Text('Could not send announcement. Please try again.'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -1309,9 +1281,9 @@ class _AnnounceSheetState extends ConsumerState<_AnnounceSheet> {
                 decoration: InputDecoration(
                   hintText:
                       "e.g. 'Reminder: we're playing at Court B tomorrow at 4pm!'",
-                  hintStyle: AppTypography.bodyReading(context).copyWith(
-                    color: context.colors.textTertiary,
-                  ),
+                  hintStyle: AppTypography.bodyReading(
+                    context,
+                  ).copyWith(color: context.colors.textTertiary),
                   filled: true,
                   fillColor: Colors.transparent,
                   border: InputBorder.none,
@@ -1336,7 +1308,7 @@ class _AnnounceSheetState extends ConsumerState<_AnnounceSheet> {
   }
 }
 
-// ─── Shared sheet widgets ─────────────────────────────────────────────────────
+// Shared sheet widgets.
 
 class _SheetPrimaryBtn extends StatelessWidget {
   const _SheetPrimaryBtn({
@@ -1369,8 +1341,7 @@ class _SheetPrimaryBtn extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation(AppColors.textOnPrimary),
+                  valueColor: AlwaysStoppedAnimation(AppColors.textOnPrimary),
                 ),
               )
             : Text(label, style: AppTypography.buttonPrimary),
@@ -1379,7 +1350,7 @@ class _SheetPrimaryBtn extends StatelessWidget {
   }
 }
 
-// ─── Participants section ─────────────────────────────────────────────────────
+// Participants section.
 
 class _ParticipantsSection extends StatelessWidget {
   const _ParticipantsSection({
@@ -1392,8 +1363,7 @@ class _ParticipantsSection extends StatelessWidget {
   final String activityId;
   final List<ActivityParticipant> roster;
 
-  /// False on terminal lifecycles (cancelled/completed/removed) — no
-  /// Remove buttons are rendered at all.
+  /// False on terminal lifecycles (cancelled/completed/removed) — no Remove buttons are rendered at all.
   final bool canKick;
 
   /// Uids with a kick in flight — their Remove buttons render disabled.
@@ -1425,19 +1395,16 @@ class _ParticipantsSection extends StatelessWidget {
                   NavGuard.push(context, '/activity/$activityId/participants'),
               child: Text(
                 'View all',
-                style: AppTypography.chipLabel(context).copyWith(
-                  color: context.colors.primaryOnSurface,
-                ),
+                style: AppTypography.chipLabel(
+                  context,
+                ).copyWith(color: context.colors.primaryOnSurface),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.x3),
         if (roster.isEmpty)
-          Text(
-            'No participants yet',
-            style: AppTypography.metaSub(context),
-          )
+          Text('No participants yet', style: AppTypography.metaSub(context))
         else
           Container(
             decoration: BoxDecoration(
@@ -1480,19 +1447,16 @@ class _ParticipantRow extends StatelessWidget {
   });
   final ActivityParticipant item;
 
-  /// Whether the host may kick this row. The organizer (host) row
-  /// never renders Remove even when true.
+  /// Whether the host may kick this row. The organizer (host) row never renders Remove even when true.
   final bool canKick;
 
-  /// True while this row's kick is in flight — the button renders
-  /// disabled with a spinner.
+  /// True while this row's kick is in flight — the button renders disabled with a spinner.
   final bool kicking;
   final VoidCallback onKick;
 
   @override
   Widget build(BuildContext context) {
-    // The host can't kick themselves — and kicking is meaningless on
-    // terminal games (the section hides Remove entirely via canKick).
+    // The host can't kick themselves — and kicking is meaningless on terminal games.
     final showRemove = canKick && !item.isOrganizer;
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -1526,10 +1490,7 @@ class _ParticipantRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               StatusBadge(
-                // "PENDING" used to mean "not checked in", which reads as
-                // "waiting approval" — wrong for confirmed participants
-                // (worst case: the host themselves). Checked-in state is
-                // the only thing this badge may claim.
+                // "PENDING" used to mean "not checked in", which reads as "waiting approval".
                 label: item.isCheckedIn ? 'CHECKED IN' : 'JOINED',
                 tone: item.isCheckedIn
                     ? StatusTone.checkedIn
@@ -1547,9 +1508,7 @@ class _ParticipantRow extends StatelessWidget {
   }
 }
 
-/// Host-only "Remove" link under a roster row's status badge. Disabled
-/// with a spinner while the kick is in flight so rapid double-taps
-/// can't fire duplicate removals.
+/// Host-only "Remove" link under a roster row's status badge.
 class _RemoveButton extends StatelessWidget {
   const _RemoveButton({required this.kicking, required this.onKick});
   final bool kicking;
@@ -1599,10 +1558,9 @@ class _RemoveButton extends StatelessWidget {
   }
 }
 
-// ─── Join requests section ────────────────────────────────────────────────────
+// Join requests section.
 
-/// Hint shown when the request queue is empty so the section doesn't
-/// vanish without explanation.
+/// Hint shown when the request queue is empty so the section doesn't vanish without explanation.
 class _EmptyRequestsHint extends StatelessWidget {
   const _EmptyRequestsHint({required this.isApproval});
   final bool isApproval;
@@ -1639,8 +1597,6 @@ class _EmptyRequestsHint extends StatelessWidget {
 }
 
 /// Pending join requests on approval-gated activities (host view).
-/// Each row shows the requester with Approve / Decline actions. Only
-/// rendered when [requests] is non-empty — the parent guards that.
 class _JoinRequestsSection extends StatelessWidget {
   const _JoinRequestsSection({
     required this.requests,
@@ -1717,8 +1673,7 @@ class _JoinRequestRow extends StatelessWidget {
   final VoidCallback onApprove;
   final VoidCallback onDecline;
 
-  /// True while this row's approve/decline is in flight — both
-  /// buttons are disabled until the decision settles.
+  /// True while this row's approve/decline is in flight — both buttons are disabled until the decision settles.
   final bool busy;
 
   @override
@@ -1735,7 +1690,8 @@ class _JoinRequestRow extends StatelessWidget {
               semanticLabel: 'View ${item.name} profile',
               feedback: AppTapFeedback.scale,
               // pushOnce guard (duplicate page keys red-screen).
-              onTap: () => NavGuard.push(context,
+              onTap: () => NavGuard.push(
+                context,
                 item.userId.isNotEmpty
                     ? '/player-profile/uid/${item.userId}'
                     : '/player-profile/${item.name}',
@@ -1752,8 +1708,10 @@ class _JoinRequestRow extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name,
-                            style: AppTypography.labelField(context)),
+                        Text(
+                          item.name,
+                          style: AppTypography.labelField(context),
+                        ),
                         Text(
                           item.skillLevel,
                           style: AppTypography.metaSub(context),
@@ -1781,9 +1739,9 @@ class _JoinRequestRow extends StatelessWidget {
               ),
               child: Text(
                 'Decline',
-                style: AppTypography.chipLabel(context).copyWith(
-                  color: context.colors.textSecondary,
-                ),
+                style: AppTypography.chipLabel(
+                  context,
+                ).copyWith(color: context.colors.textSecondary),
               ),
             ),
           ),
@@ -1799,9 +1757,7 @@ class _JoinRequestRow extends StatelessWidget {
                 vertical: AppSpacing.x2,
               ),
               decoration: BoxDecoration(
-                color: busy
-                    ? context.colors.border
-                    : AppColors.primary,
+                color: busy ? context.colors.border : AppColors.primary,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: busy
@@ -1812,9 +1768,9 @@ class _JoinRequestRow extends StatelessWidget {
                     )
                   : Text(
                       'Approve',
-                      style: AppTypography.chipLabel(context).copyWith(
-                        color: AppColors.textOnPrimary,
-                      ),
+                      style: AppTypography.chipLabel(
+                        context,
+                      ).copyWith(color: AppColors.textOnPrimary),
                     ),
             ),
           ),
@@ -1824,7 +1780,7 @@ class _JoinRequestRow extends StatelessWidget {
   }
 }
 
-// ─── Details section ──────────────────────────────────────────────────────────
+// Details section.
 
 class _DetailsSection extends StatelessWidget {
   const _DetailsSection({required this.activity});
@@ -1864,9 +1820,9 @@ class _DetailsSection extends StatelessWidget {
                     children: [
                       Text(
                         rows[i].$1,
-                        style: AppTypography.metaSub(context).copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: AppTypography.metaSub(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.w500),
                       ),
                       Text(
                         rows[i].$2,
@@ -1893,7 +1849,7 @@ class _DetailsSection extends StatelessWidget {
   }
 }
 
-// ─── Cancel button ────────────────────────────────────────────────────────────
+// Cancel button.
 
 class _CancelButton extends StatelessWidget {
   const _CancelButton({required this.onTap});
@@ -1914,15 +1870,17 @@ class _CancelButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.delete_outline_rounded,
-                size: 18, color: context.colors.errorText),
+            Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: context.colors.errorText,
+            ),
             const SizedBox(width: AppSpacing.x2),
             Text(
               'Cancel Activity',
-              style: AppTypography.labelField(context).copyWith(
-                color: context.colors.errorText,
-                fontSize: 15,
-              ),
+              style: AppTypography.labelField(
+                context,
+              ).copyWith(color: context.colors.errorText, fontSize: 15),
             ),
           ],
         ),
@@ -1931,7 +1889,7 @@ class _CancelButton extends StatelessWidget {
   }
 }
 
-// ─── Complete button ─────────────────────────────────────────────────────────
+// Complete button.
 
 class _CompleteButton extends StatelessWidget {
   const _CompleteButton({required this.onTap});
@@ -1947,10 +1905,7 @@ class _CompleteButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colors.statusSuccessBg,
           borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(
-            color: context.colors.successText,
-            width: 1.5,
-          ),
+          border: Border.all(color: context.colors.successText, width: 1.5),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1963,10 +1918,9 @@ class _CompleteButton extends StatelessWidget {
             const SizedBox(width: AppSpacing.x2),
             Text(
               'Mark as Completed',
-              style: AppTypography.labelField(context).copyWith(
-                color: context.colors.successText,
-                fontSize: 15,
-              ),
+              style: AppTypography.labelField(
+                context,
+              ).copyWith(color: context.colors.successText, fontSize: 15),
             ),
           ],
         ),

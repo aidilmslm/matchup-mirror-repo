@@ -1,3 +1,4 @@
+// Tests for typing.
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,17 +19,17 @@ vi.mock('../../middleware/auth.middleware.js', () => {
       next();
     }),
 
-  requireAuthAllowSuspended: vi.fn((req, _res, next) => {
+    requireAuthAllowSuspended: vi.fn((req, _res, next) => {
       req.auth = req.auth ?? {
-          uid: 'test-uid-1',
-          token: {} as never,
+        uid: 'test-uid-1',
+        token: {} as never,
       };
       next();
-  }),
+    }),
 
-  requireAdmin: vi.fn((_req, _res, next) => {
+    requireAdmin: vi.fn((_req, _res, next) => {
       next();
-  }),
+    }),
   };
 });
 
@@ -44,12 +45,10 @@ describe('typing routes', () => {
     it('when request body is valid => expected 200', async () => {
       const app = createApp();
 
-      const response = await request(app)
-        .post('/api/typing')
-        .send({
-          activityId: 'activity-1',
-          isTyping: true,
-        });
+      const response = await request(app).post('/api/typing').send({
+        activityId: 'activity-1',
+        isTyping: true,
+      });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -60,22 +59,16 @@ describe('typing routes', () => {
           isTyping: true,
         },
       });
-      expect(typingService.setTyping).toHaveBeenCalledWith(
-        'activity-1',
-        'test-uid-1',
-        true,
-      );
+      expect(typingService.setTyping).toHaveBeenCalledWith('activity-1', 'test-uid-1', true);
     });
 
     it('when activityId is not a string => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app)
-        .post('/api/typing')
-        .send({
-          activityId: 123,
-          isTyping: true,
-        });
+      const response = await request(app).post('/api/typing').send({
+        activityId: 123,
+        isTyping: true,
+      });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -90,12 +83,10 @@ describe('typing routes', () => {
     it('when isTyping is not a boolean => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app)
-        .post('/api/typing')
-        .send({
-          activityId: 'activity-1',
-          isTyping: 'yes',
-        });
+      const response = await request(app).post('/api/typing').send({
+        activityId: 'activity-1',
+        isTyping: 'yes',
+      });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -110,12 +101,10 @@ describe('typing routes', () => {
     it('when activityId is blank => expected 400 w/ EMPTY_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app)
-        .post('/api/typing')
-        .send({
-          activityId: '   ',
-          isTyping: true,
-        });
+      const response = await request(app).post('/api/typing').send({
+        activityId: '   ',
+        isTyping: true,
+      });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -128,18 +117,14 @@ describe('typing routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(typingService.setTyping).mockRejectedValueOnce(
-        new Error('Unknown error'),
-      );
+      vi.mocked(typingService.setTyping).mockRejectedValueOnce(new Error('Unknown error'));
 
       const app = createApp();
 
-      const response = await request(app)
-        .post('/api/typing')
-        .send({
-          activityId: 'activity-1',
-          isTyping: true,
-        });
+      const response = await request(app).post('/api/typing').send({
+        activityId: 'activity-1',
+        isTyping: true,
+      });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -219,9 +204,7 @@ describe('typing routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(typingService.getTyping).mockRejectedValueOnce(
-        new Error('Unknown error'),
-      );
+      vi.mocked(typingService.getTyping).mockRejectedValueOnce(new Error('Unknown error'));
 
       const app = createApp();
 

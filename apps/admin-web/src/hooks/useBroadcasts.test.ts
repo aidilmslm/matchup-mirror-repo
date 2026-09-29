@@ -1,12 +1,14 @@
+// Tests for useBroadcasts.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-const { fetchBroadcastsMock, createBroadcastMock, sendBroadcastMock, deleteBroadcastMock } = vi.hoisted(() => ({
-  fetchBroadcastsMock: vi.fn(),
-  createBroadcastMock: vi.fn(),
-  sendBroadcastMock: vi.fn(),
-  deleteBroadcastMock: vi.fn(),
-}));
+const { fetchBroadcastsMock, createBroadcastMock, sendBroadcastMock, deleteBroadcastMock } =
+  vi.hoisted(() => ({
+    fetchBroadcastsMock: vi.fn(),
+    createBroadcastMock: vi.fn(),
+    sendBroadcastMock: vi.fn(),
+    deleteBroadcastMock: vi.fn(),
+  }));
 vi.mock('../services/broadcastsService', () => ({
   fetchBroadcasts: fetchBroadcastsMock,
   createBroadcast: createBroadcastMock,

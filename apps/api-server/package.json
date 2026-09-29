@@ -11,7 +11,10 @@
     "test:watch": "vitest",
     "seed": "tsx src/scripts/seed.ts",
     "seed:akl100": "tsx src/scripts/seed-auckland-100.ts",
-    "perf:smoke": "tsx src/scripts/load-smoke.ts"
+    "perf:smoke": "tsx src/scripts/load-smoke.ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

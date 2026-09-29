@@ -2,20 +2,12 @@ import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
-// `globals: false` in vite.config.ts means Testing Library's automatic
-// afterEach cleanup (which relies on detecting a global `afterEach`)
-// never registers itself — wire it up explicitly instead.
+// `globals: false` in vite.config.ts means Testing Library's automatic afterEach cleanup.
 afterEach(() => {
   cleanup();
 });
 
-// Node 22+ ships global web-storage objects that shadow jsdom's real
-// Storage under vitest (pre-existing globals are not overwritten), and
-// the shadowing object lacks the Storage interface (`clear`, ...).
-// CI pins Node 20 so it never sees this, but local runs on newer Node
-// fail every suite touching localStorage/sessionStorage. Install tiny
-// in-memory implementations when the globals are unusable so service
-// tests behave identically on every Node version.
+// Node 22+ ships global web-storage objects that shadow jsdom's real Storage under vitest.
 class MemoryStorage implements Storage {
   private readonly map = new Map<string, string>();
 
@@ -45,10 +37,7 @@ class MemoryStorage implements Storage {
 }
 
 for (const name of ['localStorage', 'sessionStorage'] as const) {
-  const current = (globalThis as Record<string, unknown>)[name] as
-    | Storage
-    | null
-    | undefined;
+  const current = (globalThis as Record<string, unknown>)[name] as Storage | null | undefined;
   const usable =
     current != null &&
     typeof current.clear === 'function' &&

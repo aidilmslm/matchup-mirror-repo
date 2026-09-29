@@ -21,8 +21,7 @@ class GetToKnow1Screen extends ConsumerStatefulWidget {
 }
 
 class _GetToKnow1ScreenState extends ConsumerState<GetToKnow1Screen> {
-  /// Null until the user picks an option — nothing is pre-selected, so
-  /// Next stays disabled until a deliberate choice is made.
+  /// Null until the user picks an option — nothing is pre-selected.
   int? _selected;
   bool _saving = false;
 
@@ -34,20 +33,17 @@ class _GetToKnow1ScreenState extends ConsumerState<GetToKnow1Screen> {
     ('Other reasons', Icons.more_horiz_rounded),
   ];
 
-  /// Persists the selected reason to the backend profile before
-  /// advancing — every onboarding answer must land in the DB even if
-  /// the user never reaches the final step.
+  /// Persists the selected reason to the backend profile before advancing.
   Future<void> _onNext() async {
     final selected = _selected;
     if (selected == null || _saving) return;
     setState(() => _saving = true);
     try {
-      await ref.read(userRepositoryProvider).updateProfile(
-            joinReason: _options[selected].$1,
-          );
+      await ref
+          .read(userRepositoryProvider)
+          .updateProfile(joinReason: _options[selected].$1);
       if (!mounted) return;
-      // Guarded: double-tap would push two /get-to-know-2 pages with the
-      // same Page key → '!keyReservation.contains(key)' crash.
+      // Guarded: double-tap would push two /get-to-know-2 pages with the same Page key →.
       NavGuard.push(context, '/get-to-know-2');
     } catch (_) {
       if (!mounted) return;
@@ -124,7 +120,6 @@ class _GetToKnow1ScreenState extends ConsumerState<GetToKnow1Screen> {
 // ─── Shared widgets used by both get-to-know screens ─────────────────────────
 
 /// Minimal step progress bar shown across all onboarding steps.
-/// Public so it can be reused by get_to_know_2_screen.dart.
 class OnboardingProgressHeader extends StatelessWidget {
   const OnboardingProgressHeader({
     super.key,
@@ -136,10 +131,7 @@ class OnboardingProgressHeader extends StatelessWidget {
   final int step;
   final int total;
 
-  /// False on step 1: it is reached via go() (register / onboarding), so it
-  /// is the stack root and maybePop would silently no-op — hide the dead
-  /// back button instead of showing one. Later steps are pushed, so pop
-  /// works there.
+  /// False on step 1: it is reached via go() (register / onboarding).
   final bool showBack;
 
   @override

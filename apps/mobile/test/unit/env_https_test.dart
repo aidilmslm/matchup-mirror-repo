@@ -20,7 +20,10 @@ void main() {
         returnsNormally,
       );
       expect(
-        () => Env.assertHttpsOutsideLocal('https://api.matchup.app', 'production'),
+        () => Env.assertHttpsOutsideLocal(
+          'https://api.matchup.app',
+          'production',
+        ),
         returnsNormally,
       );
       expect(

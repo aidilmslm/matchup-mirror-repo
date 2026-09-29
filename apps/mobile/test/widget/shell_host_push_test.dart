@@ -41,9 +41,9 @@ void main() {
   setUp(() {
     NavGuard.resetForTest();
     repo = _MockActivityRepository();
-    when(() => repo.byId(any())).thenAnswer(
-      (_) async => _fixture().copyWith(hostId: 'host-1'),
-    );
+    when(
+      () => repo.byId(any()),
+    ).thenAnswer((_) async => _fixture().copyWith(hostId: 'host-1'));
     when(
       () => repo.participants(any()),
     ).thenAnswer((_) async => <ActivityParticipant>[]);
@@ -69,9 +69,8 @@ void main() {
             ),
             GoRoute(
               path: '/activity/:id',
-              builder: (_, state) => ActivityDetailScreen(
-                activityId: state.pathParameters['id']!,
-              ),
+              builder: (_, state) =>
+                  ActivityDetailScreen(activityId: state.pathParameters['id']!),
             ),
             GoRoute(
               path: '/player-profile/uid/:uid',

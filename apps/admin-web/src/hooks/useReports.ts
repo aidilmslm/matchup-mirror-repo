@@ -20,9 +20,12 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'FETCH_START':   return { status: 'loading' };
-    case 'FETCH_SUCCESS': return { status: 'success', reports: action.reports };
-    case 'FETCH_ERROR':   return { status: 'error', message: action.message };
+    case 'FETCH_START':
+      return { status: 'loading' };
+    case 'FETCH_SUCCESS':
+      return { status: 'success', reports: action.reports };
+    case 'FETCH_ERROR':
+      return { status: 'error', message: action.message };
     case 'UPDATE_STATUS':
       if (state.status !== 'success') return state;
       return {
@@ -38,7 +41,8 @@ function reducer(state: State, action: Action): State {
             : r,
         ),
       };
-    default: return state;
+    default:
+      return state;
   }
 }
 
@@ -58,12 +62,13 @@ export function useReports() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleAction = useCallback(async (id: string, action: ReportAction, note?: string) => {
     const newStatus = STATUS_MAP[action];
-    // Persist first — only touch local state on success so a failed
-    // request can never masquerade as a resolved/dismissed report.
+    // Persist first — only touch local state on success.
     try {
       await reportAction(id, action, note);
     } catch (err) {

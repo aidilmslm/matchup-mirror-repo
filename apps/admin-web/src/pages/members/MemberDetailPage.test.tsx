@@ -1,3 +1,4 @@
+// Tests for MemberDetailPage.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -18,9 +19,18 @@ import { MemberDetailPage } from './MemberDetailPage';
 
 function makeMember(overrides = {}) {
   return {
-    id: 'm1', name: 'Alice', username: '@alice', email: 'a@x.com', role: 'Player',
-    status: 'Active', sports: [], joinedDate: 'Jan 1', activitiesJoined: 1,
-    activitiesHosted: 0, rating: 4, avatarSeed: 'm1',
+    id: 'm1',
+    name: 'Alice',
+    username: '@alice',
+    email: 'a@x.com',
+    role: 'Player',
+    status: 'Active',
+    sports: [],
+    joinedDate: 'Jan 1',
+    activitiesJoined: 1,
+    activitiesHosted: 0,
+    rating: 4,
+    avatarSeed: 'm1',
     ...overrides,
   };
 }

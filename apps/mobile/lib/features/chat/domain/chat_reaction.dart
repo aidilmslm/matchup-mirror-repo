@@ -1,10 +1,5 @@
 /// Emoji reactions on group-chat messages.
-///
-/// Reactions are stored per message as `emoji → uids` (see
-/// `ChatRepository.watchReactions`). The emoji set is closed and mirrors
-/// the backend allowlist (`reactionEmojis` in `chat.schema.ts`) so every
-/// reaction renders consistently across platforms and is always a valid
-/// Realtime Database key.
+/// Reactions are stored per message as `emoji → uids` (see `ChatRepository.watchReactions`).
 const reactionEmojis = [
   '❤️',
   '😂',
@@ -24,10 +19,7 @@ typedef EmojiReactions = Map<String, List<String>>;
 /// All reactions in one activity chat: messageId → ([EmojiReactions]).
 typedef MessageReactions = Map<String, EmojiReactions>;
 
-/// Parses the backend reaction payload (`{messageId: {emoji: [uid]}}`)
-/// into a [MessageReactions]. Malformed entries are skipped so one bad
-/// row never sinks the whole map. Shared by the RTDB listener and the
-/// HTTP polling fallback, which carry the same shape.
+/// Parses the backend reaction payload (`{messageId: {emoji: [uid]}}`) into a [MessageReactions].
 MessageReactions parseReactionMap(dynamic value) {
   final out = <String, EmojiReactions>{};
   if (value is! Map) return out;
@@ -39,8 +31,7 @@ MessageReactions parseReactionMap(dynamic value) {
     for (final emojiEntry in byEmoji.entries) {
       final emoji = emojiEntry.key?.toString() ?? '';
       if (emoji.isEmpty) continue;
-      // The RTDB listener sees `{uid: timestamp}` maps while the HTTP
-      // fallback serves `[uid]` arrays — accept both.
+      // The RTDB listener sees `{uid: timestamp}` maps while the HTTP fallback serves `[uid]` arrays — accept both.
       final uids = <String>[];
       final rawUids = emojiEntry.value;
       if (rawUids is List) {

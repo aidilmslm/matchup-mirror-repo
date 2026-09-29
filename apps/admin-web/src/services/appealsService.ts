@@ -1,11 +1,4 @@
-/**
- * Appeals service — database-backed (Firestore `appeals` via api-server).
- *
- * Live endpoints (api-server):
- *   GET  /api/admin/appeals?status=pending|approved|rejected → Appeal[]
- *   POST /api/admin/appeals/:id/approve { note? }            → Appeal
- *   POST /api/admin/appeals/:id/reject  { note? }            → Appeal
- */
+/** Appeals service — database-backed (Firestore `appeals` via api-server). */
 import { apiFetch } from './api';
 import type { Appeal, AppealStatus, AppealType } from '../types/appeals';
 
@@ -67,18 +60,10 @@ function toAppeal(view: AppealView): Appeal {
   };
 }
 
-export async function fetchAppeals(
-  status: AppealStatus = 'Pending',
-): Promise<Appeal[]> {
+export async function fetchAppeals(status: AppealStatus = 'Pending'): Promise<Appeal[]> {
   const backendStatus =
-    status === 'Approved'
-      ? 'approved'
-      : status === 'Rejected'
-        ? 'rejected'
-        : 'pending';
-  const res = await apiFetch<AppealView[]>(
-    `/api/admin/appeals?status=${backendStatus}`,
-  );
+    status === 'Approved' ? 'approved' : status === 'Rejected' ? 'rejected' : 'pending';
+  const res = await apiFetch<AppealView[]>(`/api/admin/appeals?status=${backendStatus}`);
   if (!res.ok) throw new Error(res.error.message);
   return res.data.map(toAppeal);
 }
@@ -91,10 +76,10 @@ export async function decideAppeal(
   response: string,
 ): Promise<Appeal> {
   const action = decision === 'approve' ? 'approve' : 'reject';
-  const res = await apiFetch<AppealView>(
-    `/api/admin/appeals/${encodeURIComponent(id)}/${action}`,
-    { method: 'POST', body: JSON.stringify({ note: response }) },
-  );
+  const res = await apiFetch<AppealView>(`/api/admin/appeals/${encodeURIComponent(id)}/${action}`, {
+    method: 'POST',
+    body: JSON.stringify({ note: response }),
+  });
   if (!res.ok) throw new Error(res.error.message);
   return toAppeal(res.data);
 }

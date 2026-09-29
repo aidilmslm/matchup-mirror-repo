@@ -1,3 +1,4 @@
+// Routes for audit.
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import { listAuditLogHandler } from './audit.controller.js';

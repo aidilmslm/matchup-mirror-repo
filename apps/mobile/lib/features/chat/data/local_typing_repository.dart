@@ -2,8 +2,7 @@ import 'dart:async';
 
 import 'typing_repository.dart';
 
-/// Offline-only typing store. Reads return empty, writes are
-/// no-ops. Typing state only ever comes from the live backend.
+/// Offline-only typing store.
 class LocalTypingRepository implements TypingRepository {
   @override
   Future<void> setTyping({

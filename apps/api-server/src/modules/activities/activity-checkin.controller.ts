@@ -1,3 +1,4 @@
+// activity checkin.controller (activities).
 import type { Request, Response } from 'express';
 import { canAccessActivityChat } from './activity-participants.service.js';
 import { checkIn, getCheckInStatus } from './activity-checkin.service.js';
@@ -6,8 +7,7 @@ type ActivityParams = {
   activityId: string;
 };
 
-const FORBIDDEN_MESSAGE =
-  'Only the activity host or participants can access this chat';
+const FORBIDDEN_MESSAGE = 'Only the activity host or participants can access this chat';
 
 async function guardActivityAccess(
   activityId: string,
@@ -92,8 +92,10 @@ export async function checkInHandler(req: Request<ActivityParams>, res: Response
       });
     }
 
-    if (message === 'latitude must be a number between -90 and 90' ||
-        message === 'longitude must be a number between -180 and 180') {
+    if (
+      message === 'latitude must be a number between -90 and 90' ||
+      message === 'longitude must be a number between -180 and 180'
+    ) {
       return res.status(400).json({
         ok: false,
         error: { code: 'INVALID_INPUT', message },
@@ -107,10 +109,7 @@ export async function checkInHandler(req: Request<ActivityParams>, res: Response
   }
 }
 
-export async function getMyCheckInHandler(
-  req: Request<ActivityParams>,
-  res: Response,
-) {
+export async function getMyCheckInHandler(req: Request<ActivityParams>, res: Response) {
   try {
     const uid = req.auth?.uid;
     const { activityId } = req.params;

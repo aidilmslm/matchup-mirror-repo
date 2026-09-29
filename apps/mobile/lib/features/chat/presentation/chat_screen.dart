@@ -41,40 +41,28 @@ import '../domain/chat_reaction.dart';
 import 'chat_attachment_sheet.dart';
 import 'poll_create_sheet.dart';
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+// Provider.
 
 /// Real-time message stream for [id] (the activity id).
-///
-/// Wraps `ChatRepository.watchMessages` in a [StreamProvider] so the chat
-/// screen can `ref.watch` it and rebuild on every new message. With the
-/// remote implementation, the stream is backed by Firebase RTDB
-/// (`activityChats/{id}/messages`); when Firebase isn't configured, the
-/// remote falls back to HTTP polling every 3 seconds.
+/// Wraps `ChatRepository.watchMessages` in an auto-dispose stream family.
 final _messagesStreamProvider = StreamProvider.autoDispose
     .family<List<ChatMessage>, String>((ref, id) {
       return ref.watch(chatRepositoryProvider).watchMessages(id);
     });
 
-/// Real-time emoji reactions for [id] (the activity id), keyed by
-/// message id. Watched alongside [_messagesStreamProvider] so reaction
-/// chips stay in sync with the conversation.
+/// Real-time emoji reactions for [id] (the activity id), keyed by message id.
 final _reactionsStreamProvider = StreamProvider.autoDispose
     .family<MessageReactions, String>((ref, id) {
       return ref.watch(chatRepositoryProvider).watchReactions(id);
     });
 
-/// Real-time single-choice polls for [id] (the activity id), oldest
-/// first. Merged into the message timeline so polls read inline with
-/// the conversation that discusses them.
+/// Real-time single-choice polls for [id] (the activity id), oldest first.
 final _pollsStreamProvider = StreamProvider.autoDispose
     .family<List<ChatPoll>, String>((ref, id) {
       return ref.watch(chatRepositoryProvider).watchPolls(id);
     });
 
-/// Toggles one emoji reaction, toast on transport failure. The chips
-/// update via [_reactionsStreamProvider] — no optimistic state needed
-/// because the RTDB stream pushes the change straight back.
-/// Backend `CHAT_ARCHIVED` rejections surface verbatim.
+/// Toggles one emoji reaction, toast on transport failure.
 Future<void> _toggleReaction(
   WidgetRef ref,
   BuildContext context, {
@@ -83,7 +71,9 @@ Future<void> _toggleReaction(
   required String emoji,
 }) async {
   try {
-    final reacted = await ref.read(chatRepositoryProvider).toggleReaction(
+    final reacted = await ref
+        .read(chatRepositoryProvider)
+        .toggleReaction(
           activityId: activityId,
           messageId: messageId,
           emoji: emoji,
@@ -115,10 +105,7 @@ Future<void> _toggleReaction(
   }
 }
 
-/// Votes for one poll option, toast on transport failure. Results
-/// update via [_pollsStreamProvider] — no optimistic state needed.
-/// Backend `CHAT_ARCHIVED` rejections surface verbatim so an archived
-/// thread explains itself instead of a generic failure.
+/// Votes for one poll option, toast on transport failure. Results update via [_pollsStreamProvider].
 Future<void> _votePoll(
   WidgetRef ref,
   BuildContext context, {
@@ -127,7 +114,9 @@ Future<void> _votePoll(
   required int optionIndex,
 }) async {
   try {
-    final voted = await ref.read(chatRepositoryProvider).votePoll(
+    final voted = await ref
+        .read(chatRepositoryProvider)
+        .votePoll(
           activityId: activityId,
           pollId: pollId,
           optionIndex: optionIndex,
@@ -159,8 +148,7 @@ Future<void> _votePoll(
   }
 }
 
-/// Renders the repository's "uploads unavailable" signal verbatim;
-/// every other photo failure keeps the generic copy.
+/// Renders the repository's "uploads unavailable" signal verbatim; every other photo failure keeps the generic copy.
 String _photoErrorMessage(Object e) {
   const unavailable = 'Photo uploads are unavailable right now';
   if (e is ImageTooLargeException) return e.message;
@@ -168,9 +156,7 @@ String _photoErrorMessage(Object e) {
   return 'Could not send photo.';
 }
 
-/// Local per-chat mute (no backend support — a string list of muted
-/// activity ids under [mutedChatsKey]). The foreground push banner
-/// skips muted chats.
+/// Local per-chat mute (no backend support — a string list of muted activity ids under [mutedChatsKey]).
 Future<bool> isChatMuted(String activityId) async {
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -191,59 +177,42 @@ Future<void> setChatMuted(String activityId, bool muted) async {
   } catch (_) {}
 }
 
-/// Opens a chat sender's profile from an avatar or name tap. Uses
-/// [NavGuard.pushOnce]: repeat taps while the profile is open are
-/// ignored, so duplicate page keys can never red-screen.
+/// Opens a chat sender's profile from an avatar or name tap.
 void _openSenderProfile(BuildContext context, String senderId) {
   final uid = senderId.trim();
   if (uid.isEmpty) return;
   NavGuard.push(context, '/player-profile/uid/$uid');
 }
 
-/// Fetches the activity for the chat header. Returns the full
-/// [ActivityModel] (which carries the title and the participant
-/// roster — both of which the header needs to render the subtitle
-/// and the typing display).
+/// Fetches the activity for the chat header.
 final _activityProvider = FutureProvider.autoDispose
     .family<ActivityModel?, String>((ref, id) {
       return ref.watch(activityRepositoryProvider).byId(id);
     });
 
-/// Fetches the participant roster for the chat. Used to populate
-/// [otherUids] for the typing display so the screen polls the right
-/// uids instead of a hardcoded demo list.
+/// Fetches the participant roster for the chat.
 final _participantsProvider = FutureProvider.autoDispose
     .family<List<ActivityParticipant>, String>((ref, activityId) {
       return ref.watch(activityRepositoryProvider).participants(activityId);
     });
 
-/// Polls `GET /api/typing/:activityId/:uid` for every member of the
-/// chat and emits the subset that's currently typing.
-///
-/// [otherUids] is the list of participants *excluding* the current
-/// user — the chat screen filters the activity's participants down
-/// before calling. The polling cadence is 2 seconds
-/// (per [RemoteTypingRepository.watchTyping]).
-///
-/// Keyed on a record `(activityId, otherUids)` so the cache is
-/// re-used when only the input list changes (typical when a new
-/// participant joins).
+/// Polls `GET /api/typing/:activityId/:uid` for every member of the chat and emits the subset that's currently typing.
+/// [otherUids] is the list of participants *excluding* the current user.
+/// Keyed on a record `(activityId, otherUids)` so the cache is re-used when only the input list changes.
 final _typingUidsProvider = StreamProvider.autoDispose
-    .family<Set<String>, ({String activityId, List<String> otherUids})>(
-        (ref, args) {
-  return ref.watch(typingRepositoryProvider).watchTyping(
-        activityId: args.activityId,
-        uids: args.otherUids,
-      );
-});
+    .family<Set<String>, ({String activityId, List<String> otherUids})>((
+      ref,
+      args,
+    ) {
+      return ref
+          .watch(typingRepositoryProvider)
+          .watchTyping(activityId: args.activityId, uids: args.otherUids);
+    });
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class ChatScreen extends ConsumerStatefulWidget {
-  /// Backend activity id — the screen uses this to look up the
-  /// activity (for its title and participants) and to hit every
-  /// `/api/chat/{id}/...` endpoint. The route `/chat/:id` is
-  /// responsible for passing the real id, not the title.
+  /// Backend activity id — the screen uses this to look up the activity.
   const ChatScreen({super.key, required this.activityId});
   final String activityId;
 
@@ -257,26 +226,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _focusNode = FocusNode();
   bool _hasText = false;
 
-  /// Tracks whether we've already announced `_id` as "I'm typing" to
-  /// the backend. Flips to `true` on first keystroke and back to
-  /// `false` when we send or stop typing.
+  /// Tracks whether we've already announced `_id` as "I'm typing" to the backend.
   bool _isAnnouncedTyping = false;
 
-  /// Debounce timer for the "I'm typing" announcement. We wait 500ms
-  /// after the first keystroke before POSTing — typing a one-word
-  /// reply shouldn't fire a write for every letter.
+  /// Debounce timer for the "I'm typing" announcement.
   Timer? _typingDebounce;
 
   /// Stops the typing announcement after 3s of no further keystrokes.
-  /// Mirrors the WhatsApp / iMessage pattern so the server-side
-  /// typing row gets cleared even if the user backgrounds the app
-  /// mid-sentence.
   Timer? _typingStopTimer;
 
   String get _id => widget.activityId;
 
-  /// How long after the last keystroke to keep the typing indicator
-  /// alive before automatically clearing it.
+  /// How long after the last keystroke to keep the typing indicator alive before automatically clearing it.
   static const Duration _typingStopAfter = Duration(seconds: 3);
 
   /// Debounce before announcing "I'm typing" to the backend.
@@ -285,14 +246,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Capture the typing repository before any dispose can happen —
-    // `ref.read` is illegal inside `dispose()` once the element is
-    // deactivated (Riverpod throws "Cannot use ref after the widget
-    // was disposed").
+    // Capture the typing repository before any dispose can happen.
     _typingRepo = ref.read(typingRepositoryProvider);
     _msgController.addListener(_onInputChanged);
-    // Baseline for the inbox unread badge: opening the chat marks
-    // everything up to now as seen (best-effort, never throws).
+    // Baseline for the inbox unread badge: opening the chat marks everything up to now as seen.
     unawaited(recordChatOpened(_id));
   }
 
@@ -306,9 +263,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _msgController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
-    // Best-effort: clear the typing row when leaving the chat so
-    // other users don't see "Sarah is typing..." stuck on forever.
-    // Uses the repository captured in `initState` — never `ref`.
+    // Best-effort: clear the typing row when leaving the chat.
     final repo = _typingRepo;
     if (repo != null) {
       unawaited(repo.setTyping(activityId: _id, isTyping: false));
@@ -316,19 +271,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  /// Called on every keystroke. Coalesces rapid input into a single
-  /// "I'm typing" announcement, and schedules an automatic stop after
-  /// 3s of silence.
+  /// Called on every keystroke.
   void _onInputChanged() {
     final has = _msgController.text.trim().isNotEmpty;
     if (has != _hasText) {
-      // Only `setState` when the visible "send button enabled" state
-      // actually changes — not on every keystroke.
+      // Only `setState` when the visible "send button enabled" state actually changes — not on every keystroke.
       setState(() => _hasText = has);
     }
     if (!has) {
-      // Field emptied (either sent or backspaced) → stop the
-      // announcement immediately.
+      // Field emptied (either sent or backspaced) → stop the announcement immediately.
       _typingDebounce?.cancel();
       _typingStopTimer?.cancel();
       if (_isAnnouncedTyping) {
@@ -358,8 +309,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
     }
 
-    // (Re)arm the auto-stop timer — if the user pauses for 3s, the
-    // server should know they stopped.
+    // (Re)arm the auto-stop timer — if the user pauses for 3s, the server should know they stopped.
     _typingStopTimer?.cancel();
     _typingStopTimer = Timer(_typingStopAfter, () {
       if (!mounted) return;
@@ -377,10 +327,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _send() async {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
-    // Local archive guard: the backend 403s anyway, but failing fast
-    // keeps the draft and explains itself without a round trip.
-    final activity =
-        ref.read(_activityProvider(widget.activityId)).valueOrNull;
+    // Local archive guard: the backend 403s anyway.
+    final activity = ref.read(_activityProvider(widget.activityId)).valueOrNull;
     if (activity?.isChatArchived ?? false) {
       if (!mounted) return;
       AppSnackbar.show(
@@ -392,11 +340,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     HapticFeedback.lightImpact();
     _msgController.clear();
-    // Stop the typing indicator immediately — the message itself
-    // proves the user finished typing. The listener in _onInputChanged
-    // will see the empty field and *also* try to clear, but the
-    // repository's `setTyping` is idempotent so the duplicate write
-    // is harmless.
+    // Stop the typing indicator immediately — the message itself proves the user finished typing.
     _typingDebounce?.cancel();
     _typingStopTimer?.cancel();
     if (_isAnnouncedTyping) {
@@ -409,8 +353,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     try {
       await ref.read(chatRepositoryProvider).send(activityId: _id, text: text);
-      // The new RTDB / polling listener will pick up the message
-      // automatically — no invalidate needed.
+      // The new RTDB / polling listener will pick up the message automatically — no invalidate needed.
       _scrollToBottom();
     } on DioException catch (e) {
       if (!mounted) return;
@@ -515,8 +458,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (!mounted) return;
       AppSnackbar.show(
         context,
-        // The "uploads unavailable" signal renders verbatim; every
-        // other failure keeps the generic copy.
+        // The "uploads unavailable" signal renders verbatim; every other failure keeps the generic copy.
         message: _photoErrorMessage(e),
         variant: AppSnackbarVariant.error,
       );
@@ -528,8 +470,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       position = await LocationService.instance.getCurrentLocation();
     } on LocationTimeoutException {
-      // A slow fix is transient — offer a retry, not a lecture about
-      // permissions.
+      // A slow fix is transient — offer a retry, not a lecture about permissions.
       if (!mounted) return;
       AppSnackbar.show(
         context,
@@ -540,8 +481,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     if (!mounted) return;
     if (position == null) {
-      // Permanently denied ("don't ask again") can only be fixed in
-      // the OS settings — offer a shortcut there.
+      // Permanently denied ("don't ask again") can only be fixed in the OS settings — offer a shortcut there.
       final permanentlyDenied = await LocationService.instance
           .isPermissionPermanentlyDenied();
       if (!mounted) return;
@@ -550,7 +490,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         message: permanentlyDenied
             ? 'Location permission is off. Enable it in Settings to share your location.'
             : 'Could not access your location. Check location '
-                'permissions and try again.',
+                  'permissions and try again.',
         variant: AppSnackbarVariant.error,
         actionLabel: permanentlyDenied ? 'Open Settings' : null,
         onAction: permanentlyDenied ? () => Geolocator.openAppSettings() : null,
@@ -559,11 +499,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     HapticFeedback.lightImpact();
     try {
-      await ref.read(chatRepositoryProvider).sendLocation(
-        activityId: _id,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
+      await ref
+          .read(chatRepositoryProvider)
+          .sendLocation(
+            activityId: _id,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
       // New message will arrive via the RTDB / polling stream.
       _scrollToBottom();
     } catch (_) {
@@ -578,23 +520,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Fetch the activity once on first build to get the title for the
-    // header. Subsequent rebuilds reuse the cached value; refresh
-    // is automatic via Riverpod's invalidation if the user navigates
-    // back to the chat.
+    // Fetch the activity once on first build to get the title for the header.
     final activityAsync = ref.watch(_activityProvider(widget.activityId));
     final title = activityAsync.valueOrNull?.title ?? 'Chat';
-    // Archived threads are read-only: the backend 403s every write,
-    // so the composer/poll/vote affordances switch to an archived
-    // state instead of failing on tap. `false` while loading to avoid
-    // flashing the archived notice on a live thread.
-    final isArchived =
-        activityAsync.valueOrNull?.isChatArchived ?? false;
+    // Archived threads are read-only: the backend 403s every write.
+    final isArchived = activityAsync.valueOrNull?.isChatArchived ?? false;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // White status-bar icons on the navy header. AnnotatedRegion
-      // (not a manual setSystemUIOverlayStyle call) so the previous
-      // style is restored automatically when leaving this screen.
+      // White status-bar icons on the navy header.
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
@@ -607,8 +540,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         body: Column(
           children: [
             Container(
-              // Flat navy matching the header gradient's top edge — the
-              // status-bar strip blends seamlessly into the header.
+              // Flat navy matching the header gradient's top edge.
               color: _chatHeaderNavyTop,
               child: SafeArea(
                 bottom: false,
@@ -656,30 +588,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-// ─── Header ──────────────────────────────────────────────────────────────────
+// Header.
 
-/// Navy lift at the top edge of the chat header gradient. Also paints the
-/// status-bar strip behind it so the header bleeds edge-to-edge.
+/// Navy lift at the top edge of the chat header gradient.
 const _chatHeaderNavyTop = Color(0xFF1B2BA3);
 
 class _Header extends ConsumerWidget {
-  const _Header({
-    required this.title,
-    required this.activityId,
-    this.activity,
-  });
+  const _Header({required this.title, required this.activityId, this.activity});
   final String title;
   final String activityId;
 
   /// Viewer-context snapshot for routing "View activity details".
-  /// Null while the activity is still loading — the sheet then falls
-  /// back to the discover detail route.
   final ActivityModel? activity;
 
-  /// Maps a backend uid to a friendly display name. Used by the typing
-  /// indicator so "alex is typing..." reads as "Alex is typing..."
-  /// rather than the raw auth uid. Populated from the participants
-  /// roster; falls back to the uid for unknown senders.
+  /// Maps a backend uid to a friendly display name.
   String _displayName(ActivityParticipant p) {
     final n = p.name.trim();
     if (n.isEmpty || n == p.userId) return p.userId;
@@ -690,27 +612,28 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Exclude self from the typing poll — no "you are typing…"
-    // indicator needed. Both lists below come from memoized providers
-    // (stable instances!) so the typing stream subscribes exactly once
-    // — never build the uid list inline here.
+    // Exclude self from the typing poll — no "you are typing…" indicator needed.
     final myUid = ref.watch(_myUidProvider).valueOrNull;
     final otherUids = ref.watch(
       _chatOtherUidsProvider((activityId: activityId, myUid: myUid)),
     );
     final participants =
         ref.watch(_participantsProvider(activityId)).valueOrNull ??
-            const <ActivityParticipant>[];
+        const <ActivityParticipant>[];
 
     // Watch the typing stream for the real participant uids.
-    final typing = ref
-        .watch(_typingUidsProvider(
-            (activityId: activityId, otherUids: otherUids)))
-        .valueOrNull ??
+    final typing =
+        ref
+            .watch(
+              _typingUidsProvider((
+                activityId: activityId,
+                otherUids: otherUids,
+              )),
+            )
+            .valueOrNull ??
         const <String>{};
 
-    // Build a uid → name lookup from the roster so we can show
-    // "Alex is typing…" instead of "alex is typing…".
+    // Build a uid → name lookup from the roster so we can show "Alex is typing…" instead of "alex is typing…".
     final nameByUid = <String, String>{
       for (final p in participants)
         if (p.userId != myUid) p.userId: _displayName(p),
@@ -718,11 +641,7 @@ class _Header extends ConsumerWidget {
 
     final subtitle = _buildSubtitle(typing, nameByUid, participants.length);
 
-    // Navy header: brand gradient (same family as the splash) with two
-    // translucent glow circles so it reads as one designed block — not
-    // a white slab stacked on the white match banner below. Pinned
-    // colors (not context.colors) on purpose: navy + white passes in
-    // both light and dark mode.
+    // Navy header: brand gradient (same family as the splash) with two translucent glow circles so it reads as one.
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -836,9 +755,7 @@ class _Header extends ConsumerWidget {
     );
   }
 
-  /// Builds the subtitle string — either a "X is typing..." message
-  /// or a static members line. Names are resolved from the roster
-  /// (passed in as [nameByUid]).
+  /// Builds the subtitle string — either a "X is typing..." message or a static members line.
   String _buildSubtitle(
     Set<String> typing,
     Map<String, String> nameByUid,
@@ -864,9 +781,7 @@ class _Header extends ConsumerWidget {
     }
     final shown = nameByUid.values.take(3).join(', ');
     final more = totalParticipants - 4; // shown 3 + me
-    return more > 0
-        ? '$shown, +$more others'
-        : 'You, $shown';
+    return more > 0 ? '$shown, +$more others' : 'You, $shown';
   }
 }
 
@@ -896,9 +811,7 @@ class _HeaderButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.28),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
           ),
           alignment: Alignment.center,
           child: Icon(icon, size: iconSize, color: Colors.white),
@@ -909,51 +822,34 @@ class _HeaderButton extends StatelessWidget {
 }
 
 /// Resolves the current user's Firebase auth uid from secure storage.
-/// Used to filter "self" out of the typing display so we don't show
-/// "You are typing…" to ourselves. Watches the auth uid so an account
-/// switch re-reads storage instead of leaking the previous user's uid.
 final _myUidProvider = FutureProvider<String?>((ref) async {
   ref.watch(authStateProvider.select((s) => s.userId));
   return SecureTokenStore.instance.readUserId();
 });
 
 /// Memoized "other participants" uid list for the typing indicator.
-///
-/// Same identity-stability contract as `_rosterUidsProvider` in the
-/// participants screen: `_typingUidsProvider` is a stream family keyed
-/// on this list, and a freshly built list every `build` would
-/// resubscribe → fetch → rebuild in an infinite loop. A plain
-/// `Provider` caches until the roster or uid changes, so subscribers
-/// observe one stable instance.
+/// Same identity-stability contract as `_rosterUidsProvider` in the participants screen.
 final _chatOtherUidsProvider = Provider.autoDispose
-    .family<List<String>, ({String activityId, String? myUid})>((
-      ref,
-      args,
-    ) {
-  final roster =
-      ref.watch(_participantsProvider(args.activityId)).valueOrNull ??
+    .family<List<String>, ({String activityId, String? myUid})>((ref, args) {
+      final roster =
+          ref.watch(_participantsProvider(args.activityId)).valueOrNull ??
           const <ActivityParticipant>[];
-  return roster
-      .where((p) => p.userId != args.myUid)
-      .map((p) => p.userId)
-      .where((id) => id.isNotEmpty)
-      .toList(growable: false);
-});
+      return roster
+          .where((p) => p.userId != args.myUid)
+          .map((p) => p.userId)
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+    });
 
-// ─── Match banner ─────────────────────────────────────────────────────────────
+// Match banner.
 
-/// Game-context card pinned above the message list. The **Check In**
-/// button only appears inside the check-in window (30 minutes before
-/// the scheduled start until the activity end) — the same policy as
-/// [CheckInScreen]. A 30s ticker re-evaluates the window so the
-/// button materialises while the user sits in chat.
+/// Game-context card pinned above the message list.
 class _MatchBanner extends StatefulWidget {
   const _MatchBanner({required this.activityAsync, required this.onRetry});
   final AsyncValue<ActivityModel?> activityAsync;
   final VoidCallback onRetry;
 
-  /// Check-in window shared with the check-in screen: opens 30
-  /// minutes before start, closes at the activity end.
+  /// Check-in window shared with the check-in screen: opens 30 minutes before start, closes at the activity end.
   static bool checkInOpen(DateTime now, DateTime start, DateTime end) {
     return !now.isBefore(start.subtract(const Duration(minutes: 30))) &&
         !now.isAfter(end);
@@ -984,7 +880,8 @@ class _MatchBannerState extends State<_MatchBanner> {
   Widget build(BuildContext context) {
     final activity = widget.activityAsync.valueOrNull;
     final hasError = widget.activityAsync.hasError;
-    final inWindow = activity != null &&
+    final inWindow =
+        activity != null &&
         _MatchBanner.checkInOpen(
           DateTime.now(),
           activity.dateTime,
@@ -1011,8 +908,7 @@ class _MatchBannerState extends State<_MatchBanner> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Day badge — TODAY when the game is today. Neutral while
-                // the activity is loading so no fake date is shown.
+                // Day badge — TODAY when the game is today.
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.x3,
@@ -1023,7 +919,9 @@ class _MatchBannerState extends State<_MatchBanner> {
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   child: Text(
-                    activity == null ? '···' : _bannerDayLabel(activity.dateTime),
+                    activity == null
+                        ? '···'
+                        : _bannerDayLabel(activity.dateTime),
                     style: AppTypography.badgeSport(context).copyWith(
                       color: AppColors.textOnPrimary,
                       letterSpacing: 0.5,
@@ -1064,7 +962,6 @@ class _MatchBannerState extends State<_MatchBanner> {
           const SizedBox(width: AppSpacing.x3),
 
           // Check In button — only inside the check-in window.
-          // Null check first so `activity` promotes for `.id` below.
           if (activity != null && inWindow)
             Semantics(
               button: true,
@@ -1083,8 +980,7 @@ class _MatchBannerState extends State<_MatchBanner> {
                   ),
                   child: Text(
                     'Check In',
-                    style:
-                        AppTypography.buttonPrimary.copyWith(fontSize: 15),
+                    style: AppTypography.buttonPrimary.copyWith(fontSize: 15),
                   ),
                 ),
               ),
@@ -1117,7 +1013,7 @@ String _bannerKickoffLabel(DateTime dateTime) {
   return 'Kickoff at $h:$m $ap';
 }
 
-// ─── Message list ─────────────────────────────────────────────────────────────
+// Message list.
 
 sealed class _ListItem {}
 
@@ -1150,10 +1046,7 @@ class _PollItem extends _ListItem {
   final bool isLastOfRun;
 }
 
-/// One row of the unified timeline — either a message or a poll —
-/// carrying the timestamp + sender used for day separators and run
-/// grouping. Polls interleave chronologically so a "Play at 4 or
-/// 5?" reads inline with the conversation discussing it.
+/// One row of the unified timeline — either a message or a poll — carrying the timestamp + sender used for day.
 class _TimelineEntry {
   _TimelineEntry({
     required this.time,
@@ -1177,7 +1070,10 @@ List<_ListItem> _buildListItems(
       _TimelineEntry(time: msg.sentAt, senderId: msg.senderId, message: msg),
     for (final poll in polls)
       _TimelineEntry(
-          time: poll.createdAt, senderId: poll.createdBy, poll: poll),
+        time: poll.createdAt,
+        senderId: poll.createdBy,
+        poll: poll,
+      ),
   ]..sort((a, b) => a.time.compareTo(b.time));
 
   final items = <_ListItem>[];
@@ -1193,9 +1089,11 @@ List<_ListItem> _buildListItems(
 
     final prev = i > 0 ? timeline[i - 1] : null;
     final next = i + 1 < timeline.length ? timeline[i + 1] : null;
-    final nextSameDay = next != null &&
+    final nextSameDay =
+        next != null &&
         DateTime(next.time.year, next.time.month, next.time.day) == day;
-    final prevSameDay = prev != null &&
+    final prevSameDay =
+        prev != null &&
         DateTime(prev.time.year, prev.time.month, prev.time.day) == day;
 
     final isFirstOfRun =
@@ -1234,8 +1132,18 @@ String _dayLabel(DateTime day) {
   if (diff == 0) return 'TODAY';
   if (diff == 1) return 'YESTERDAY';
   const months = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
   ];
   return '${months[day.month - 1]} ${day.day}';
 }
@@ -1249,22 +1157,18 @@ class _MessageList extends ConsumerWidget {
   final String id;
   final ScrollController scrollController;
 
-  /// Archived threads stay readable; voting is blocked with an
-  /// explanation instead of a silent no-op or a backend round trip.
+  /// Archived threads stay readable; voting is blocked with an explanation instead of a silent no-op or a backend.
   final bool isArchived;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_messagesStreamProvider(id));
     final reactions = ref.watch(_reactionsStreamProvider(id)).valueOrNull;
-    final polls = ref.watch(_pollsStreamProvider(id)).valueOrNull ??
-        const <ChatPoll>[];
+    final polls =
+        ref.watch(_pollsStreamProvider(id)).valueOrNull ?? const <ChatPoll>[];
     final myUid = ref.watch(_myUidProvider).valueOrNull ?? '';
-    final roster =
-        ref.watch(_participantsProvider(id)).valueOrNull ?? const [];
-    final names = <String, String>{
-      for (final p in roster) p.userId: p.name,
-    };
+    final roster = ref.watch(_participantsProvider(id)).valueOrNull ?? const [];
+    final names = <String, String>{for (final p in roster) p.userId: p.name};
     return async.when(
       loading: () => const SkeletonList(count: 5),
       error: (_, _) => ErrorRetry(
@@ -1276,8 +1180,9 @@ class _MessageList extends ConsumerWidget {
           return Center(
             child: Text(
               'No messages yet. Say hello!',
-              style: AppTypography.bodyReading(context)
-                  .copyWith(color: context.colors.textSecondary),
+              style: AppTypography.bodyReading(
+                context,
+              ).copyWith(color: context.colors.textSecondary),
             ),
           );
         }
@@ -1296,54 +1201,54 @@ class _MessageList extends ConsumerWidget {
             return switch (item) {
               _DaySeparatorItem() => _DaySeparator(label: item.label),
               _MessageItem() => _Bubble(
-                  item: item,
-                  reactions:
-                      reactions?[item.message.id] ?? const <String, List<String>>{},
-                  myUid: myUid,
-                  onReact: (emoji) {
-                    if (isArchived) {
-                      AppSnackbar.show(
-                        context,
-                        message: 'Chat is archived',
-                        variant: AppSnackbarVariant.error,
-                      );
-                      return;
-                    }
-                    _toggleReaction(
-                      ref,
+                item: item,
+                reactions:
+                    reactions?[item.message.id] ??
+                    const <String, List<String>>{},
+                myUid: myUid,
+                onReact: (emoji) {
+                  if (isArchived) {
+                    AppSnackbar.show(
                       context,
-                      activityId: id,
-                      messageId: item.message.id,
-                      emoji: emoji,
+                      message: 'Chat is archived',
+                      variant: AppSnackbarVariant.error,
                     );
-                  },
-                ),
+                    return;
+                  }
+                  _toggleReaction(
+                    ref,
+                    context,
+                    activityId: id,
+                    messageId: item.message.id,
+                    emoji: emoji,
+                  );
+                },
+              ),
               _PollItem() => _PollCard(
-                  item: item,
-                  creatorName: item.poll.createdBy == myUid && myUid.isNotEmpty
-                      ? 'You'
-                      : (names[item.poll.createdBy] ??
-                          item.poll.createdBy),
-                  isMine: item.poll.createdBy == myUid && myUid.isNotEmpty,
-                  myUid: myUid,
-                  onVote: (optionIndex) {
-                    if (isArchived) {
-                      AppSnackbar.show(
-                        context,
-                        message: 'Chat is archived',
-                        variant: AppSnackbarVariant.error,
-                      );
-                      return;
-                    }
-                    _votePoll(
-                      ref,
+                item: item,
+                creatorName: item.poll.createdBy == myUid && myUid.isNotEmpty
+                    ? 'You'
+                    : (names[item.poll.createdBy] ?? item.poll.createdBy),
+                isMine: item.poll.createdBy == myUid && myUid.isNotEmpty,
+                myUid: myUid,
+                onVote: (optionIndex) {
+                  if (isArchived) {
+                    AppSnackbar.show(
                       context,
-                      activityId: id,
-                      pollId: item.poll.pollId,
-                      optionIndex: optionIndex,
+                      message: 'Chat is archived',
+                      variant: AppSnackbarVariant.error,
                     );
-                  },
-                ),
+                    return;
+                  }
+                  _votePoll(
+                    ref,
+                    context,
+                    activityId: id,
+                    pollId: item.poll.pollId,
+                    optionIndex: optionIndex,
+                  );
+                },
+              ),
             };
           },
         );
@@ -1352,7 +1257,7 @@ class _MessageList extends ConsumerWidget {
   }
 }
 
-// ─── Day separator ────────────────────────────────────────────────────────────
+// Day separator.
 
 class _DaySeparator extends StatelessWidget {
   const _DaySeparator({required this.label});
@@ -1377,7 +1282,7 @@ class _DaySeparator extends StatelessWidget {
   }
 }
 
-// ─── Bubble ───────────────────────────────────────────────────────────────────
+// Bubble.
 
 class _Bubble extends StatelessWidget {
   const _Bubble({
@@ -1404,9 +1309,7 @@ class _Bubble extends StatelessWidget {
     final maxW = MediaQuery.of(context).size.width * 0.72;
     final bottomGap = item.isLastOfRun ? AppSpacing.x4 : 3.0;
 
-    // System events ("Sam left the group") render as a centered grey
-    // pill — no avatar, no reactions, no long-press, no timestamp.
-    // WhatsApp-style: an event, not a message.
+    // System events ("Sam left the group") render as a centered grey pill.
     if (msg.isSystem) {
       return Padding(
         padding: EdgeInsets.only(bottom: bottomGap),
@@ -1424,9 +1327,9 @@ class _Bubble extends StatelessWidget {
             child: Text(
               msg.text,
               textAlign: TextAlign.center,
-              style: AppTypography.metaSub(context).copyWith(
-                color: context.colors.textSecondary,
-              ),
+              style: AppTypography.metaSub(
+                context,
+              ).copyWith(color: context.colors.textSecondary),
             ),
           ),
         ),
@@ -1436,12 +1339,11 @@ class _Bubble extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomGap),
       child: Column(
-        crossAxisAlignment:
-            isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           // Sender name — above first bubble of a run (others only).
-          // Tappable: opens the sender's profile (same guarded push as
-          // every other profile entry point — duplicate keys red-screen).
           if (item.showSenderName)
             Padding(
               padding: const EdgeInsets.only(left: 44, bottom: 4),
@@ -1460,13 +1362,12 @@ class _Bubble extends StatelessWidget {
             ),
 
           Row(
-            mainAxisAlignment:
-                isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isMine
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Avatar column (others only) — tappable to the profile.
-              // Photo comes from the roster (profile photoUrl); initials
-              // when the sender has none.
               if (!isMine) ...[
                 SizedBox(
                   width: 36,
@@ -1496,9 +1397,9 @@ class _Bubble extends StatelessWidget {
                   onLongPress: onReact == null
                       ? null
                       : () => _ReactionPickerSheet.show(
-                            context,
-                            onPick: onReact!,
-                          ),
+                          context,
+                          onPick: onReact!,
+                        ),
                   child: Container(
                     constraints: BoxConstraints(maxWidth: maxW),
                     padding: msg.isImage
@@ -1555,10 +1456,9 @@ class _Bubble extends StatelessWidget {
               ),
               child: Text(
                 _formatTime(msg.sentAt),
-                style: AppTypography.metaSub(context).copyWith(
-                  fontSize: 11,
-                  color: context.colors.textTertiary,
-                ),
+                style: AppTypography.metaSub(
+                  context,
+                ).copyWith(fontSize: 11, color: context.colors.textTertiary),
               ),
             ),
         ],
@@ -1567,16 +1467,10 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-// ─── Bubble content (text / image / location) ─────────────────────────────────
+// Bubble content (text image location).
 
-/// Renders the payload inside a chat bubble — plain text by default, or a
-/// photo/location attachment when the message carries one (see
-/// [ChatMessage.isImage] / [ChatMessage.isLocation]).
-///
-/// Photos resolve local-first: a just-sent message renders from disk via
-/// [ChatMessage.imagePath]; anything parsed from the backend renders from
-/// the network via [ChatMessage.imageUrl]. Tapping a photo opens the
-/// full-screen viewer.
+/// Renders the payload inside a chat bubble.
+/// Photos resolve local-first: a just-sent message renders from disk via [ChatMessage.imagePath].
 class _BubbleContent extends StatelessWidget {
   const _BubbleContent({required this.msg, required this.isMine});
   final ChatMessage msg;
@@ -1585,9 +1479,7 @@ class _BubbleContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (msg.isImage) {
-      // Defensive: isImage means an image source exists, but guard
-      // anyway — a null url with no local path renders the text
-      // instead of crashing on a force-unwrap.
+      // Defensive: isImage means an image source exists, but guard anyway.
       if (msg.imageUrl == null && msg.imagePath == null) {
         return _bubbleText(context);
       }
@@ -1595,11 +1487,7 @@ class _BubbleContent extends StatelessWidget {
         onTap: () => _ChatImageViewer.show(context, msg),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          child: _ChatImage(
-            msg: msg,
-            width: 200,
-            height: 200,
-          ),
+          child: _ChatImage(msg: msg, width: 200, height: 200),
         ),
       );
     }
@@ -1611,11 +1499,7 @@ class _BubbleContent extends StatelessWidget {
     return _bubbleText(context);
   }
 
-  /// Plain-text bubble. Selectable so users can copy message text with
-  /// the native long-press toolbar. Verified: a long-press on the text
-  /// is claimed by the selection gesture, so the bubble's reaction
-  /// picker (parent onLongPress) does NOT also fire — reactions stay
-  /// reachable via long-press on the bubble padding around the text.
+  /// Plain-text bubble.
   Widget _bubbleText(BuildContext context) {
     return SelectableText(
       msg.text,
@@ -1626,10 +1510,9 @@ class _BubbleContent extends StatelessWidget {
   }
 }
 
-// ─── Reactions ────────────────────────────────────────────────────────────────
+// Reactions.
 
-/// Bottom sheet behind a bubble long-press: one tap toggles that emoji
-/// reaction for the current user.
+/// Bottom sheet behind a bubble long-press: one tap toggles that emoji reaction for the current user.
 class _ReactionPickerSheet extends StatelessWidget {
   const _ReactionPickerSheet({required this.onPick});
   final ValueChanged<String> onPick;
@@ -1641,9 +1524,7 @@ class _ReactionPickerSheet extends StatelessWidget {
     HapticFeedback.lightImpact();
     return showModalBottomSheet<void>(
       context: context,
-      // Root navigator so the scrim covers the tab bar too — otherwise
-      // (inside ShellRoute) the sheet docks flush on top of the tab bar
-      // with no gap and the bar stays bright/interactive underneath.
+      // Root navigator so the scrim covers the tab bar too.
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1655,8 +1536,7 @@ class _ReactionPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Floating panel with a gap above the bottom edge — previously the
-    // sheet sat flush (viewPadding only) and looked stuck / "kurang ke atas".
+    // Floating panel with a gap above the bottom edge.
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return SafeArea(
       top: false,
@@ -1665,7 +1545,7 @@ class _ReactionPickerSheet extends StatelessWidget {
           AppSpacing.x4,
           0,
           AppSpacing.x4,
-          // 16px lift + home-indicator inset so it floats ke atas.
+          // 16px lift + home-indicator inset so the composer floats.
           AppSpacing.x4 + bottomInset,
         ),
         child: Container(
@@ -1728,8 +1608,7 @@ class _ReactionPickerSheet extends StatelessWidget {
   }
 }
 
-/// Compact `emoji count` chips under a reacted bubble. Highlighted when
-/// the current user reacted; tapping toggles their own reaction.
+/// Compact `emoji count` chips under a reacted bubble.
 class _ReactionChips extends StatelessWidget {
   const _ReactionChips({
     required this.reactions,
@@ -1748,8 +1627,7 @@ class _ReactionChips extends StatelessWidget {
       children: [
         for (final entry in reactions.entries)
           PressableScale(
-            onTap:
-                onToggle == null ? null : () => onToggle!(entry.key),
+            onTap: onToggle == null ? null : () => onToggle!(entry.key),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -1774,11 +1652,9 @@ class _ReactionChips extends StatelessWidget {
   }
 }
 
-// ─── Poll card ────────────────────────────────────────────────────────────────
+// Poll card.
 
-/// Inline single-choice poll card. Options render as tappable result
-/// bars (share-proportional fill, voter count, "you voted" highlight);
-/// tapping an option votes, tapping it again retracts the vote.
+/// Inline single-choice poll card.
 class _PollCard extends StatelessWidget {
   const _PollCard({
     required this.item,
@@ -1802,15 +1678,15 @@ class _PollCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.x4),
       child: Column(
-        crossAxisAlignment:
-            isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           if (item.showSenderName)
             Padding(
               padding: const EdgeInsets.only(left: 44, bottom: 4),
               child: GestureDetector(
-                onTap: () =>
-                    _openSenderProfile(context, item.poll.createdBy),
+                onTap: () => _openSenderProfile(context, item.poll.createdBy),
                 behavior: HitTestBehavior.opaque,
                 child: Text(
                   creatorName,
@@ -1823,8 +1699,9 @@ class _PollCard extends StatelessWidget {
               ),
             ),
           Row(
-            mainAxisAlignment:
-                isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isMine
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!isMine) const SizedBox(width: 36),
@@ -1867,9 +1744,9 @@ class _PollCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         poll.question,
-                        style: AppTypography.bodyMedium(context).copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: AppTypography.bodyMedium(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: AppSpacing.x2),
                       for (var i = 0; i < poll.options.length; i++)
@@ -1887,7 +1764,7 @@ class _PollCard extends StatelessWidget {
                         poll.totalVotes == 0
                             ? 'No votes yet · tap to vote'
                             : '${poll.totalVotes} vote${poll.totalVotes == 1 ? '' : 's'}'
-                                '${myVote == null ? ' · tap to vote' : ' · tap again to remove vote'}',
+                                  '${myVote == null ? ' · tap to vote' : ' · tap again to remove vote'}',
                         style: AppTypography.metaSub(context).copyWith(
                           fontSize: 11,
                           color: context.colors.textTertiary,
@@ -1956,8 +1833,9 @@ class _PollOption extends StatelessWidget {
                     child: Text(
                       label,
                       style: AppTypography.bodyMedium(context).copyWith(
-                        fontWeight:
-                            isMyVote ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isMyVote
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1966,9 +1844,9 @@ class _PollOption extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     '${(share * 100).round()}%',
-                    style: AppTypography.metaSub(context).copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: AppTypography.metaSub(
+                      context,
+                    ).copyWith(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1980,9 +1858,7 @@ class _PollOption extends StatelessWidget {
   }
 }
 
-/// Single chat photo — local file when the message was just captured on
-/// this device, network image otherwise. Shared by the bubble and the
-/// full-screen viewer so both paths stay in sync.
+/// Single chat photo — local file when the message was just captured on this device, network image otherwise.
 class _ChatImage extends StatelessWidget {
   const _ChatImage({
     required this.msg,
@@ -2014,8 +1890,9 @@ class _ChatImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
-      memCacheWidth:
-          (width * MediaQuery.devicePixelRatioOf(context)).round().clamp(1, 1200),
+      memCacheWidth: (width * MediaQuery.devicePixelRatioOf(context))
+          .round()
+          .clamp(1, 1200),
       fadeInDuration: const Duration(milliseconds: 150),
       fadeOutDuration: Duration.zero,
       progressIndicatorBuilder: (context, url, progress) => Container(
@@ -2050,9 +1927,7 @@ class _ChatImage extends StatelessWidget {
   }
 }
 
-/// Full-screen photo viewer behind a bubble tap: pinch-to-zoom via
-/// [InteractiveViewer], dark scrim, and a close button. Works for both
-/// local (just-sent) and remote (received) photos.
+/// Full-screen photo viewer behind a bubble tap: pinch-to-zoom via [InteractiveViewer], dark scrim, and a close button.
 class _ChatImageViewer extends StatelessWidget {
   const _ChatImageViewer({required this.msg});
   final ChatMessage msg;
@@ -2155,9 +2030,9 @@ class _LocationBubble extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               'Tap to open in Maps',
-              style: AppTypography.metaSub(context).copyWith(
-                color: fg.withValues(alpha: 0.75),
-              ),
+              style: AppTypography.metaSub(
+                context,
+              ).copyWith(color: fg.withValues(alpha: 0.75)),
             ),
           ],
         ),
@@ -2166,7 +2041,7 @@ class _LocationBubble extends StatelessWidget {
   }
 }
 
-// ─── Input bar ────────────────────────────────────────────────────────────────
+// Input bar.
 
 class _InputBar extends StatelessWidget {
   const _InputBar({
@@ -2183,8 +2058,7 @@ class _InputBar extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onAttach;
 
-  /// Archived threads render a read-only notice in place of the
-  /// composer — history stays visible above, writes are gone.
+  /// Archived threads render a read-only notice in place of the composer.
   final bool isArchived;
 
   @override
@@ -2223,10 +2097,9 @@ class _InputBar extends StatelessWidget {
               Flexible(
                 child: Text(
                   'Chat archived · history is read-only',
-                  style: AppTypography.bodyMedium(context).copyWith(
-                    fontSize: 14,
-                    color: context.colors.textSecondary,
-                  ),
+                  style: AppTypography.bodyMedium(
+                    context,
+                  ).copyWith(fontSize: 14, color: context.colors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -2293,16 +2166,14 @@ class _InputBar extends StatelessWidget {
                 maxLines: 4,
                 cursorColor: AppColors.primary,
                 cursorWidth: 1.5,
-                style: AppTypography.bodyMedium(context).copyWith(
-                  fontSize: 15,
-                  color: context.colors.textPrimary,
-                ),
+                style: AppTypography.bodyMedium(
+                  context,
+                ).copyWith(fontSize: 15, color: context.colors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Type message...',
-                  hintStyle: AppTypography.bodyMedium(context).copyWith(
-                    fontSize: 15,
-                    color: context.colors.textTertiary,
-                  ),
+                  hintStyle: AppTypography.bodyMedium(
+                    context,
+                  ).copyWith(fontSize: 15, color: context.colors.textTertiary),
                   filled: true,
                   fillColor: Colors.transparent,
                   border: InputBorder.none,
@@ -2346,14 +2217,9 @@ class _InputBar extends StatelessWidget {
   }
 }
 
+// Chat settings sheet.
 
-
-// ─── Chat settings sheet ─────────────────────────────────────────────────────
-
-/// Route for "View activity details" from chat: the viewer is a member
-/// here, so never the discover (join-flow) detail — host → manage,
-/// participant → joined, past lifecycle → review. Null (still loading)
-/// falls back to the discover route.
+/// Route for "View activity details" from chat: the viewer is a member here, so never the discover (join-flow) detail.
 String _detailsRoute(ActivityModel? activity, String activityId) {
   if (activity == null) return '/activity/$activityId';
   if (activity.status == ActivityStatus.past) {
@@ -2364,8 +2230,7 @@ String _detailsRoute(ActivityModel? activity, String activityId) {
   return '/activity/$activityId';
 }
 
-/// Bottom sheet behind the header settings button: view the activity,
-/// open its photo album, toggle the local mute, or report it.
+/// Bottom sheet behind the header settings button: view the activity, open its photo album, toggle the local mute.
 class _ChatSettingsSheet extends StatefulWidget {
   const _ChatSettingsSheet({
     required this.activityId,
@@ -2375,8 +2240,7 @@ class _ChatSettingsSheet extends StatefulWidget {
   final String activityId;
   final String activityTitle;
 
-  /// Viewer-context snapshot for routing "View activity details"
-  /// (host → manage, participant → joined, past → review).
+  /// Viewer-context snapshot for routing "View activity details" (host → manage, participant → joined, past → review).
   final ActivityModel? activity;
 
   static Future<void> show(
@@ -2402,8 +2266,7 @@ class _ChatSettingsSheet extends StatefulWidget {
 }
 
 class _ChatSettingsSheetState extends State<_ChatSettingsSheet> {
-  /// Null while the persisted value loads — the row hides until then
-  /// so a stale default never flashes.
+  /// Null while the persisted value loads — the row hides until then so a stale default never flashes.
   bool? _muted;
 
   @override
@@ -2454,7 +2317,10 @@ class _ChatSettingsSheetState extends State<_ChatSettingsSheet> {
             label: isHost ? 'Manage activity' : 'View activity details',
             onTap: () {
               Navigator.of(context).pop();
-              NavGuard.push(context, _detailsRoute(widget.activity, widget.activityId));
+              NavGuard.push(
+                context,
+                _detailsRoute(widget.activity, widget.activityId),
+              );
             },
           ),
           _SettingsRow(

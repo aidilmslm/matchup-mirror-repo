@@ -1,7 +1,4 @@
-/**
- * Client-side CSV export utility.
- * Converts an array of objects to a downloadable CSV file.
- */
+/** Client-side CSV export utility. */
 export function downloadCsv(rows: Record<string, unknown>[], filename: string): void {
   if (!rows.length) return;
 

@@ -1,3 +1,4 @@
+// Tests for broadcastsService.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const { apiFetchMock } = vi.hoisted(() => ({ apiFetchMock: vi.fn() }));
@@ -14,13 +15,23 @@ describe('broadcastsService.updateBroadcast (F3)', () => {
     apiFetchMock.mockResolvedValue({
       ok: true,
       data: {
-        id: 'b1', title: 'New', message: 'Hi', audience: 'All Users',
-        status: 'scheduled', scheduledAt: '2026-03-01T10:00:00Z',
-        sentAt: null, recipients: 0, createdBy: 'admin', createdAt: null,
+        id: 'b1',
+        title: 'New',
+        message: 'Hi',
+        audience: 'All Users',
+        status: 'scheduled',
+        scheduledAt: '2026-03-01T10:00:00Z',
+        sentAt: null,
+        recipients: 0,
+        createdBy: 'admin',
+        createdAt: null,
       },
     });
     const out = await updateBroadcast('b1', { title: 'New' });
-    expect(apiFetchMock).toHaveBeenCalledWith('/api/admin/broadcasts/b1', expect.objectContaining({ method: 'PATCH' }));
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/api/admin/broadcasts/b1',
+      expect.objectContaining({ method: 'PATCH' }),
+    );
     expect(out.status).toBe('Scheduled');
   });
 

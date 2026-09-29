@@ -31,18 +31,18 @@ void main() {
   late _MockTypingRepository typingRepo;
 
   ActivityModel testActivity() => ActivityModel(
-        id: 'Test Group',
-        title: 'Test Group',
-        sportType: 'Basketball',
-        description: 'A test activity',
-        location: 'Test Location',
-        distanceKm: 1.0,
-        dateTime: DateTime.now().add(const Duration(days: 1)),
-        skillLevel: 'Intermediate',
-        capacity: 10,
-        participantCount: 1,
-        hostName: 'Host',
-      );
+    id: 'Test Group',
+    title: 'Test Group',
+    sportType: 'Basketball',
+    description: 'A test activity',
+    location: 'Test Location',
+    distanceKm: 1.0,
+    dateTime: DateTime.now().add(const Duration(days: 1)),
+    skillLevel: 'Intermediate',
+    capacity: 10,
+    participantCount: 1,
+    hostName: 'Host',
+  );
 
   setUpAll(() {
     registerFallbackValue(<String>[]);
@@ -80,9 +80,9 @@ void main() {
     when(
       () => repo.watchMessages(any()),
     ).thenAnswer((_) => Stream.value(const <ChatMessage>[]));
-    when(
-      () => repo.watchReactions(any()),
-    ).thenAnswer((_) => Stream.value(const <String, Map<String, List<String>>>{}));
+    when(() => repo.watchReactions(any())).thenAnswer(
+      (_) => Stream.value(const <String, Map<String, List<String>>>{}),
+    );
     when(
       () => repo.watchPolls(any()),
     ).thenAnswer((_) => Stream.value(const <ChatPoll>[]));
@@ -116,33 +116,28 @@ void main() {
         ),
         GoRoute(
           path: '/joined-activity/:id',
-          builder: (_, state) => Scaffold(
-            body: Text('Joined ${state.pathParameters['id']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Joined ${state.pathParameters['id']}')),
         ),
         GoRoute(
           path: '/manage-activity/:id',
-          builder: (_, state) => Scaffold(
-            body: Text('Manage ${state.pathParameters['id']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Manage ${state.pathParameters['id']}')),
         ),
         GoRoute(
           path: '/past-activity/:id/review',
-          builder: (_, state) => Scaffold(
-            body: Text('Past ${state.pathParameters['id']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Past ${state.pathParameters['id']}')),
         ),
         GoRoute(
           path: '/activity/:id',
-          builder: (_, state) => Scaffold(
-            body: Text('Detail ${state.pathParameters['id']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Detail ${state.pathParameters['id']}')),
         ),
         GoRoute(
           path: '/player-profile/uid/:uid',
-          builder: (_, state) => Scaffold(
-            body: Text('Profile ${state.pathParameters['uid']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Profile ${state.pathParameters['uid']}')),
         ),
       ],
     );
@@ -248,41 +243,40 @@ void main() {
       expect(find.text('Open Chat'), findsOneWidget);
     });
 
-    testWidgets(
-      'should show the Check In button inside the check-in window',
-      (tester) async {
-        // Starts in 10 minutes — inside the 30-minute window.
-        final soon = testActivity();
-        when(() => activityRepo.byId(any())).thenAnswer(
-          (_) async => ActivityModel(
-            id: soon.id,
-            title: soon.title,
-            sportType: soon.sportType,
-            description: soon.description,
-            location: soon.location,
-            distanceKm: soon.distanceKm,
-            dateTime: DateTime.now().add(const Duration(minutes: 10)),
-            skillLevel: soon.skillLevel,
-            capacity: soon.capacity,
-            participantCount: soon.participantCount,
-            hostName: soon.hostName,
-          ),
-        );
+    testWidgets('should show the Check In button inside the check-in window', (
+      tester,
+    ) async {
+      // Starts in 10 minutes — inside the 30-minute window.
+      final soon = testActivity();
+      when(() => activityRepo.byId(any())).thenAnswer(
+        (_) async => ActivityModel(
+          id: soon.id,
+          title: soon.title,
+          sportType: soon.sportType,
+          description: soon.description,
+          location: soon.location,
+          distanceKm: soon.distanceKm,
+          dateTime: DateTime.now().add(const Duration(minutes: 10)),
+          skillLevel: soon.skillLevel,
+          capacity: soon.capacity,
+          participantCount: soon.participantCount,
+          hostName: soon.hostName,
+        ),
+      );
 
-        await pumpScreen(tester);
-        // Extra frames for the route transition + activity future
-        // so the banner rebuilds with the window evaluation.
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 300));
-        }
+      await pumpScreen(tester);
+      // Extra frames for the route transition + activity future
+      // so the banner rebuilds with the window evaluation.
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 300));
+      }
 
-        // NOTE: asserted by text — the explicit Semantics label merges
-        // with the child 'Check In' text node, so bySemanticsLabel
-        // does not match even though the button (and its a11y label)
-        // are in the tree.
-        expect(find.text('Check In'), findsOneWidget);
-      },
-    );
+      // NOTE: asserted by text — the explicit Semantics label merges
+      // with the child 'Check In' text node, so bySemanticsLabel
+      // does not match even though the button (and its a11y label)
+      // are in the tree.
+      expect(find.text('Check In'), findsOneWidget);
+    });
 
     testWidgets('should open settings with details + report rows', (
       tester,
@@ -354,14 +348,14 @@ void main() {
       expect(find.text('Manage Test Group'), findsOneWidget);
     });
 
-    testWidgets('should hide the Check In button outside the check-in window',
-      (tester) async {
-        // Default testActivity starts tomorrow — far outside the window.
-        await pumpScreen(tester);
+    testWidgets('should hide the Check In button outside the check-in window', (
+      tester,
+    ) async {
+      // Default testActivity starts tomorrow — far outside the window.
+      await pumpScreen(tester);
 
-        expect(find.text('Check In'), findsNothing);
-      },
-    );
+      expect(find.text('Check In'), findsNothing);
+    });
 
     testWidgets('should render a photo message inline, not as raw text', (
       tester,
@@ -374,7 +368,8 @@ void main() {
             senderId: 'alex',
             senderName: 'Alex',
             // Backend shape: the download URL travels as the text.
-            text: 'https://firebasestorage.googleapis.com/v0/b/app/o/x?alt=media',
+            text:
+                'https://firebasestorage.googleapis.com/v0/b/app/o/x?alt=media',
             sentAt: DateTime(today.year, today.month, today.day, 9, 0),
             imageUrl:
                 'https://firebasestorage.googleapis.com/v0/b/app/o/x?alt=media',
@@ -441,7 +436,8 @@ void main() {
 
     testWidgets('should call toggleReaction when an emoji is picked', (
       tester,
-    ) async {      final today = DateTime.now();
+    ) async {
+      final today = DateTime.now();
       when(() => repo.watchMessages(any())).thenAnswer(
         (_) => Stream.value([
           ChatMessage(
@@ -553,9 +549,9 @@ void main() {
           ),
         ]),
       );
-      when(() => repo.watchPolls(any())).thenAnswer(
-        (_) => Stream.value([testPoll()]),
-      );
+      when(
+        () => repo.watchPolls(any()),
+      ).thenAnswer((_) => Stream.value([testPoll()]));
 
       await pumpScreen(tester);
       await tester.pump(const Duration(milliseconds: 100));
@@ -571,12 +567,12 @@ void main() {
     testWidgets('should call votePoll when a poll option is tapped', (
       tester,
     ) async {
-      when(() => repo.watchMessages(any())).thenAnswer(
-        (_) => Stream.value(const <ChatMessage>[]),
-      );
-      when(() => repo.watchPolls(any())).thenAnswer(
-        (_) => Stream.value([testPoll()]),
-      );
+      when(
+        () => repo.watchMessages(any()),
+      ).thenAnswer((_) => Stream.value(const <ChatMessage>[]));
+      when(
+        () => repo.watchPolls(any()),
+      ).thenAnswer((_) => Stream.value([testPoll()]));
       when(
         () => repo.votePoll(
           activityId: any(named: 'activityId'),
@@ -600,9 +596,7 @@ void main() {
       ).called(1);
     });
 
-    testWidgets('tapping a sender avatar opens their profile', (
-      tester,
-    ) async {
+    testWidgets('tapping a sender avatar opens their profile', (tester) async {
       final today = DateTime.now();
       when(() => repo.watchMessages(any())).thenAnswer(
         (_) => Stream.value([
@@ -615,9 +609,9 @@ void main() {
           ),
         ]),
       );
-      when(() => repo.watchPolls(any())).thenAnswer(
-        (_) => Stream.value(const <ChatPoll>[]),
-      );
+      when(
+        () => repo.watchPolls(any()),
+      ).thenAnswer((_) => Stream.value(const <ChatPoll>[]));
 
       await pumpScreen(tester);
       await tester.pumpAndSettle();
@@ -633,8 +627,8 @@ void main() {
       expect(find.text('Profile alex-uid'), findsOneWidget);
     });
 
-    testWidgets('double-tapping a sender never duplicates the profile page',
-      (tester,
+    testWidgets('double-tapping a sender never duplicates the profile page', (
+      tester,
     ) async {
       final today = DateTime.now();
       when(() => repo.watchMessages(any())).thenAnswer(
@@ -648,9 +642,9 @@ void main() {
           ),
         ]),
       );
-      when(() => repo.watchPolls(any())).thenAnswer(
-        (_) => Stream.value(const <ChatPoll>[]),
-      );
+      when(
+        () => repo.watchPolls(any()),
+      ).thenAnswer((_) => Stream.value(const <ChatPoll>[]));
 
       await pumpScreen(tester);
       await tester.pumpAndSettle();
@@ -684,9 +678,9 @@ void main() {
       testWidgets('participant sees the joined detail, not discover', (
         tester,
       ) async {
-        when(() => activityRepo.byId(any())).thenAnswer(
-          (_) async => testActivity().copyWith(isParticipant: true),
-        );
+        when(
+          () => activityRepo.byId(any()),
+        ).thenAnswer((_) async => testActivity().copyWith(isParticipant: true));
 
         await openDetails(tester);
 
@@ -695,9 +689,9 @@ void main() {
       });
 
       testWidgets('host sees the manage screen', (tester) async {
-        when(() => activityRepo.byId(any())).thenAnswer(
-          (_) async => testActivity().copyWith(isHost: true),
-        );
+        when(
+          () => activityRepo.byId(any()),
+        ).thenAnswer((_) async => testActivity().copyWith(isHost: true));
 
         await openDetails(tester, rowLabel: 'Manage activity');
 

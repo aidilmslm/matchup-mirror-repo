@@ -21,7 +21,7 @@ import '../../report/presentation/report_user_sheet.dart';
 import '../domain/activity_participant.dart';
 import '../../discovery/domain/activity_model.dart';
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// Data.
 
 typedef _ReviewData = ({
   ActivityModel activity,
@@ -30,22 +30,22 @@ typedef _ReviewData = ({
 
 final _reviewDataProvider = FutureProvider.autoDispose
     .family<_ReviewData, String>((ref, activityId) async {
-  final repo = ref.watch(activityRepositoryProvider);
-  final activity = await repo.byId(activityId);
-  if (activity == null) throw StateError('Activity not found');
-  final participants = await repo.participants(activityId);
-  return (activity: activity, participants: participants);
-});
+      final repo = ref.watch(activityRepositoryProvider);
+      final activity = await repo.byId(activityId);
+      if (activity == null) throw StateError('Activity not found');
+      final participants = await repo.participants(activityId);
+      return (activity: activity, participants: participants);
+    });
 
-/// Whether the viewer already rated this activity. Drives the
-/// "Update review" wording — the backend upserts idempotently, so a
-/// second submit edits rather than duplicates.
-final _ratedProvider = FutureProvider.autoDispose
-    .family<bool, String>((ref, activityId) async {
+/// Whether the viewer already rated this activity.
+final _ratedProvider = FutureProvider.autoDispose.family<bool, String>((
+  ref,
+  activityId,
+) async {
   return ref.watch(ratingsRepositoryProvider).hasRated(activityId);
 });
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class PastActivityReviewScreen extends ConsumerStatefulWidget {
   const PastActivityReviewScreen({super.key, required this.activityId});
@@ -60,6 +60,7 @@ class _PastActivityReviewScreenState
     extends ConsumerState<PastActivityReviewScreen> {
   int _stars = 4;
   final _commentController = TextEditingController();
+
   /// userId → star rating (1–5). Empty until user rates that participant.
   final Map<String, int> _participantRatings = {};
   bool _submitting = false;
@@ -94,8 +95,7 @@ class _PastActivityReviewScreenState
   }) async {
     if (_submitting) return;
     final repo = ref.read(ratingsRepositoryProvider);
-    // Defensive self-exclusion — the visible list is already filtered,
-    // but never send our own uid (backend rejects self-rating too).
+    // Defensive self-exclusion — the visible list is already filtered.
     final myUid = ref.read(myProfileProvider).valueOrNull?.id;
 
     final trimmedComment = _commentController.text.trim();
@@ -156,15 +156,11 @@ class _PastActivityReviewScreenState
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_reviewDataProvider(widget.activityId));
-    // Already-rated state loads in parallel. Distinguish loading (disabled
-    // "Loading…" submit) from loaded-not-rated ("Submit Review") vs rated
-    // ("Update Review") so the button never flickers from Submit → Update.
+    // Already-rated state loads in parallel.
     final ratedAsync = ref.watch(_ratedProvider(widget.activityId));
     final ratedLoading = ratedAsync.isLoading;
     final alreadyRated = ratedAsync.valueOrNull ?? false;
-    // Current user is never rateable (UX mirror of the backend
-    // self-rating rejection). While the profile is still loading show
-    // everyone rather than flashing a filtered list.
+    // Current user is never rateable (UX mirror of the backend self-rating rejection).
     final myUid = ref.watch(myProfileProvider).valueOrNull?.id;
 
     return AppScaffold(
@@ -175,17 +171,12 @@ class _PastActivityReviewScreenState
         loading: () => const SkeletonList(count: 4),
         error: (_, _) => ErrorRetry(
           message: 'Could not load this activity.',
-          onRetry: () =>
-              ref.invalidate(_reviewDataProvider(widget.activityId)),
+          onRetry: () => ref.invalidate(_reviewDataProvider(widget.activityId)),
         ),
         data: (data) {
-          // The host is rateable too, but isn't guaranteed a roster row
-          // (hosts don't always carry a participant doc) — union them in
-          // explicitly so "rate the host" is never missing. Self is still
-          // excluded below.
-          final withHost = data.participants.any(
-                (p) => p.userId == data.activity.hostId,
-              )
+          // The host is rateable too, but isn't guaranteed a roster row (hosts don't always carry a participant doc).
+          final withHost =
+              data.participants.any((p) => p.userId == data.activity.hostId)
               ? data.participants
               : [
                   ...data.participants,
@@ -206,11 +197,9 @@ class _PastActivityReviewScreenState
           final submitLabel = ratedLoading
               ? 'Loading…'
               : alreadyRated
-                  ? 'Update Review'
-                  : 'Submit Review';
-          // Called-off games land here from the Past tab too, but there
-          // is nothing to rate — show the summary read-only instead of
-          // the review form.
+              ? 'Update Review'
+              : 'Submit Review';
+          // Called-off games land here from the Past tab too, but there is nothing to rate.
           final isCancelled =
               data.activity.lifecycleStatus.toLowerCase() == 'cancelled';
           if (isCancelled) {
@@ -239,76 +228,72 @@ class _PastActivityReviewScreenState
             );
           }
           return Column(
-          children: [
-            // Header
-            const _Header(),
-            // Scrollable content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.x5,
-                  AppSpacing.x4,
-                  AppSpacing.x5,
-                  AppSpacing.x6,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Activity summary card
-                    _SummaryCard(activity: data.activity),
-                    const SizedBox(height: AppSpacing.x5),
-
-                    // Already-rated notice — resubmitting edits
-                    // the previous review (backend upserts).
-                    if (alreadyRated) ...[
-                      _RatedNotice(),
+            children: [
+              // Header
+              const _Header(),
+              // Scrollable content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.x5,
+                    AppSpacing.x4,
+                    AppSpacing.x5,
+                    AppSpacing.x6,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Activity summary card
+                      _SummaryCard(activity: data.activity),
                       const SizedBox(height: AppSpacing.x5),
-                    ],
 
-                    // Star rating + comment
-                    _RateActivitySection(
-                      stars: _stars,
-                      onStarTap: (i) => setState(() => _stars = i),
-                      commentController: _commentController,
-                    ),
-                    const SizedBox(height: AppSpacing.x5),
+                      // Already-rated notice — resubmitting edits the previous review (backend upserts).
+                      if (alreadyRated) ...[
+                        _RatedNotice(),
+                        const SizedBox(height: AppSpacing.x5),
+                      ],
 
-                    // Rate participants
-                    _RateParticipantsSection(
-                      participants: rateable,
-                      ratings: _participantRatings,
-                      onRate: (id, stars) => setState(
-                        () => _participantRatings[id] = stars,
+                      // Star rating + comment
+                      _RateActivitySection(
+                        stars: _stars,
+                        onStarTap: (i) => setState(() => _stars = i),
+                        commentController: _commentController,
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.x2),
-                  ],
+                      const SizedBox(height: AppSpacing.x5),
+
+                      // Rate participants
+                      _RateParticipantsSection(
+                        participants: rateable,
+                        ratings: _participantRatings,
+                        onRate: (id, stars) =>
+                            setState(() => _participantRatings[id] = stars),
+                      ),
+                      const SizedBox(height: AppSpacing.x2),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Pinned submit button — loading disables with "Loading…",
-            // "Update" wording when a previous review exists (resubmit
-            // edits it), otherwise "Submit Review".
-            _SubmitBar(
-              submitting: _submitting || ratedLoading,
-              label: submitLabel,
-              onTap: !ratedLoading && _canSubmit()
-                  ? () => _submit(
+              // Pinned submit button — loading disables with "Loading…", "Update" wording when a previous review.
+              _SubmitBar(
+                submitting: _submitting || ratedLoading,
+                label: submitLabel,
+                onTap: !ratedLoading && _canSubmit()
+                    ? () => _submit(
                         sportType: data.activity.sportType,
                         participants: rateable,
                       )
-                  : null,
-            ),
-          ],
-        );
+                    : null,
+              ),
+            ],
+          );
         },
       ),
     );
   }
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
+// Header.
 
 class _Header extends StatelessWidget {
   const _Header({this.title = 'Activity Review'});
@@ -365,7 +350,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ─── Summary card ─────────────────────────────────────────────────────────────
+// Summary card.
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.activity});
@@ -425,8 +410,9 @@ class _SummaryCard extends StatelessWidget {
                 // Title
                 Text(
                   activity.title,
-                  style: AppTypography.labelField(context)
-                      .copyWith(fontSize: 15),
+                  style: AppTypography.labelField(
+                    context,
+                  ).copyWith(fontSize: 15),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -435,8 +421,11 @@ class _SummaryCard extends StatelessWidget {
                 // Date
                 Row(
                   children: [
-                    Icon(Icons.access_time_rounded,
-                        size: 13, color: context.colors.textTertiary),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 13,
+                      color: context.colors.textTertiary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       dateFmt.format(activity.dateTime),
@@ -449,8 +438,11 @@ class _SummaryCard extends StatelessWidget {
                 // Location
                 Row(
                   children: [
-                    Icon(Icons.place_outlined,
-                        size: 13, color: context.colors.textTertiary),
+                    Icon(
+                      Icons.place_outlined,
+                      size: 13,
+                      color: context.colors.textTertiary,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -479,8 +471,11 @@ class _SummaryCard extends StatelessWidget {
       ),
     ),
     alignment: Alignment.center,
-    child: Icon(Icons.sports,
-        size: 28, color: AppColors.textOnPrimary.withValues(alpha: 0.5)),
+    child: Icon(
+      Icons.sports,
+      size: 28,
+      color: AppColors.textOnPrimary.withValues(alpha: 0.5),
+    ),
   );
 }
 
@@ -504,14 +499,15 @@ class _Pill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTypography.chipLabel(context)
-            .copyWith(fontSize: 10, color: textColor),
+        style: AppTypography.chipLabel(
+          context,
+        ).copyWith(fontSize: 10, color: textColor),
       ),
     );
   }
 }
 
-// ─── Rate activity section ────────────────────────────────────────────────────
+// Rate activity section.
 
 class _RateActivitySection extends StatelessWidget {
   const _RateActivitySection({
@@ -592,9 +588,9 @@ class _RateActivitySection extends StatelessWidget {
             style: AppTypography.bodyReading(context),
             decoration: InputDecoration(
               hintText: 'Share your experience...',
-              hintStyle: AppTypography.bodyReading(context).copyWith(
-                color: context.colors.textTertiary,
-              ),
+              hintStyle: AppTypography.bodyReading(
+                context,
+              ).copyWith(color: context.colors.textTertiary),
               filled: true,
               fillColor: Colors.transparent,
               border: InputBorder.none,
@@ -611,7 +607,7 @@ class _RateActivitySection extends StatelessWidget {
   }
 }
 
-// ─── Rate participants section ────────────────────────────────────────────────
+// Rate participants section.
 
 class _RateParticipantsSection extends StatelessWidget {
   const _RateParticipantsSection({
@@ -637,37 +633,34 @@ class _RateParticipantsSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.x3),
         if (participants.isEmpty)
-          Text(
-            'No one else to rate',
-            style: AppTypography.metaSub(context),
-          )
+          Text('No one else to rate', style: AppTypography.metaSub(context))
         else
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: context.colors.border),
-            boxShadow: AppShadows.card,
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < participants.length; i++) ...[
-                _ParticipantRow(
-                  item: participants[i],
-                  stars: ratings[participants[i].userId] ?? 0,
-                  onRate: (s) => onRate(participants[i].userId, s),
-                ),
-                if (i < participants.length - 1)
-                  Divider(
-                    height: 1,
-                    color: context.colors.border,
-                    indent: AppSpacing.x4,
-                    endIndent: AppSpacing.x4,
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: context.colors.border),
+              boxShadow: AppShadows.card,
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < participants.length; i++) ...[
+                  _ParticipantRow(
+                    item: participants[i],
+                    stars: ratings[participants[i].userId] ?? 0,
+                    onRate: (s) => onRate(participants[i].userId, s),
                   ),
+                  if (i < participants.length - 1)
+                    Divider(
+                      height: 1,
+                      color: context.colors.border,
+                      indent: AppSpacing.x4,
+                      endIndent: AppSpacing.x4,
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -681,7 +674,7 @@ class _ParticipantRow extends StatelessWidget {
   });
 
   final ActivityParticipant item;
-  final int stars;       // 0 = not yet rated
+  final int stars; // 0 = not yet rated
   final ValueChanged<int> onRate;
 
   @override
@@ -728,16 +721,16 @@ class _ParticipantRow extends StatelessWidget {
                   child: Icon(
                     filled ? Icons.star_rounded : Icons.star_border_rounded,
                     size: 22,
-                    color: filled ? context.colors.warningText : context.colors.textTertiary,
+                    color: filled
+                        ? context.colors.warningText
+                        : context.colors.textTertiary,
                   ),
                 ),
               );
             }),
           ),
 
-          // Report — same sheet as profile/DM, reachable right where
-          // the bad experience happened. Hidden when the uid is
-          // unknown (never report a bare display name).
+          // Report — same sheet as profile/DM, reachable right where the bad experience happened.
           if (item.userId.isNotEmpty)
             AppTappable(
               semanticLabel: 'Report ${item.name}',
@@ -763,10 +756,9 @@ class _ParticipantRow extends StatelessWidget {
   }
 }
 
-// ─── Submit bar ───────────────────────────────────────────────────────────────
+// Submit bar.
 
 /// Shown when the viewer already rated — resubmitting edits.
-/// Read-only notice for called-off games: no rating form, no submit.
 class _CancelledNotice extends StatelessWidget {
   const _CancelledNotice();
 
@@ -801,7 +793,8 @@ class _CancelledNotice extends StatelessWidget {
   }
 }
 
-class _RatedNotice extends StatelessWidget {  @override
+class _RatedNotice extends StatelessWidget {
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.x4),
@@ -833,15 +826,16 @@ class _RatedNotice extends StatelessWidget {  @override
 }
 
 class _SubmitBar extends StatelessWidget {
-  const _SubmitBar(
-      {required this.onTap, required this.submitting, required this.label});
+  const _SubmitBar({
+    required this.onTap,
+    required this.submitting,
+    required this.label,
+  });
 
   /// `null` disables the button (greyed-out state, no press feedback).
-  /// Otherwise the press triggers the actual submission.
   final VoidCallback? onTap;
 
-  /// When true, the button shows a spinner instead of the label and
-  /// ignores taps. The parent owns the state so we re-render automatically.
+  /// When true, the button shows a spinner instead of the label and ignores taps.
   final bool submitting;
 
   /// "Submit Review" for fresh reviews, "Update Review" for edits.

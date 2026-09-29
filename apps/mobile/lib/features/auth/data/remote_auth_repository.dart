@@ -7,39 +7,30 @@ import '../../../core/storage/secure_token_store.dart';
 import 'auth_repository.dart';
 
 /// Firebase Auth REST API base URL.
-const _firebaseAuthBase =
-    'https://identitytoolkit.googleapis.com/v1/accounts';
+const _firebaseAuthBase = 'https://identitytoolkit.googleapis.com/v1/accounts';
 
 /// HTTP-backed [AuthRepository] using the Firebase Authentication REST API.
-///
 /// No Firebase Flutter SDK required — all calls go through plain HTTP.
-/// The ID token returned by Firebase is what the backend's [requireAuth]
-/// middleware verifies via `firebase-admin verifyIdToken`.
-///
-/// Flow:
-///   1. signIn/register → Firebase REST → get idToken + refreshToken
-///   2. Store tokens in [SecureTokenStore] (via [AuthStateNotifier.signIn])
-///   3. [ApiClient] reads idToken for every backend request
-///   4. On 401 → refresh via securetoken endpoint → retry once
+/// Flow: signIn/register → Firebase REST → store idToken + refreshToken.
 class RemoteAuthRepository implements AuthRepository {
   RemoteAuthRepository({Dio? firebaseClient, ApiClient? apiClient})
-      : _fb = firebaseClient ?? _buildFirebaseDio(),
-        _api = apiClient ?? ApiClient.instance;
+    : _fb = firebaseClient ?? _buildFirebaseDio(),
+      _api = apiClient ?? ApiClient.instance;
 
   final Dio _fb;
   final ApiClient _api;
 
   static Dio _buildFirebaseDio() => Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 12),
-          receiveTimeout: const Duration(seconds: 12),
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 12),
+      receiveTimeout: const Duration(seconds: 12),
+      headers: {'Content-Type': 'application/json'},
+    ),
+  );
 
   String get _key => Env.firebaseWebApiKey;
 
-  // ─── AuthRepository ────────────────────────────────────────────────────────
+  // AuthRepository.
 
   @override
   Future<AuthResult> signIn({
@@ -56,9 +47,7 @@ class RemoteAuthRepository implements AuthRepository {
         },
       );
       final result = _parseFirebaseResult(res.data as Map<String, dynamic>);
-      // Self-heal accounts whose Firestore profile is missing (e.g.
-      // registered before the bootstrap call existed, or data wiped):
-      // `POST /users/me` is idempotent — a no-op when the doc exists.
+      // Self-heal accounts whose Firestore profile is missing.
       await _ensureBackendProfile(result);
       return result;
     } on DioException catch (e) {
@@ -99,21 +88,16 @@ class RemoteAuthRepository implements AuthRepository {
         );
       } catch (e) {
         // Non-fatal — display name update can fail silently
-        debugPrint('[RemoteAuthRepository.register] displayName update failed: $e');
+        debugPrint(
+          '[RemoteAuthRepository.register] displayName update failed: $e',
+        );
       }
 
-      // 3. Bootstrap the user document in the backend's Firestore. The
-      // canonical route is `POST /api/users/me` with `{ email }` — the
-      // auth middleware resolves the auth uid from the Bearer token, so
-      // the fresh tokens must be persisted BEFORE this call (the
-      // ApiClient interceptor reads SecureTokenStore at request time;
-      // AuthStateNotifier only saves them after register() returns).
+      // Bootstrap the user document in the backend's Firestore.
       await _ensureBackendProfile(
         result,
         email: email.trim().toLowerCase(),
-        // The bootstrap only stores authUid + email — without this the
-        // sign-up name would live solely in Firebase Auth until the
-        // user edits their profile.
+        // The bootstrap only stores authUid + email.
         displayName: name.trim(),
       );
 
@@ -129,39 +113,29 @@ class RemoteAuthRepository implements AuthRepository {
   @override
   Future<void> forgotPassword({required String email}) async {
     try {
-      // Firebase email/password reset is link-based: this sends an email
-      // containing a reset link that opens a Firebase-hosted page where
-      // the user sets a new password. There is no in-app OTP step, so
-      // the app navigates to a "check your email" confirmation screen
-      // after this call succeeds.
+      // Firebase email/password reset is link-based.
       await _fb.post(
         '$_firebaseAuthBase:sendOobCode?key=$_key',
-        data: {
-          'requestType': 'PASSWORD_RESET',
-          'email': email.trim(),
-        },
+        data: {'requestType': 'PASSWORD_RESET', 'email': email.trim()},
       );
     } on DioException catch (e) {
       throw _toAuthException(e);
     } catch (e) {
       debugPrint('[RemoteAuthRepository.forgotPassword] unexpected: $e');
       throw const AuthException(
-          'Could not send reset email. Please try again.');
+        'Could not send reset email. Please try again.',
+      );
     }
   }
 
   @override
   Future<void> signOut() async {
-    // Firebase REST API has no server-side sign-out — tokens are cleared
-    // locally by AuthStateNotifier.signOut().
+    // Firebase REST API has no server-side sign-out — tokens are cleared locally by AuthStateNotifier.signOut().
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  // Helpers.
 
-  /// Persists [result]'s tokens, then ensures the Firestore user profile
-  /// exists via idempotent `POST /api/users/me`. Failures are swallowed
-  /// (logged) so a backend blip never blocks sign-in/register — the next
-  /// sign-in retries the bootstrap.
+  /// Persists [result]'s tokens, then ensures the Firestore user profile exists via idempotent `POST /api/users/me`.
   Future<void> _ensureBackendProfile(
     AuthResult result, {
     String? email,
@@ -173,17 +147,9 @@ class RemoteAuthRepository implements AuthRepository {
         SecureTokenStore.instance.saveRefreshToken(result.refreshToken),
         SecureTokenStore.instance.saveUserId(result.userId),
       ]);
-      await _api.dio.post(
-        '/users/me',
-        data: {
-          'email': ?email,
-        },
-      );
+      await _api.dio.post('/users/me', data: {'email': ?email});
       if (displayName != null && displayName.isNotEmpty) {
-        await _api.dio.patch(
-          '/users/me',
-          data: {'displayName': displayName},
-        );
+        await _api.dio.patch('/users/me', data: {'displayName': displayName});
       }
     } catch (e) {
       debugPrint('[RemoteAuthRepository] backend profile ensure failed: $e');
@@ -210,43 +176,33 @@ class RemoteAuthRepository implements AuthRepository {
   }
 
   AuthException _toAuthException(DioException e) {
-    // Firebase REST errors: { "error": { "message": "EMAIL_NOT_FOUND" } }
-    // Message sometimes has suffix detail: "WEAK_PASSWORD : Password should be..."
+    // Firebase REST errors: { "error": { "message": "EMAIL_NOT_FOUND" } } Message sometimes has suffix detail:.
     final data = e.response?.data;
     final rawMsg = data is Map
         ? (data['error'] as Map?)?.tryGet<String>('message')
         : null;
 
-    // Strip suffix after ' : ' so matching is stable regardless of Firebase
-    // appending extra detail (e.g. "WEAK_PASSWORD : Password should be at least 6 characters")
+    // Strip suffix after ' : ' so matching is stable regardless of Firebase appending extra detail.
     final firebaseCode = rawMsg?.split(' : ').first.trim();
 
     final userMsg = switch (firebaseCode) {
       'EMAIL_NOT_FOUND' ||
       'INVALID_PASSWORD' ||
-      'INVALID_LOGIN_CREDENTIALS' =>
-        'Incorrect email or password.',
-      'EMAIL_EXISTS' =>
-        'An account with this email already exists.',
-      'WEAK_PASSWORD' =>
-        'Password must be at least 6 characters.',
-      'INVALID_EMAIL' =>
-        'Please enter a valid email address.',
-      'USER_DISABLED' =>
-        'This account has been disabled.',
+      'INVALID_LOGIN_CREDENTIALS' => 'Incorrect email or password.',
+      'EMAIL_EXISTS' => 'An account with this email already exists.',
+      'WEAK_PASSWORD' => 'Password must be at least 6 characters.',
+      'INVALID_EMAIL' => 'Please enter a valid email address.',
+      'USER_DISABLED' => 'This account has been disabled.',
       'TOO_MANY_ATTEMPTS_TRY_LATER' =>
         'Too many attempts. Please try again later.',
-      'MISSING_PASSWORD' =>
-        'Password is required.',
-      'MISSING_EMAIL' =>
-        'Email is required.',
-      'USER_NOT_FOUND' =>
-        'Account not found.',
+      'MISSING_PASSWORD' => 'Password is required.',
+      'MISSING_EMAIL' => 'Email is required.',
+      'USER_NOT_FOUND' => 'Account not found.',
       'TOKEN_EXPIRED' ||
-      'INVALID_ID_TOKEN' =>
-        'Session expired. Please sign in again.',
-      _ when e.type == DioExceptionType.connectionError ||
-            e.type == DioExceptionType.connectionTimeout =>
+      'INVALID_ID_TOKEN' => 'Session expired. Please sign in again.',
+      _
+          when e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout =>
         'Cannot reach the server. Check your internet connection.',
       _ => 'Authentication failed. Please try again.',
     };
@@ -255,7 +211,7 @@ class RemoteAuthRepository implements AuthRepository {
   }
 }
 
-// ─── Extension helpers ────────────────────────────────────────────────────────
+// Extension helpers.
 
 extension _MapTryGet on Map {
   T? tryGet<T>(String key) {

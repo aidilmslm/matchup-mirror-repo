@@ -11,7 +11,10 @@ void main() {
     test('isEmpty when sportSkills set, even with all-any', () {
       const f = DiscoveryFilter(
         sportSkills: [
-          DiscoverySportSkill(sport: 'Basketball', skill: DiscoverySkillLevel.any),
+          DiscoverySportSkill(
+            sport: 'Basketball',
+            skill: DiscoverySkillLevel.any,
+          ),
         ],
       );
       expect(f.isEmpty, isFalse);
@@ -20,8 +23,14 @@ void main() {
     test('sportFiltersQueryParam joins Sport:skill with commas', () {
       const f = DiscoveryFilter(
         sportSkills: [
-          DiscoverySportSkill(sport: 'Basketball', skill: DiscoverySkillLevel.intermediate),
-          DiscoverySportSkill(sport: 'Tennis', skill: DiscoverySkillLevel.advanced),
+          DiscoverySportSkill(
+            sport: 'Basketball',
+            skill: DiscoverySkillLevel.intermediate,
+          ),
+          DiscoverySportSkill(
+            sport: 'Tennis',
+            skill: DiscoverySkillLevel.advanced,
+          ),
         ],
       );
       expect(
@@ -34,7 +43,10 @@ void main() {
       const f = DiscoveryFilter(datePreset: DiscoveryDatePreset.today);
       final range = f.dateRange;
       expect(range.startAfter, isNotNull);
-      expect(range.startAfter!.endsWith('Z') || range.startAfter!.contains('+'), isTrue);
+      expect(
+        range.startAfter!.endsWith('Z') || range.startAfter!.contains('+'),
+        isTrue,
+      );
       expect(range.startBefore, isNotNull);
     });
 
@@ -62,10 +74,7 @@ void main() {
         datePreset: DiscoveryDatePreset.today,
         startAfter: explicit,
       );
-      expect(
-        f.dateRange.startAfter,
-        explicit.toUtc().toIso8601String(),
-      );
+      expect(f.dateRange.startAfter, explicit.toUtc().toIso8601String());
     });
 
     test('dateRange for anyTime has no bounds', () {
@@ -77,7 +86,10 @@ void main() {
     test('copyWith preserves unset fields', () {
       const f = DiscoveryFilter(
         sportSkills: [
-          DiscoverySportSkill(sport: 'Basketball', skill: DiscoverySkillLevel.any),
+          DiscoverySportSkill(
+            sport: 'Basketball',
+            skill: DiscoverySkillLevel.any,
+          ),
         ],
       );
       final f2 = f.copyWith(maxDistanceKm: 5);

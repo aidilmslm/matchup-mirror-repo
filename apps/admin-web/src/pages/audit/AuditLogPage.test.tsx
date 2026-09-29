@@ -121,8 +121,7 @@ describe('AuditLogPage', () => {
     expect(list().getByText('Member action')).toBeInTheDocument();
     expect(list().getByText('Sports action')).toBeInTheDocument();
 
-    // Two "Sports" buttons exist (filter tab + sidebar breakdown) — the
-    // filter tab is the first one in DOM order.
+    // Two "Sports" buttons exist (filter tab + sidebar breakdown) — the filter tab is the first one in DOM order.
     await user.click(screen.getAllByRole('button', { name: 'Sports' })[0]);
 
     expect(list().queryByText('Member action')).not.toBeInTheDocument();
@@ -145,9 +144,7 @@ describe('AuditLogPage', () => {
 
     await user.type(screen.getByPlaceholderText('Search actions…'), 'bob');
 
-    // "Recent Activity" in the sidebar is intentionally unfiltered (shows
-    // the global 5 most recent regardless of search/category), so only
-    // the main list is expected to narrow down.
+    // "Recent Activity" in the sidebar is intentionally unfiltered.
     expect(list().queryByText('Suspended alice')).not.toBeInTheDocument();
     expect(list().getByText('Deleted bob')).toBeInTheDocument();
   });

@@ -26,20 +26,104 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const routes = [
-  { path: '/login',                 element: <LoginPage /> },
-  { path: '/',                      element: <Shell><DashboardPage /></Shell> },
-  { path: '/members',               element: <Shell><MembersPage /></Shell> },
-  { path: '/members/:id',           element: <Shell><MemberDetailPage /></Shell> },
-  { path: '/activities',            element: <Shell><ActivitiesPage /></Shell> },
-  { path: '/activities/:id',        element: <Shell><ActivityDetailPage /></Shell> },
-  { path: '/reports',               element: <Shell><ReportsPage /></Shell> },
-  { path: '/broadcasts',            element: <Shell><BroadcastsPage /></Shell> },
-  { path: '/sports',                element: <Shell><SportsPage /></Shell> },
-  { path: '/analytics',             element: <Shell><AnalyticsPage /></Shell> },
-  { path: '/appeals',               element: <Shell><AppealsPage /></Shell> },
-  { path: '/notification-templates',element: <Shell><NotificationTemplatesPage /></Shell> },
-  { path: '/audit-log',             element: <Shell><AuditLogPage /></Shell> },
-  { path: '*',                      element: <NotFoundPage /> },
+  { path: '/login', element: <LoginPage /> },
+  {
+    path: '/',
+    element: (
+      <Shell>
+        <DashboardPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/members',
+    element: (
+      <Shell>
+        <MembersPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/members/:id',
+    element: (
+      <Shell>
+        <MemberDetailPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/activities',
+    element: (
+      <Shell>
+        <ActivitiesPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/activities/:id',
+    element: (
+      <Shell>
+        <ActivityDetailPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/reports',
+    element: (
+      <Shell>
+        <ReportsPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/broadcasts',
+    element: (
+      <Shell>
+        <BroadcastsPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/sports',
+    element: (
+      <Shell>
+        <SportsPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/analytics',
+    element: (
+      <Shell>
+        <AnalyticsPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/appeals',
+    element: (
+      <Shell>
+        <AppealsPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/notification-templates',
+    element: (
+      <Shell>
+        <NotificationTemplatesPage />
+      </Shell>
+    ),
+  },
+  {
+    path: '/audit-log',
+    element: (
+      <Shell>
+        <AuditLogPage />
+      </Shell>
+    ),
+  },
+  { path: '*', element: <NotFoundPage /> },
 ];
 
 const router = createBrowserRouter(routes);

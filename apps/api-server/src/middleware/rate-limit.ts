@@ -16,16 +16,7 @@ interface WindowCounter {
   resetAt: number;
 }
 
-/**
- * Pluggable counter backend for the fixed-window limiter.
- *
- * The default is process memory (`MemoryRateLimitStore`), which is why
- * limits are currently enforced per instance (see note on
- * `createRateLimiter`). A Redis (or Firestore-transaction) implementation
- * behind this interface makes limits global without touching the
- * middleware — the shape is deliberately minimal (single increment +
- * opportunistic expiry) so it maps 1:1 onto `INCR` + `PEXPIRE`.
- */
+/** Counter backend for the fixed-window limiter. */
 export interface RateLimitStore {
   /** Atomically increments the window for `key`, returning the new state. */
   hit(key: string, now: number, windowMs: number): WindowCounter;
@@ -60,22 +51,8 @@ function clientIp(req: Request): string {
   return req.ip ?? req.socket?.remoteAddress ?? 'unknown';
 }
 
-/**
- * Small per-IP fixed-window rate limiter. No dependencies.
- *
- * NOTE (multi-instance limitation): the default store lives in process
- * memory, so limits are enforced per instance, not globally. Behind N
- * replicas each instance allows up to `max` requests per window (i.e. up
- * to N*max total). Pass a shared `RateLimitStore` (e.g. Redis) via
- * options to enforce one global budget. If strict global limits are ever
- * needed, replace the Map with a shared store (e.g. Redis/Firestore
- * atomic increments). For this app's threat model (abuse dampening,
- * upstream Nominatim policy compliance) per-instance limiting is
- * sufficient.
- */
-export function createRateLimiter(
-  options: RateLimitOptions & { store?: RateLimitStore },
-) {
+/** Per-IP fixed-window limiter. */
+export function createRateLimiter(options: RateLimitOptions & { store?: RateLimitStore }) {
   const {
     windowMs,
     max,
@@ -92,8 +69,7 @@ export function createRateLimiter(
 
     const now = Date.now();
 
-    // Opportunistic cleanup of expired windows so the store cannot grow
-    // unboundedly from one-off scanner IPs.
+    // Drop expired windows so one-off scanner IPs cannot grow the store.
     store.sweep(now);
 
     const key = clientIp(req);
@@ -120,42 +96,21 @@ export function createRateLimiter(
   };
 }
 
-/**
- * Global default: 1200 req / 15 min per IP (avg ~80/min). Health checks
- * are skipped so load balancers / uptime probes are never throttled.
- *
- * Budget math (per docs/architecture/scalability.md): an open group chat
- * with the HTTP fallback costs ~20 req/min (messages every 3s) plus the
- * typing poll at ~30 req/min per roster member, so a 5-member chat alone
- * is ~170 req/min sustained. The old 300/15min budget (avg 20/min)
- * 429'd normal single-chat usage — including unrelated routes like
- * `GET /users/me` that share the per-IP window — which is why clients
- * saw `RATE_LIMITED` on profile reads while a chat was open.
- */
+/** Global default: 1200 req / 15 min per IP. Health checks are skipped so load-balancer probes are never throttled. */
 export const GLOBAL_RATE_LIMIT: RateLimitOptions = {
   windowMs: 15 * 60 * 1000,
   max: 1200,
   skip: (req) => req.path === '/api/health',
 };
 
-/**
- * Place autocomplete proxies Nominatim, whose usage policy asks for at most
- * ~1 req/s. 60 req / 1 min per IP matches that average while tolerating
- * debounced keystroke bursts from the venue picker.
- */
+/** Places proxy: 60 req/min per IP matches the upstream ~1 req/s policy. */
 export const AUTOCOMPLETE_RATE_LIMIT: RateLimitOptions = {
   windowMs: 60 * 1000,
   max: 60,
   message: 'Too many place searches, please slow down.',
 };
 
-/**
- * Typing is polled (GET /api/typing/:activityId/:uid every ~2s per roster
- * member = ~30 req/min per member), so this is a burst guard, not a volume
- * cap: 120 req / 1 min per IP leaves headroom for a few concurrently polled
- * members while still blunting floods. The global limiter still caps
- * sustained volume.
- */
+/** Typing poll burst guard: 120 req/min per IP across roster members. */
 export const TYPING_RATE_LIMIT: RateLimitOptions = {
   windowMs: 60 * 1000,
   max: 120,

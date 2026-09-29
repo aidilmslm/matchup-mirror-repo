@@ -15,8 +15,7 @@ class AppShell extends ConsumerStatefulWidget {
 
   final Widget child;
 
-  // Every glyph is hand-drawn (a single Lucide-style line-icon family) so the
-  // whole bar matches the reference exactly and shares one stroke weight.
+  // Every glyph is hand-drawn (a single Lucide-style line-icon family) so the whole bar matches the reference.
   static final _tabs = <_NavTab>[
     _NavTab(
       label: 'Discover',
@@ -56,28 +55,21 @@ class AppShell extends ConsumerStatefulWidget {
     ),
   ];
 
-
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  /// Tab-visit history for the system back button. Tab switches go()
-  /// (no stack), so without this the back button on a tab root would
-  /// close the app instead of returning to the previous tab.
-  /// Bounded; empty means "exit the app".
+  /// Tab-visit history for the system back button.
   final List<int> _tabHistory = [];
 
-  /// Last handled back-press: same anti-double-tap debounce as
-  /// [SystemBackFallback] — a second press mid-transition lands on
-  /// unexpected screens.
+  /// Last handled back-press: same anti-double-tap debounce as [SystemBackFallback].
   DateTime? _lastBackHandled;
   static const _backDebounceWindow = Duration(milliseconds: 500);
 
   void _goTab(int index, int currentIndex) {
     if (index == currentIndex) return;
-    // Only real tabs participate (-1 = pushed screens like
-    // notifications/chat threads, which pop normally instead).
+    // Only real tabs participate (-1 = pushed screens like notifications/chat threads, which pop normally instead).
     if (currentIndex >= 0) {
       _tabHistory.add(currentIndex);
       if (_tabHistory.length > 20) _tabHistory.removeAt(0);
@@ -100,16 +92,11 @@ class _AppShellState extends ConsumerState<AppShell> {
       return 3;
     }
     if (location == '/profile' || location.startsWith('/profile/')) return 4;
-    // Non-tab locations (preferences, filter, calendar, edit-profile,
-    // player-profile, dm, notifications, activity detail, …) highlight
-    // nothing. _TabBar compares `i == currentIndex`, so -1 safely
-    // renders with no selected tab (no crash).
+    // Non-tab locations (preferences, filter, calendar, edit-profile, player-profile, dm, notifications, activity.
     return -1;
   }
 
   /// Exact `/activity/<id>` locations render full-screen (no tab bar).
-  /// Sibling screens (`/activity/<id>/full`, `/participants`) keep
-  /// theirs, as before.
   static bool _isFullScreenDetail(String location) =>
       RegExp(r'^/activity/[^/]+$').hasMatch(location);
 
@@ -118,20 +105,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     final location = GoRouterState.of(context).matchedLocation;
     final index = _indexFor(location);
 
-    // A new account must not inherit the previous one's tab history
-    // (back would jump to tabs the new user never visited).
+    // A new account must not inherit the previous one's tab history.
     ref.listen<AuthStatus>(authStatusProvider, (_, _) {
       _tabHistory.clear();
     });
 
-    // System back on a tab root walks the tab-visit history instead of
-    // closing the app; empty history exits normally. Placed here (not
-    // deeper): pushed pages sit above the shell and pop before this
-    // PopScope is ever consulted, and TourHost's own PopScope (deeper,
-    // inside body) still gets first shot while a tour is active.
-    // Double-presses within the debounce window are ignored: the first
-    // press already started a transition, and handling the second one
-    // mid-transition lands on unexpected screens.
+    // System back on a tab root walks the tab-visit history instead of closing the app; empty history exits normally.
     return PopScope(
       canPop: _tabHistory.isEmpty,
       onPopInvokedWithResult: (didPop, _) {
@@ -144,11 +123,8 @@ class _AppShellState extends ConsumerState<AppShell> {
         _lastBackHandled = now;
         if (_tabHistory.isNotEmpty) {
           var prev = _tabHistory.removeLast();
-          // Drop duplicates of where we already are (e.g. arrived via
-          // deep link onto a tab that's also atop history).
-          final here = _indexFor(
-            GoRouterState.of(context).matchedLocation,
-          );
+          // Drop duplicates of where we already are.
+          final here = _indexFor(GoRouterState.of(context).matchedLocation);
           while (_tabHistory.isNotEmpty &&
               (_tabHistory.last == prev || _tabHistory.last == here)) {
             prev = _tabHistory.removeLast();
@@ -158,36 +134,26 @@ class _AppShellState extends ConsumerState<AppShell> {
         }
       },
       child: Scaffold(
-      // TourHost inserts its spotlight into the Navigator-level Overlay
-      // (via Overlay.of(context)), which always paints above the entire
-      // routed screen — body AND bottomNavigationBar — regardless of where
-      // in this tree TourHost itself sits. It's nested inside `body` purely
-      // so it has a BuildContext to call Overlay.of() from; that placement
-      // does not restrict the resulting OverlayEntry to body's bounds,
-      // which is what lets a step spotlight a tab-bar item even though the
-      // tab bar lives outside `body`.
-      body: TourHost(location: location, child: widget.child),
-      // The activity detail screen moved inside the shell (pushing a
-      // shell-child route from outside it duplicates the shell page and
-      // red-screens). It keeps its full-screen look by hiding the tab
-      // bar — matched exactly so sibling screens (full view,
-      // participants) keep theirs.
-      bottomNavigationBar: _isFullScreenDetail(location)
-          ? null
-          : SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _TabBar(
-              currentIndex: index,
-              onTap: (i) => _goTab(i, index),
-            ),
-            const HomeIndicator(),
-          ],
-        ),
+        // TourHost inserts its spotlight into the Navigator-level Overlay.
+        body: TourHost(location: location, child: widget.child),
+        // The activity detail screen moved inside the shell.
+        bottomNavigationBar: _isFullScreenDetail(location)
+            ? null
+            : SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TabBar(
+                      currentIndex: index,
+                      onTap: (i) => _goTab(i, index),
+                    ),
+                    const HomeIndicator(),
+                  ],
+                ),
+              ),
       ),
-    ));
+    );
   }
 }
 
@@ -199,9 +165,7 @@ class _TabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Clamp system text scaling inside the bar so huge accessibility
-    // fonts can't blow the fixed-height items apart on narrow screens.
-    // Labels already ellipsis; this just bounds the worst case.
+    // Clamp system text scaling inside the bar so huge accessibility fonts can't blow the fixed-height items apart.
     final scaler = MediaQuery.textScalerOf(
       context,
     ).clamp(minScaleFactor: 1.0, maxScaleFactor: 1.3);
@@ -220,8 +184,7 @@ class _TabBar extends StatelessWidget {
           children: List.generate(AppShell._tabs.length, (i) {
             final tab = AppShell._tabs[i];
             final isSelected = i == currentIndex;
-            // Expanded (not fixed 64 px) so the five items always share
-            // whatever width the device has — 320 dp phones included.
+            // Expanded (not fixed 64 px) so the five items always share whatever width the device has.
             return Expanded(
               child: _NavItem(
                 tab: tab,
@@ -249,9 +212,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Plain attached bar (matching the reference): no pill behind the active
-    // icon — the selected state is simply a filled, primary-tinted icon plus
-    // a primary-coloured label.
+    // Plain attached bar (matching the reference): no pill behind the active icon.
     final color = isSelected
         ? context.colors.primaryOnSurface
         : context.colors.textSecondary;
@@ -261,8 +222,7 @@ class _NavItem extends StatelessWidget {
       label: tab.label,
       child: PressableScale(
         onTap: onTap,
-        // Width comes from the parent Expanded — only the height is
-        // fixed, so narrow screens share space instead of overflowing.
+        // Width comes from the parent Expanded — only the height is fixed.
         child: SizedBox(
           key: tab.tourKey,
           height: 52,
@@ -305,23 +265,16 @@ class _NavTab {
   final String label;
   final String route;
 
-  /// Hand-drawn glyph builder. Takes the resolved foreground [color], the
-  /// surface/"on" colour (used by [_CompassPainter] for the white needle on
-  /// the filled disc), the pixel size, and whether the tab is selected.
+  /// Hand-drawn glyph builder.
   final Widget Function(Color color, Color onColor, double size, bool selected)
   iconBuilder;
 
-  /// Registered [TourAnchors] key this tab should be spotlighted with,
-  /// or `null` for tabs no tour step targets (Discover is always visible on
-  /// its own screen, so it never needs a tab-bar spotlight).
+  /// Registered [TourAnchors] key this tab should be spotlighted with, or `null` for tabs no tour step targets.
   final Key? tourKey;
 }
 
-// ─── Custom nav glyphs ─────────────────────────────────────────────────────
-//
-// All five nav icons are hand-drawn as a single Lucide-style line family so
-// the bar matches the reference exactly and shares one stroke weight. Each
-// painter draws inside a square [size]; stroke width is size/12 (~2px at 25).
+// Custom nav glyphs.
+// All five nav icons are hand-drawn as a single Lucide-style line family.
 
 /// Square host for a nav [CustomPainter].
 class _NavIcon extends StatelessWidget {
@@ -348,8 +301,6 @@ Paint _strokePaint(Color color, double w) => Paint()
   ..strokeJoin = StrokeJoin.round;
 
 /// Discover — a compass (Lucide "compass"): a circle with a diamond needle.
-/// When selected it becomes a solid disc with a white needle, matching the
-/// reference; otherwise it's an outline circle + needle in the tab colour.
 class _CompassPainter extends CustomPainter {
   const _CompassPainter(this.color, this.onColor, {required this.filled});
 
@@ -384,9 +335,7 @@ class _CompassPainter extends CustomPainter {
       old.color != color || old.onColor != onColor || old.filled != filled;
 }
 
-/// My Games — top-down soccer pitch: rounded boundary, vertical halfway line,
-/// centre circle, and a penalty arc bulging in from each end. Drawn on the
-/// same 24-grid (content ~3..21) as the Lucide glyphs so it matches their size.
+/// My Games — top-down soccer pitch: rounded boundary, vertical halfway line, centre circle, and a penalty arc.
 class _FieldPainter extends CustomPainter {
   const _FieldPainter(this.color);
 
@@ -451,7 +400,6 @@ class _PlusCirclePainter extends CustomPainter {
 }
 
 /// Chat — Lucide "message-circle": a round bubble with a tail at bottom-left.
-/// Exact path: M7.9 20 A9 9 0 1 0 4 16.1 L2 22 Z.
 class _MessagePainter extends CustomPainter {
   const _MessagePainter(this.color);
 
@@ -477,8 +425,7 @@ class _MessagePainter extends CustomPainter {
   bool shouldRepaint(_MessagePainter old) => old.color != color;
 }
 
-/// Profile — Lucide "user": a head circle (cx12 cy7 r4) above an open
-/// shoulders arch (M19 21 v-2 a4 4 0 0 0-4-4 H9 a4 4 0 0 0-4 4 v2).
+/// Profile — Lucide "user": a head circle (cx12 cy7 r4) above an open shoulders arch (M19 21 v-2 a4 4 0 0 0-4-4 H9.
 class _UserPainter extends CustomPainter {
   const _UserPainter(this.color);
 

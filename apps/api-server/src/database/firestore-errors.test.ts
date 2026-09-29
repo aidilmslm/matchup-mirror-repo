@@ -1,3 +1,4 @@
+// Tests for firestore errors.
 import { describe, expect, it } from 'vitest';
 import { firestoreAuthHint, isFirestoreAuthError } from './firestore-errors.js';
 
@@ -19,8 +20,7 @@ describe('isFirestoreAuthError', () => {
     expect(
       isFirestoreAuthError({
         code: 16,
-        details:
-          'Request had invalid authentication credentials. Expected OAuth 2 access token.',
+        details: 'Request had invalid authentication credentials. Expected OAuth 2 access token.',
       }),
     ).toBe(true);
   });

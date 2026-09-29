@@ -130,15 +130,14 @@ void main() {
 
       // Benjamin returns: his own prefs come back from his keys.
       signInAs(container, 'benjamin');
-      for (var i = 0;
-          i < 50 && container.read(sportPreferencesProvider).isEmpty;
-          i++) {
+      for (
+        var i = 0;
+        i < 50 && container.read(sportPreferencesProvider).isEmpty;
+        i++
+      ) {
         await Future<void>.delayed(const Duration(milliseconds: 10));
       }
-      expect(
-        container.read(sportPreferencesProvider),
-        {'Tennis': 'Advanced'},
-      );
+      expect(container.read(sportPreferencesProvider), {'Tennis': 'Advanced'});
     });
   });
 }

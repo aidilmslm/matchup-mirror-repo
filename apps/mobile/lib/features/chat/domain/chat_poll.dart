@@ -1,8 +1,5 @@
 /// Single-choice group-chat poll ("Play at 4 or 5?").
-///
-/// Each member holds at most one vote; voting the same option again
-/// retracts it (see `votePoll` in `chat.service.ts`). Polls render
-/// inline in the message timeline, ordered by [createdAt].
+/// Each member holds at most one vote; voting the same option again retracts it (see `votePoll` in `chat.service.ts`).
 class ChatPoll {
   const ChatPoll({
     required this.pollId,
@@ -23,8 +20,7 @@ class ChatPoll {
   final Map<int, List<String>> votes;
 
   /// Total votes across all options.
-  int get totalVotes =>
-      votes.values.fold(0, (sum, uids) => sum + uids.length);
+  int get totalVotes => votes.values.fold(0, (sum, uids) => sum + uids.length);
 
   int votesFor(int index) => votes[index]?.length ?? 0;
 
@@ -44,10 +40,7 @@ class ChatPoll {
   }
 }
 
-/// Parses the backend poll payload into a time-ordered list. Accepts
-/// both shapes: the RTDB map (`{pollId: {...}}`) and the REST array
-/// (`[{pollId, ...}]`). Malformed entries are skipped so one bad row
-/// never sinks the whole list.
+/// Parses the backend poll payload into a time-ordered list.
 List<ChatPoll> parsePollList(dynamic value) {
   final entries = <Map<String, dynamic>>[];
   if (value is List) {

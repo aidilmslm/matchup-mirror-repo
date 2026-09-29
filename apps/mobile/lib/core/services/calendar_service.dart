@@ -3,12 +3,8 @@ import 'dart:async';
 import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/foundation.dart';
 
-/// Optional class-two feature: add an activity to the device's native
-/// calendar. Per `mobile-design.md` the calendar integration is an optional
-/// enhancement surfaced from the activity detail screens.
-///
-/// The wrapper degrades gracefully when permissions are denied or the
-/// platform has no writable calendar.
+/// Optional class-two feature: add an activity to the device's native calendar.
+/// The wrapper degrades gracefully when permissions are denied or the platform has no writable calendar.
 class CalendarService {
   CalendarService._();
 
@@ -34,8 +30,7 @@ class CalendarService {
       final calendars = result.data!;
       final writable = calendars.where((c) => c.isReadOnly == false);
       if (writable.isEmpty) return null;
-      // Prefer the first writable calendar; on most devices this is the
-      // primary local account.
+      // Prefer the first writable calendar; on most devices this is the primary local account.
       return writable.first.id;
     } catch (e) {
       if (kDebugMode) debugPrint('CalendarService._writableCalendarId: $e');
@@ -43,11 +38,8 @@ class CalendarService {
     }
   }
 
-  /// Creates a calendar event for the given activity and returns `true` on
-  /// success.
-  ///
-  /// [title], [start], and [end] are required. [description], [location],
-  /// and [attendees] are optional.
+  /// Creates a calendar event for the given activity and returns `true` on success.
+  /// [title], [start], and [end] are required.
   Future<bool> addEvent({
     required String title,
     required DateTime start,

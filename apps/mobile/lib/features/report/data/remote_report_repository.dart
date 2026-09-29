@@ -2,11 +2,7 @@ import '../../../core/network/api_client.dart';
 import 'report_repository.dart';
 
 /// HTTP-backed [ReportRepository].
-///
-/// Submits to `POST /api/reports` with a JSON body. Failures
-/// propagate to the caller — the sheets translate them into an error
-/// snackbar and keep the draft open, so a failed report is never
-/// presented as submitted.
+/// Submits to `POST /api/reports` with a JSON body.
 class RemoteReportRepository implements ReportRepository {
   RemoteReportRepository({ApiClient? client})
     : _client = client ?? ApiClient.instance;

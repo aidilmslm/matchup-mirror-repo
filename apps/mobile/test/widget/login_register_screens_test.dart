@@ -155,98 +155,88 @@ void main() {
       expect(find.text('Confirm Password'), findsOneWidget);
     });
 
-    testWidgets(
-      'should validate password length on submit',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(430, 932));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('should validate password length on submit', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 932));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        await _pumpRouter(
-          tester,
-          initialLocation: '/register',
-          routes: [
-            GoRoute(
-              path: '/register',
-              builder: (_, _) => const RegisterScreen(),
-            ),
-          ],
-        );
+      await _pumpRouter(
+        tester,
+        initialLocation: '/register',
+        routes: [
+          GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+        ],
+      );
 
-        // Redesign removed the strength meter/checklist — the current UI
-        // validates min 8 chars + letter + number on submit.
-        expect(find.text('At least 8 characters'), findsNothing);
+      // Redesign removed the strength meter/checklist — the current UI
+      // validates min 8 chars + letter + number on submit.
+      expect(find.text('At least 8 characters'), findsNothing);
 
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Enter your full name'),
-          'Jordan Lee',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Enter your email'),
-          'jordan@example.com',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Create a strong password'),
-          'Pw1',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Confirm your password'),
-          'Pw1',
-        );
-        final createAccount = find.text('Create Account');
-        await tester.ensureVisible(createAccount);
-        await tester.pumpAndSettle();
-        await tester.tap(createAccount);
-        await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Enter your full name'),
+        'Jordan Lee',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Enter your email'),
+        'jordan@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Create a strong password'),
+        'Pw1',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm your password'),
+        'Pw1',
+      );
+      final createAccount = find.text('Create Account');
+      await tester.ensureVisible(createAccount);
+      await tester.pumpAndSettle();
+      await tester.tap(createAccount);
+      await tester.pumpAndSettle();
 
-        expect(
-          find.text('Password must be at least 8 characters'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(
+        find.text('Password must be at least 8 characters'),
+        findsOneWidget,
+      );
+    });
 
-    testWidgets(
-      'should require a letter and a number in the password',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(430, 932));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('should require a letter and a number in the password', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(430, 932));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        await _pumpRouter(
-          tester,
-          initialLocation: '/register',
-          routes: [
-            GoRoute(
-              path: '/register',
-              builder: (_, _) => const RegisterScreen(),
-            ),
-          ],
-        );
+      await _pumpRouter(
+        tester,
+        initialLocation: '/register',
+        routes: [
+          GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+        ],
+      );
 
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Enter your full name'),
-          'Jordan Lee',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Enter your email'),
-          'jordan@example.com',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Create a strong password'),
-          'password',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Confirm your password'),
-          'password',
-        );
-        await tester.tap(find.text('Create Account'));
-        await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Enter your full name'),
+        'Jordan Lee',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Enter your email'),
+        'jordan@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Create a strong password'),
+        'password',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm your password'),
+        'password',
+      );
+      await tester.tap(find.text('Create Account'));
+      await tester.pumpAndSettle();
 
-        expect(
-          find.text('Password must include a letter and a number'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(
+        find.text('Password must include a letter and a number'),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('should validate name length on submit', (tester) async {
       await tester.binding.setSurfaceSize(const Size(430, 932));
@@ -256,10 +246,7 @@ void main() {
         tester,
         initialLocation: '/register',
         routes: [
-          GoRoute(
-            path: '/register',
-            builder: (_, _) => const RegisterScreen(),
-          ),
+          GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
         ],
       );
 
@@ -282,12 +269,8 @@ void main() {
       await tester.tap(find.text('Create Account'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Name must be at least 2 characters'),
-        findsOneWidget,
-      );
-      },
-    );
+      expect(find.text('Name must be at least 2 characters'), findsOneWidget);
+    });
 
     testWidgets(
       'should show a mismatch error when passwords differ on submit',

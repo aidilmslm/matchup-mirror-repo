@@ -8,11 +8,7 @@ import 'app_tappable.dart';
 enum AppSnackbarVariant { success, error, info, warning }
 
 /// Consistent snackbar/toast for MatchUp.
-///
-/// ```dart
-/// AppSnackbar.show(context, message: 'Activity created!');
-/// AppSnackbar.show(context, message: 'Failed', variant: AppSnackbarVariant.error);
-/// ```
+/// dart AppSnackbar.show(context, message: 'Activity created!').
 class AppSnackbar {
   AppSnackbar._();
 

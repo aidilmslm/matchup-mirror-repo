@@ -1,5 +1,4 @@
-/// Identifies which anchor a [TourStep] should spotlight. `none` means the
-/// step is a centered dialog with no cut-out (used for the welcome step).
+/// Identifies which anchor a [TourStep] should spotlight.
 enum TourAnchorId {
   none,
   swipeDeck,
@@ -14,8 +13,7 @@ enum TourAnchorId {
 /// Shape of the spotlight cut-out drawn around the anchor's bounds.
 enum TourSpotlightShape { roundedRect, circle }
 
-/// A single step in a coach-mark tour: which element to highlight, and the
-/// copy to show alongside it.
+/// A single step in a coach-mark tour: which element to highlight, and the copy to show alongside it.
 class TourStep {
   const TourStep({
     required this.anchor,
@@ -25,8 +23,7 @@ class TourStep {
     this.padding = 8,
   });
 
-  /// Which registered [TourAnchorId] to spotlight. [TourAnchorId.none]
-  /// renders the callout centered on screen with no cut-out.
+  /// Which registered [TourAnchorId] to spotlight.
   final TourAnchorId anchor;
 
   final String title;
@@ -35,7 +32,6 @@ class TourStep {
   /// Shape of the cut-out around the anchor's bounds.
   final TourSpotlightShape shape;
 
-  /// Extra space (in logical pixels) between the anchor's bounds and the
-  /// edge of the spotlight cut-out.
+  /// Extra space (in logical pixels) between the anchor's bounds and the edge of the spotlight cut-out.
   final double padding;
 }

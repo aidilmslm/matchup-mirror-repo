@@ -7,8 +7,7 @@ import '../../../../core/theme/dark_colors.dart';
 import '../../../../core/widgets/pressable_scale.dart';
 import 'preference_types.dart';
 
-/// Sentinel returned via `Navigator.pop` when the user removes a sport
-/// instead of picking a skill level.
+/// Sentinel returned via `Navigator.pop` when the user removes a sport instead of picking a skill level.
 const Object kClearSportAction = Object();
 
 /// Bottom sheet for picking (or removing) a skill level for one sport.

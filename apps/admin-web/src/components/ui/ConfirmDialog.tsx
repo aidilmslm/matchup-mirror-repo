@@ -30,9 +30,7 @@ export function ConfirmDialog({
     if (!open) return;
 
     previouslyFocusedRef.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     cancelButtonRef.current?.focus();
 
@@ -55,9 +53,7 @@ export function ConfirmDialog({
   if (!open) return null;
 
   const titleId = 'confirm-dialog-title';
-  const descriptionId = description
-    ? 'confirm-dialog-description'
-    : undefined;
+  const descriptionId = description ? 'confirm-dialog-description' : undefined;
 
   return (
     <div
@@ -71,18 +67,12 @@ export function ConfirmDialog({
         aria-describedby={descriptionId}
         className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-6 shadow-panel dark:border-ink-700 dark:bg-ink-800"
       >
-        <h3
-          id={titleId}
-          className="text-base font-bold text-ink-900 dark:text-ink-100"
-        >
+        <h3 id={titleId} className="text-base font-bold text-ink-900 dark:text-ink-100">
           {title}
         </h3>
 
         {description && (
-          <p
-            id={descriptionId}
-            className="mt-2 text-sm text-ink-500 dark:text-ink-400"
-          >
+          <p id={descriptionId} className="mt-2 text-sm text-ink-500 dark:text-ink-400">
             {description}
           </p>
         )}
@@ -101,9 +91,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors ${
-              destructive
-                ? 'bg-danger-500 hover:bg-danger-600'
-                : 'bg-brand-500 hover:bg-brand-600'
+              destructive ? 'bg-danger-500 hover:bg-danger-600' : 'bg-brand-500 hover:bg-brand-600'
             }`}
           >
             {confirmLabel}

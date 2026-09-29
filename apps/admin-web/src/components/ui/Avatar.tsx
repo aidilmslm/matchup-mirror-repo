@@ -24,10 +24,7 @@ function fgFor(seed: string): string {
   return `hsl(${h} 55% 28%)`;
 }
 
-/**
- * Database-backed avatar: renders the user's photoUrl when present,
- * otherwise deterministic initials (no external placeholder service).
- */
+/** Database-backed avatar: renders the user's photoUrl when present, otherwise deterministic initials (no external. */
 export function Avatar({ name, photoUrl, seed, className = 'h-8 w-8 rounded-full' }: AvatarProps) {
   if (photoUrl) {
     return <img src={photoUrl} alt={name} className={`${className} object-cover`} loading="lazy" />;

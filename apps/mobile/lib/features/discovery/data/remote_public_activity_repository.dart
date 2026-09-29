@@ -5,9 +5,7 @@ import '../../activities/domain/activity_model.dart';
 import '../domain/activity_model.dart';
 import 'public_activity_repository.dart';
 
-/// Offline-only public teasers. Returns an empty list — the public
-/// teasers only ever come from the live backend. The Welcome / landing
-/// screen renders an empty state when this fallback is reached.
+/// Offline-only public teasers.
 class LocalPublicActivityRepository implements PublicActivityRepository {
   @override
   Future<List<ActivityModel>> teasers({int limit = 10}) async {
@@ -16,17 +14,13 @@ class LocalPublicActivityRepository implements PublicActivityRepository {
 }
 
 /// HTTP-backed [PublicActivityRepository] for the live MatchUp API.
-///
-/// Hits `GET /api/public/activities?limit=N` — the only endpoint in the
-/// MatchUp API that doesn't require a Bearer token. Falls back to
-/// [LocalPublicActivityRepository] on any network failure so the
-/// landing / onboarding flow always renders.
+/// Hits `GET /api/public/activities?limit=N`.
 class RemotePublicActivityRepository implements PublicActivityRepository {
   RemotePublicActivityRepository({
     ApiClient? client,
     PublicActivityRepository? fallback,
-  })  : _client = client ?? ApiClient.instance,
-        _fallback = fallback ?? LocalPublicActivityRepository();
+  }) : _client = client ?? ApiClient.instance,
+       _fallback = fallback ?? LocalPublicActivityRepository();
 
   final ApiClient _client;
   final PublicActivityRepository _fallback;

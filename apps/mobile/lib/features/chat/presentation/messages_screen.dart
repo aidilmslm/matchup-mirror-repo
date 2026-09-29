@@ -16,29 +16,26 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../domain/chat_message.dart';
 
-// ─── Providers ───────────────────────────────────────────────────────────────
-// keepAlive (bukan autoDispose): pindah tab Group <-> DM tidak dispose +
-// fetch ulang. Pola yang sama dengan My Games.
+// Providers.
+// keepAlive (not autoDispose): switching Group/DM tabs neither disposes nor refetches.
 
-final _conversationsProvider =
-    FutureProvider<List<ChatConversation>>((ref) async {
-      return ref.watch(chatRepositoryProvider).conversations();
-    });
+final _conversationsProvider = FutureProvider<List<ChatConversation>>((
+  ref,
+) async {
+  return ref.watch(chatRepositoryProvider).conversations();
+});
 
-/// 1-on-1 threads, re-emitted on every inbox change so unread badges
-/// update while the inbox sits open. Stream sudah live — keepAlive agar
-/// subscription tidak putus-nyambung tiap pindah tab.
-final _dmConversationsProvider =
-    StreamProvider<List<ChatConversation>>((ref) {
-      return ref.watch(dmRepositoryProvider).watchConversations();
-    });
+/// 1-on-1 threads, re-emitted on every inbox change so unread badges update while the inbox sits open.
+final _dmConversationsProvider = StreamProvider<List<ChatConversation>>((ref) {
+  return ref.watch(dmRepositoryProvider).watchConversations();
+});
 
 final _unreadNotifCountProvider = FutureProvider.autoDispose<int>((ref) async {
   final all = await ref.watch(notificationRepositoryProvider).all();
   return all.where((n) => n.unread).length;
 });
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
@@ -63,9 +60,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Messages sent from another device (or web) while the app was
-    // backgrounded land here on resume — the group inbox is one-shot,
-    // so re-fetch it instead of showing a stale preview.
+    // Messages sent from another device (or web) while the app was backgrounded land here on resume.
     if (state == AppLifecycleState.resumed && mounted) {
       ref.invalidate(_conversationsProvider);
     }
@@ -74,11 +69,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // The unread badge is one-shot: re-fetch whenever dependencies
-    // change so it reflects reads done on /notifications. NOTE: this
-    // does NOT fire when popping back from a thread (no dependency
-    // changes) — thread rows refresh the inbox via `.then(invalidate)`
-    // on their NavGuard.push instead. See _ConversationList / DM list.
+    // The unread badge is one-shot: re-fetch whenever dependencies change so it reflects reads done on /notifications.
     ref.invalidate(_unreadNotifCountProvider);
   }
 
@@ -92,8 +83,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   @override
   Widget build(BuildContext context) {
     final unreadCount = ref.watch(_unreadNotifCountProvider).valueOrNull ?? 0;
-    // Tab badges reuse the same providers the lists below watch, so no
-    // extra fetch — just a synchronous read of the cached value.
+    // Tab badges reuse the same providers the lists below watch, so no extra fetch.
     final groupConvos = ref.watch(_conversationsProvider).valueOrNull;
     final dmConvos = ref.watch(_dmConversationsProvider).valueOrNull;
     int unreadOf(List<ChatConversation>? list) =>
@@ -105,7 +95,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────────
+          // Header.
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.x5,
@@ -120,16 +110,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Chat',
-                        style: AppTypography.titleScreen(context),
-                      ),
+                      Text('Chat', style: AppTypography.titleScreen(context)),
                       const SizedBox(height: 2),
                       Text(
                         'Your conversations',
-                        style: AppTypography.bodySmall(context).copyWith(
-                          color: context.colors.textSecondary,
-                        ),
+                        style: AppTypography.bodySmall(
+                          context,
+                        ).copyWith(color: context.colors.textSecondary),
                       ),
                     ],
                   ),
@@ -137,18 +124,18 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                 _BellButton(
                   unreadCount: unreadCount,
                   onTap: () {
-                    // The notifications screen marks items read; refresh
-                    // the badge when coming back.
-                    NavGuard.push(context, '/notifications').then(
-                      (_) => ref.invalidate(_unreadNotifCountProvider),
-                    );
+                    // The notifications screen marks items read; refresh the badge when coming back.
+                    NavGuard.push(
+                      context,
+                      '/notifications',
+                    ).then((_) => ref.invalidate(_unreadNotifCountProvider));
                   },
                 ),
               ],
             ),
           ),
 
-          // ── Search bar ───────────────────────────────────────────────
+          // Search bar.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x5),
             child: _SearchBar(
@@ -162,7 +149,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
           ),
           const SizedBox(height: AppSpacing.x4),
 
-          // ── Groups / Direct toggle ───────────────────────────────────
+          // Groups Direct toggle.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x5),
             child: _InboxTabs(
@@ -176,21 +163,14 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
           ),
           const SizedBox(height: AppSpacing.x3),
 
-          // ── Conversation list ────────────────────────────────────────
-          // IndexedStack: kedua tab tetap hidup (scroll position + data
-          // kesimpan), tidak rebuild + skeleton ulang tiap pindah tab.
+          // Conversation list.
+          // IndexedStack: both tabs stay alive (scroll position and data kept), no rebuild or skeleton per switch.
           Expanded(
             child: IndexedStack(
               index: _tab,
               children: [
-                _ConversationList(
-                  query: _query,
-                  visible: _tab == 0,
-                ),
-                _DmConversationList(
-                  query: _query,
-                  visible: _tab == 1,
-                ),
+                _ConversationList(query: _query, visible: _tab == 0),
+                _DmConversationList(query: _query, visible: _tab == 1),
               ],
             ),
           ),
@@ -200,7 +180,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   }
 }
 
-// ─── Bell button ─────────────────────────────────────────────────────────────
+// Bell button.
 
 class _BellButton extends StatelessWidget {
   const _BellButton({required this.unreadCount, required this.onTap});
@@ -257,12 +237,9 @@ class _BellButton extends StatelessWidget {
   }
 }
 
-// ─── Search bar ───────────────────────────────────────────────────────────────
+// Search bar.
 
-/// White-field search (not muted-fill) so the hint/icon in
-/// `textSecondary` sit at 4.76:1 on white — WCAG AA. The same grey on the
-/// old muted fill only reached 4.34:1 and failed. Focus is visible via a
-/// 1.5 px brand border for keyboard / switch-control users.
+/// White-field search (not muted-fill) so the hint/icon in `textSecondary` sit at 4.76:1 on white — WCAG AA.
 class _SearchBar extends StatefulWidget {
   const _SearchBar({
     required this.controller,
@@ -302,18 +279,16 @@ class _SearchBarState extends State<_SearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        _focused ? context.colors.primaryOnSurface : context.colors.border;
+    final borderColor = _focused
+        ? context.colors.primaryOnSurface
+        : context.colors.border;
     return AnimatedContainer(
       duration: AppDurations.fast,
       height: 46,
       decoration: BoxDecoration(
         color: context.colors.surface,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(
-          color: borderColor,
-          width: _focused ? 1.5 : 1,
-        ),
+        border: Border.all(color: borderColor, width: _focused ? 1.5 : 1),
         boxShadow: _focused ? AppShadows.card : null,
       ),
       child: Row(
@@ -336,20 +311,15 @@ class _SearchBarState extends State<_SearchBar> {
               textInputAction: TextInputAction.search,
               cursorColor: AppColors.primary,
               cursorWidth: 1.5,
-              style: AppTypography.bodyMedium(context).copyWith(
-                color: context.colors.textPrimary,
-                fontSize: 15,
-              ),
+              style: AppTypography.bodyMedium(
+                context,
+              ).copyWith(color: context.colors.textPrimary, fontSize: 15),
               decoration: InputDecoration(
-                // Matches capability: the filter only matches chat names
-                // + last-message previews (ChatConversation carries no
-                // sport/activity field), so the hint must not promise
-                // sports search.
+                // Matches capability: the filter only matches chat names + last-message previews.
                 hintText: 'Search chats…',
-                hintStyle: AppTypography.bodyMedium(context).copyWith(
-                  color: context.colors.textSecondary,
-                  fontSize: 15,
-                ),
+                hintStyle: AppTypography.bodyMedium(
+                  context,
+                ).copyWith(color: context.colors.textSecondary, fontSize: 15),
                 filled: true,
                 fillColor: Colors.transparent,
                 border: InputBorder.none,
@@ -387,11 +357,9 @@ class _SearchBarState extends State<_SearchBar> {
   }
 }
 
-// ─── Conversation list ────────────────────────────────────────────────────────
+// Conversation list.
 
 /// Groups / Direct segmented toggle with count badges and unread dots.
-/// Unselected labels use `textLabel` (9.45:1 on the muted track) instead of
-/// `textSecondary`, which only reached 4.34:1 there and failed WCAG AA.
 class _InboxTabs extends StatelessWidget {
   const _InboxTabs({
     required this.tab,
@@ -458,8 +426,9 @@ class _InboxTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelColor =
-        selected ? context.colors.textPrimary : context.colors.textLabel;
+    final labelColor = selected
+        ? context.colors.textPrimary
+        : context.colors.textLabel;
     return Expanded(
       child: Semantics(
         button: true,
@@ -474,9 +443,7 @@ class _InboxTab extends StatelessWidget {
               color: selected ? context.colors.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.pill),
               border: Border.all(
-                color: selected
-                    ? context.colors.border
-                    : Colors.transparent,
+                color: selected ? context.colors.border : Colors.transparent,
               ),
               boxShadow: selected ? AppShadows.card : null,
             ),
@@ -490,8 +457,7 @@ class _InboxTab extends StatelessWidget {
                     label,
                     style: AppTypography.labelField(context).copyWith(
                       color: labelColor,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -529,15 +495,12 @@ class _InboxTab extends StatelessWidget {
   }
 }
 
-/// 1-on-1 threads reusing the group card (peer uid as id, `isGroup`
-/// false). Taps open `/dm/:uid`; the thread screen clears the badge
-/// on open and invalidates this provider on exit.
+/// 1-on-1 threads reusing the group card (peer uid as id, `isGroup` false).
 class _DmConversationList extends ConsumerStatefulWidget {
   const _DmConversationList({required this.query, this.visible = true});
   final String query;
 
-  /// Hanya tab aktif yang precache avatar — tab yang hidden tidak
-  /// rebutan bandwidth.
+  /// Only the active tab precaches avatars — the hidden tab doesn't compete for bandwidth.
   final bool visible;
 
   @override
@@ -565,14 +528,14 @@ class _DmConversationListState extends ConsumerState<_DmConversationList>
         final filtered = query.isEmpty
             ? all
             : all
-                .where(
-                  (c) =>
-                      c.name.toLowerCase().contains(query.toLowerCase()) ||
-                      c.lastMessage.toLowerCase().contains(
-                        query.toLowerCase(),
-                      ),
-                )
-                .toList();
+                  .where(
+                    (c) =>
+                        c.name.toLowerCase().contains(query.toLowerCase()) ||
+                        c.lastMessage.toLowerCase().contains(
+                          query.toLowerCase(),
+                        ),
+                  )
+                  .toList();
 
         if (filtered.isEmpty) {
           return EmptyState(
@@ -596,12 +559,9 @@ class _DmConversationListState extends ConsumerState<_DmConversationList>
             padding: const EdgeInsets.only(bottom: AppSpacing.x2),
             child: _ConversationCard(
               conversation: filtered[i],
-              // pushOnce: repeat taps share the dm-$uid page key and
-              // red-screen. Extra carries the peer name for the header.
-              // Refresh on return: reads + sends inside the thread change
-              // this row's preview + badge (didChangeDependencies does
-              // NOT fire on pop-back, so do it explicitly here).
-              onTap: () => NavGuard.push(context,
+              // pushOnce: repeat taps share the dm-$uid page key and red-screen.
+              onTap: () => NavGuard.push(
+                context,
                 '/dm/${filtered[i].id}',
                 extra: filtered[i].name,
               ).then((_) => ref.invalidate(_dmConversationsProvider)),
@@ -617,8 +577,7 @@ class _ConversationList extends ConsumerStatefulWidget {
   const _ConversationList({required this.query, this.visible = true});
   final String query;
 
-  /// Hanya tab aktif yang precache avatar — tab yang hidden tidak
-  /// rebutan bandwidth.
+  /// Only the active tab precaches avatars — the hidden tab doesn't compete for bandwidth.
   final bool visible;
 
   @override
@@ -667,8 +626,7 @@ class _ConversationListState extends ConsumerState<_ConversationList>
         return RefreshIndicator(
           onRefresh: () => ref.refresh(_conversationsProvider.future),
           child: ListView.builder(
-            // Always scrollable so pull-to-refresh works even with a
-            // short inbox.
+            // Always scrollable so pull-to-refresh works even with a short inbox.
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.x5,
@@ -679,18 +637,14 @@ class _ConversationListState extends ConsumerState<_ConversationList>
             itemCount: filtered.length,
             itemBuilder: (_, i) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.x2),
-            child: _ConversationCard(
-              conversation: filtered[i],
-              // `filtered[i].id` is the activity id (per the local
-              // seed and the backend contract for `/conversations`).
-              // pushOnce: repeat taps share the page key and red-screen.
-              // Refresh on return: sends + reads inside the thread change
-              // this row's preview + badge, and didChangeDependencies
-              // does NOT fire on pop-back — so invalidate explicitly.
-              onTap: () => NavGuard.push(context,
-                '/chat/${filtered[i].id}',
-              ).then((_) => ref.invalidate(_conversationsProvider)),
-            ),
+              child: _ConversationCard(
+                conversation: filtered[i],
+                // `filtered[i].id` is the activity id (matches the backend contract).
+                onTap: () => NavGuard.push(
+                  context,
+                  '/chat/${filtered[i].id}',
+                ).then((_) => ref.invalidate(_conversationsProvider)),
+              ),
             ),
           ),
         );
@@ -699,13 +653,10 @@ class _ConversationListState extends ConsumerState<_ConversationList>
   }
 }
 
-// ─── Conversation card ────────────────────────────────────────────────────────
+// Conversation card.
 
 class _ConversationCard extends StatelessWidget {
-  const _ConversationCard({
-    required this.conversation,
-    required this.onTap,
-  });
+  const _ConversationCard({required this.conversation, required this.onTap});
 
   final ChatConversation conversation;
   final VoidCallback onTap;
@@ -714,8 +665,7 @@ class _ConversationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasUnread = conversation.unreadCount > 0;
     final isEmptyPreview = conversation.lastMessage.trim().isEmpty;
-    // Fallback keeps empty threads from rendering as a blank card —
-    // the main complaint in the current UI ("cards look empty").
+    // Fallback keeps empty threads from rendering as a blank card.
     final previewText = isEmptyPreview
         ? 'No messages yet — say hi! 👋'
         : conversation.lastMessage;
@@ -740,9 +690,7 @@ class _ConversationCard extends StatelessWidget {
             children: [
               // Avatar with sport-type badge overlaid at bottom-right
               ExcludeSemantics(
-                child: _AvatarWithBadge(
-                  conversation: conversation,
-                ),
+                child: _AvatarWithBadge(conversation: conversation),
               ),
               const SizedBox(width: AppSpacing.x3),
 
@@ -771,8 +719,7 @@ class _ConversationCard extends StatelessWidget {
                         ),
                         if (conversation.time.trim().isNotEmpty) ...[
                           const SizedBox(width: AppSpacing.x2),
-                          // Timestamp never shrinks the title — fixed size,
-                          // top-aligned so long names ellipsize cleanly.
+                          // Timestamp never shrinks the title — fixed size, top-aligned so long names ellipsize.
                           Text(
                             conversation.time,
                             style: AppTypography.bodySmall(context).copyWith(
@@ -800,8 +747,8 @@ class _ConversationCard extends StatelessWidget {
                               color: isEmptyPreview
                                   ? context.colors.textSecondary
                                   : hasUnread
-                                      ? context.colors.textPrimary
-                                      : context.colors.textSecondary,
+                                  ? context.colors.textPrimary
+                                  : context.colors.textSecondary,
                               fontStyle: isEmptyPreview
                                   ? FontStyle.italic
                                   : FontStyle.normal,
@@ -824,17 +771,16 @@ class _ConversationCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 6),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             alignment: Alignment.center,
                             child: Text(
                               conversation.unreadCount > 99
                                   ? '99+'
                                   : '${conversation.unreadCount}',
-                              style: AppTypography.badgeSport(
-                                context,
-                              ).copyWith(
+                              style: AppTypography.badgeSport(context).copyWith(
                                 color: AppColors.textOnPrimary,
                                 fontSize: 11,
                               ),
@@ -861,7 +807,7 @@ class _ConversationCard extends StatelessWidget {
   }
 }
 
-// ─── Avatar with badge ────────────────────────────────────────────────────────
+// Avatar with badge.
 
 class _AvatarWithBadge extends StatelessWidget {
   const _AvatarWithBadge({required this.conversation});
@@ -874,8 +820,7 @@ class _AvatarWithBadge extends StatelessWidget {
       height: 56,
       child: Stack(
         children: [
-          // Main avatar — slightly rounded square for group chats,
-          // circle for 1-to-1s, matching the design.
+          // Main avatar — slightly rounded square for group chats, circle for 1-to-1s, matching the design.
           ClipRRect(
             borderRadius: BorderRadius.circular(
               conversation.isGroup ? AppRadius.card : AppRadius.pill,
@@ -897,10 +842,7 @@ class _AvatarWithBadge extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: context.colors.surface,
-                  width: 2,
-                ),
+                border: Border.all(color: context.colors.surface, width: 2),
               ),
               alignment: Alignment.center,
               child: Icon(

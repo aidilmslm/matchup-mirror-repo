@@ -2,10 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'tour_store.dart';
 
-/// [TourStore] backed directly by `shared_preferences`, mirroring the
-/// pattern used by `ThemeModeController` — no secrets/PII involved, so this
-/// deliberately bypasses the unused `LocalStorage` wrapper and talks to
-/// `SharedPreferences` directly.
+/// [TourStore] backed directly by `shared_preferences`, mirroring the pattern used by `ThemeModeController`.
 class PrefsTourStore implements TourStore {
   static const _keyPrefix = 'tour_seen_v1_';
 

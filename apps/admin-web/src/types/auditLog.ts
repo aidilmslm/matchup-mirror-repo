@@ -1,11 +1,6 @@
+// auditLog.
 export type AuditCategory =
-  | 'Members'
-  | 'Activities'
-  | 'Appeals'
-  | 'Reports'
-  | 'Broadcasts'
-  | 'Sports'
-  | 'Templates';
+  'Members' | 'Activities' | 'Appeals' | 'Reports' | 'Broadcasts' | 'Sports' | 'Templates';
 
 export type AuditAction =
   | 'member.status_change'

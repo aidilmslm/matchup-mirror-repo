@@ -28,10 +28,12 @@ void main() {
   });
 
   testWidgets('passes 60-minute duration to the repository', (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [activityRepositoryProvider.overrideWithValue(repo)],
-      child: const MaterialApp(home: CreateActivityScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [activityRepositoryProvider.overrideWithValue(repo)],
+        child: const MaterialApp(home: CreateActivityScreen()),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // The 1h stepper button reads "Shorten duration" — tap it 4 times

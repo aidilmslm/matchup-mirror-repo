@@ -4,8 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart' show SvgPicture;
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
-/// Primary pill button matching Figma (`border-radius: 100px`, 16px vertical
-/// padding, 24px horizontal padding, white bold text on `primary`).
+/// Primary pill button matching Figma (`border-radius: 100px`, 16px vertical padding, 24px horizontal padding, white.
 class PrimaryPillButton extends StatelessWidget {
   const PrimaryPillButton({
     super.key,

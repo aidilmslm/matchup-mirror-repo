@@ -20,12 +20,7 @@ import '../../discovery/domain/activity_model.dart';
 import 'my_activities_screen.dart';
 
 /// Shown after requesting to join an approval-gated activity.
-///
-/// Unlike the instant-join "Match" screen, nothing is confirmed yet —
-/// this screen sets that expectation explicitly: the request is with
-/// the host, and the app notifies the user on approve/decline. All
-/// colors come from theme tokens so light and dark mode both render
-/// correctly (no hardcoded light surfaces).
+/// Unlike the instant-join "Match" screen, nothing is confirmed yet.
 class JoinRequestSentScreen extends ConsumerWidget {
   const JoinRequestSentScreen({super.key, required this.activityId});
   final String activityId;
@@ -33,104 +28,105 @@ class JoinRequestSentScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_requestActivityProvider(activityId));
-    // System back on a go-opened confirmation (deck swipe flow) would
-    // otherwise close the app — fall back to Discover.
+    // System back on a go-opened confirmation (deck swipe flow) would otherwise close the app — fall back to Discover.
     return SystemBackFallback(
       onEmptyStack: (context) => context.go('/discovery'),
       child: AppScaffold(
-      showHomeIndicator: false,
-      backgroundColor: context.colors.background,
-      body: async.when(
-        loading: () => const SkeletonList(count: 3),
-        error: (_, _) => ErrorRetry(
-          message: 'Could not load this activity.',
-          onRetry: () =>
-              ref.invalidate(_requestActivityProvider(activityId)),
-        ),
-        data: (activity) {
-          if (activity == null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.x5),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Activity not found.'),
-                    const SizedBox(height: AppSpacing.x4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        PressableScale(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go('/discovery');
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.x5,
-                              vertical: AppSpacing.x3,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
-                              border: Border.all(
-                                color: context.colors.border,
+        showHomeIndicator: false,
+        backgroundColor: context.colors.background,
+        body: async.when(
+          loading: () => const SkeletonList(count: 3),
+          error: (_, _) => ErrorRetry(
+            message: 'Could not load this activity.',
+            onRetry: () => ref.invalidate(_requestActivityProvider(activityId)),
+          ),
+          data: (activity) {
+            if (activity == null) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.x5),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Activity not found.'),
+                      const SizedBox(height: AppSpacing.x4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          PressableScale(
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              if (context.canPop()) {
+                                context.pop();
+                              } else {
+                                context.go('/discovery');
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.x5,
+                                vertical: AppSpacing.x3,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.pill,
+                                ),
+                                border: Border.all(
+                                  color: context.colors.border,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Back',
+                                style: AppTypography.buttonPrimary.copyWith(
+                                  color: context.colors.textPrimary,
+                                ),
                               ),
                             ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Back',
-                              style: AppTypography.buttonPrimary.copyWith(
-                                color: context.colors.textPrimary,
+                          ),
+                          const SizedBox(width: AppSpacing.x3),
+                          PressableScale(
+                            onTap: () => ref.invalidate(
+                              _requestActivityProvider(activityId),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.x5,
+                                vertical: AppSpacing.x3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.pill,
+                                ),
+                                boxShadow: AppShadows.glowPrimary,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Retry',
+                                style: AppTypography.buttonPrimary,
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: AppSpacing.x3),
-                        PressableScale(
-                          onTap: () => ref.invalidate(
-                            _requestActivityProvider(activityId),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.x5,
-                              vertical: AppSpacing.x3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
-                              boxShadow: AppShadows.glowPrimary,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Retry',
-                              style: AppTypography.buttonPrimary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }
-          return _RequestBody(activity: activity);
-        },
+              );
+            }
+            return _RequestBody(activity: activity);
+          },
+        ),
       ),
-    ));
+    );
   }
 }
 
 final _requestActivityProvider = FutureProvider.autoDispose
     .family<ActivityModel?, String>((ref, id) {
-  return ref.watch(activityRepositoryProvider).byId(id);
-});
+      return ref.watch(activityRepositoryProvider).byId(id);
+    });
 
 class _RequestBody extends ConsumerStatefulWidget {
   const _RequestBody({required this.activity});
@@ -143,9 +139,7 @@ class _RequestBody extends ConsumerStatefulWidget {
 class _RequestBodyState extends ConsumerState<_RequestBody> {
   bool _withdrawing = false;
 
-  /// Withdraws the pending join request. On success the My Games
-  /// pending tab is invalidated and the screen pops with a
-  /// confirmation; on failure the request stays and an error shows.
+  /// Withdraws the pending join request.
   Future<void> _withdraw() async {
     if (_withdrawing) return;
     setState(() => _withdrawing = true);
@@ -217,9 +211,9 @@ class _RequestBodyState extends ConsumerState<_RequestBody> {
           Text(
             'The host will review your request soon. '
             'We\u2019ll notify you the moment they decide.',
-            style: AppTypography.bodyMedium(context).copyWith(
-              color: context.colors.textSecondary,
-            ),
+            style: AppTypography.bodyMedium(
+              context,
+            ).copyWith(color: context.colors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.x5),
@@ -255,8 +249,7 @@ class _RequestBodyState extends ConsumerState<_RequestBody> {
           ),
           const SizedBox(height: AppSpacing.x3),
 
-          // View details — secondary (the pending-request detail, not
-          // the public activity page: this request is still undecided).
+          // View details — secondary (the pending-request detail.
           PressableScale(
             onTap: () {
               HapticFeedback.lightImpact();
@@ -361,10 +354,9 @@ class _SummaryCard extends StatelessWidget {
               children: [
                 Text(
                   activity.title,
-                  style: AppTypography.labelField(context).copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
+                  style: AppTypography.labelField(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w700, fontSize: 15),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -409,9 +401,9 @@ class _NextSteps extends StatelessWidget {
         children: [
           Text(
             'What happens next',
-            style: AppTypography.labelField(context).copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: AppTypography.labelField(
+              context,
+            ).copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.x3),
           _Step(

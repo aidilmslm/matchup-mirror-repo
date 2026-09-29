@@ -1,9 +1,4 @@
-/**
- * Helpers for classifying Firestore gRPC errors.
- *
- * Kept in its own module (no firebase-admin imports) so it can be used
- * from app/server code and unit-tested without credential mocks.
- */
+/** Helpers for classifying Firestore gRPC errors. */
 
 /** True when `err` looks like a Firestore auth/credential failure. */
 export function isFirestoreAuthError(err: unknown): boolean {
@@ -30,10 +25,7 @@ export function isFirestoreAuthError(err: unknown): boolean {
   );
 }
 
-/**
- * Actionable remediation hint logged alongside Firestore auth failures.
- * The private key itself is never logged — only what to check/rotate.
- */
+/** Actionable remediation hint logged alongside Firestore auth failures. The private key itself is never logged. */
 export function firestoreAuthHint(): string {
   return (
     'Firestore authentication failed (UNAUTHENTICATED / ACCESS_TOKEN_EXPIRED). ' +

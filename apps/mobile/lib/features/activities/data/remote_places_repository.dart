@@ -4,12 +4,10 @@ import '../../../core/network/api_client.dart';
 import '../domain/place_suggestion.dart';
 import 'places_repository.dart';
 
-/// HTTP-backed [PlacesRepository]. Hits the api-server proxy (which
-/// fronts OpenStreetMap's Nominatim) — the mobile never talks to the
-/// geocoder directly, so provider swaps don't need an app update.
+/// HTTP-backed [PlacesRepository].
 class RemotePlacesRepository implements PlacesRepository {
   RemotePlacesRepository({ApiClient? client})
-      : _client = client ?? ApiClient.instance;
+    : _client = client ?? ApiClient.instance;
 
   final ApiClient _client;
 

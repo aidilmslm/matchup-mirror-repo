@@ -6,10 +6,7 @@ import '../../../../core/theme/dark_colors.dart';
 import '../../domain/place_suggestion.dart';
 import 'venue_picker_sheet.dart';
 
-/// A single tappable control that opens [VenuePickerSheet]. Picking
-/// a venue fires [onSuggestionSelected]. Renders in the same
-/// `_SettingCard` chrome used by the other fields in this screen
-/// so it sits flush inside the form.
+/// A single tappable control that opens [VenuePickerSheet].
 class VenueField extends StatelessWidget {
   const VenueField({
     super.key,
@@ -23,9 +20,7 @@ class VenueField extends StatelessWidget {
   final ValueChanged<PlaceSuggestion> onSuggestionSelected;
   final String? countryCodes;
 
-  /// Inline validation message (red border + text). Shown after a
-  /// blocked Continue so the missing venue is visible on the field,
-  /// not just a transient snackbar.
+  /// Inline validation message (red border + text).
   final String? errorText;
 
   static const _icon = Icons.place_outlined;
@@ -34,8 +29,7 @@ class VenueField extends StatelessWidget {
   Widget build(BuildContext context) {
     final picked = value;
     final hasVenue = picked != null;
-    final hasAddress =
-        hasVenue && picked.secondary.trim().isNotEmpty;
+    final hasAddress = hasVenue && picked.secondary.trim().isNotEmpty;
 
     final valueText = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,8 +75,7 @@ class VenueField extends StatelessWidget {
   }
 }
 
-/// Replica of the private `_SettingCard` in create_activity_screen.dart
-/// but exposed publicly so the venue picker can render the same chrome.
+/// Replica of the private `_SettingCard` in create_activity_screen.dart but exposed publicly so the venue picker can.
 class _VenueCard extends StatelessWidget {
   const _VenueCard({
     required this.icon,

@@ -1,18 +1,14 @@
 /// Models for the post-activity community rating system.
-///
-/// Each completed activity prompts every participant to give a single
-/// 1-5 star rating to each other participant they played with. The backend
-/// keeps an aggregate per `<rateeUid, sportType>` pair so the discovery
-/// card's "★ X.X (N games)" host row can show real, recent feedback.
+/// Each completed activity prompts every participant to give a single 1-5 star rating to each other participant they.
 library;
 
 /// One rating submitted against a single other participant.
-///
-/// The activity-level `comment` is shared across all participant rows in
-/// the current screen, so it is captured on the submit-level payload rather
-/// than duplicated here.
+/// The activity-level `comment` is shared across all participant rows in the current screen.
 class ParticipantRatingSubmission {
-  const ParticipantRatingSubmission({required this.rateeUserId, required this.stars});
+  const ParticipantRatingSubmission({
+    required this.rateeUserId,
+    required this.stars,
+  });
 
   /// Auth UID of the participant being rated.
   final String rateeUserId;
@@ -34,21 +30,16 @@ class ActivityRatingSubmission {
   /// Activity being rated. Must already be in the `past` state.
   final String activityId;
 
-  /// Sport taxonomy at the time of submission — keeps aggregate buckets
-  /// stable even if the host later edits the activity.
+  /// Sport taxonomy at the time of submission.
   final String activitySportType;
 
-  /// One entry per other participant (the rater is excluded — clients must
-  /// drop themselves before submitting). Empty list is allowed for the
-  /// early prototype; backend can ignore in that case.
+  /// One entry per other participant (the rater is excluded — clients must drop themselves before submitting).
   final List<ParticipantRatingSubmission> participants;
 
   /// Optional one-liner (<=500 chars on UI side, backend contract).
-  /// Server trims longer input.
   final String? comment;
 
-  /// Optional activity-level 1-5 stars. Persisted end-to-end (backend
-  /// `activityStars`); null when the rater skips the activity rating.
+  /// Optional activity-level 1-5 stars.
   final int? activityStars;
 }
 
@@ -62,24 +53,18 @@ class RatingSubmissionResult {
 
   final bool accepted;
 
-  /// When the rating was recorded (local clock if remote, server clock when
-  /// available — clients should never branch on this value).
+  /// When the rating was recorded (local clock if remote, server clock when available.
   final DateTime submittedAt;
 
-  /// Populated when [accepted] is false so the screen can surface the
-  /// server message or, in fallback mode, just say "saved offline".
+  /// Populated when [accepted] is false so the screen can surface the server message or, in fallback mode, just say.
   final String? remoteError;
 }
 
-/// Summary of aggregate rating for a user. Computed by the backend
-/// (`ratingBySport[sport]` reduced to avg + count) and surfaced through
-/// the user model so profile screens can render counts as well as score.
+/// Summary of aggregate rating for a user.
 class SportRatingSummary {
   const SportRatingSummary({required this.average, required this.count});
 
-  /// Running average across all completed activities the user played
-  /// within [SportRatingSummary.sportType]. Null when the user has fewer
-  /// than one rating — callers should render "—".
+  /// Running average across all completed activities the user played within [SportRatingSummary.sportType].
   final double average;
 
   /// Total ratings considered in [average]. Used to label "★ 4.8 (12)".
@@ -88,8 +73,5 @@ class SportRatingSummary {
   bool get hasRatings => count > 0;
 }
 
-/// Roll-up of a user's ratings across every sport they have feedback for,
-/// keyed by sport type (e.g. `Basketball`, `Tennis`). Lives on
-/// [UserModel.ratingBySport] and the activity-feed's host row picks the
-/// bucket matching `activity.sportType` to display.
+/// Roll-up of a user's ratings across every sport they have feedback for, keyed by sport type.
 typedef RatingBySport = Map<String, SportRatingSummary>;

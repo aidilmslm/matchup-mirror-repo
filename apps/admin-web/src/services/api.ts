@@ -1,6 +1,4 @@
-/**
- * API client for the admin backend (Firestore via api-server).
- */
+/** API client for the admin backend (Firestore via api-server). */
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 
@@ -14,10 +12,7 @@ export interface ApiFailure {
 }
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
-/**
- * Firebase ID token for admin-only routes, stored by the auth service
- * after Firebase sign-in. Attached as a Bearer token when present.
- */
+/** Firebase ID token for admin-only routes, stored by the auth service after Firebase sign-in. */
 const ADMIN_TOKEN_KEY = 'admin_id_token';
 
 function adminIdToken(): string | null {
@@ -44,11 +39,8 @@ export function clearAdminIdToken(): void {
   }
 }
 
-// ─── Unauthorized broadcast ─────────────────────────────────────────────────
-// Emitted whenever the backend rejects our token (HTTP 401 / code
-// UNAUTHORIZED — i.e. invalid or expired Firebase ID token). AuthContext
-// subscribes and turns it into an auto logout, so every apiFetch caller
-// gets the behaviour for free without wiring signOut manually.
+// Unauthorized broadcast.
+// Emitted whenever the backend rejects our token (HTTP 401 / code UNAUTHORIZED.
 
 type UnauthorizedListener = () => void;
 
@@ -71,10 +63,7 @@ function notifyUnauthorized(): void {
   }
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {},
-): Promise<ApiResponse<T>> {
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<ApiResponse<T>> {
   const url = `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
   const token = adminIdToken();
   try {

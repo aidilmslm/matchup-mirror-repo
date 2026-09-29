@@ -24,9 +24,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/player-profile/uid/:uid',
-          builder: (_, state) => PlayerProfileScreen.byUid(
-            userId: state.pathParameters['uid']!,
-          ),
+          builder: (_, state) =>
+              PlayerProfileScreen.byUid(userId: state.pathParameters['uid']!),
         ),
         GoRoute(
           path: '/chat/:title',
@@ -84,9 +83,7 @@ void main() {
       expect(find.text('Player not found.'), findsOneWidget);
     });
 
-    testWidgets('should show age and height chips when shared', (
-      tester,
-    ) async {
+    testWidgets('should show age and height chips when shared', (tester) async {
       final now = DateTime.now();
       final dob = DateTime(now.year - 24, now.month, now.day);
       when(() => userRepo.byId('james')).thenAnswer(
@@ -104,14 +101,9 @@ void main() {
       expect(find.text('178 cm'), findsOneWidget);
     });
 
-    testWidgets('should hide physical chips when not shared', (
-      tester,
-    ) async {
+    testWidgets('should hide physical chips when not shared', (tester) async {
       when(() => userRepo.byId('james')).thenAnswer(
-        (_) async => const UserModel(
-          id: 'james',
-          displayName: 'James Wilson',
-        ),
+        (_) async => const UserModel(id: 'james', displayName: 'James Wilson'),
       );
 
       await pumpScreen(tester);
@@ -152,25 +144,21 @@ void main() {
       expect(find.text('Back'), findsWidgets);
     });
 
-    testWidgets(
-      'should open the DM thread when Send Message is tapped',
-      (tester) async {
-        when(() => userRepo.byId('james')).thenAnswer(
-          (_) async =>
-              const UserModel(id: 'james', displayName: 'James Wilson'),
-        );
-        await pumpScreen(tester);
-
-        await tester.tap(find.text('Send Message'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('DM james'), findsOneWidget);
-      },
-    );
-
-    testWidgets('should show sport with fallback skill level', (
+    testWidgets('should open the DM thread when Send Message is tapped', (
       tester,
     ) async {
+      when(() => userRepo.byId('james')).thenAnswer(
+        (_) async => const UserModel(id: 'james', displayName: 'James Wilson'),
+      );
+      await pumpScreen(tester);
+
+      await tester.tap(find.text('Send Message'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('DM james'), findsOneWidget);
+    });
+
+    testWidgets('should show sport with fallback skill level', (tester) async {
       when(() => userRepo.byId('james')).thenAnswer(
         (_) async => const UserModel(
           id: 'james',
@@ -186,9 +174,7 @@ void main() {
       expect(find.text('INTERMEDIATE'), findsOneWidget);
     });
 
-    testWidgets('should hide the level badge when unknown', (
-      tester,
-    ) async {
+    testWidgets('should hide the level badge when unknown', (tester) async {
       when(() => userRepo.byId('james')).thenAnswer(
         (_) async => const UserModel(
           id: 'james',
@@ -206,8 +192,7 @@ void main() {
       tester,
     ) async {
       when(() => userRepo.byId('james')).thenAnswer(
-        (_) async =>
-            const UserModel(id: 'james', displayName: 'James Wilson'),
+        (_) async => const UserModel(id: 'james', displayName: 'James Wilson'),
       );
       await pumpScreen(tester);
 
@@ -235,9 +220,8 @@ void main() {
         routes: [
           GoRoute(
             path: '/player-profile/uid/:uid',
-            builder: (_, state) => PlayerProfileScreen.byUid(
-              userId: state.pathParameters['uid']!,
-            ),
+            builder: (_, state) =>
+                PlayerProfileScreen.byUid(userId: state.pathParameters['uid']!),
           ),
         ],
       );

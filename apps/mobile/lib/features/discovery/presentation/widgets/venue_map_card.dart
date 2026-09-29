@@ -10,16 +10,12 @@ import '../../../../core/widgets/app_snackbar.dart';
 import '../../../activities/domain/activity_model.dart';
 
 /// Google Maps directions URL targeting the venue coordinates.
-///
-/// Uses the universal https scheme so it opens the Google Maps app when
-/// installed and falls back to the browser otherwise — no native
-/// manifest/plist configuration required.
+/// Uses the universal https scheme so it opens the Google Maps app when installed and falls back to the browser.
 Uri venueDirectionsUri(double latitude, double longitude) => Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude',
-    );
+  'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude',
+);
 
 /// Opens Google Maps with route directions to ([latitude], [longitude]).
-///
 /// Shows a SnackBar instead of failing silently when no app can handle it.
 Future<void> openVenueDirections(
   BuildContext context,
@@ -40,11 +36,7 @@ Future<void> openVenueDirections(
 }
 
 /// Venue location map for activity detail screens.
-///
-/// Shows a static OSM preview (180px) with a venue pin. Tapping it
-/// opens a full-screen interactive map participants can pan/zoom, and the
-/// "Get Directions" button opens Google Maps with route directions.
-/// Renders nothing when the activity carries no coordinates.
+/// Shows a static OSM preview (180px) with a venue pin.
 class VenueMapCard extends StatelessWidget {
   const VenueMapCard({super.key, required this.activity});
 
@@ -62,9 +54,9 @@ class VenueMapCard extends StatelessWidget {
       children: [
         Text(
           'Venue Location',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: AppSpacing.x3),
         Material(
@@ -81,9 +73,7 @@ class VenueMapCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Fallback behind the tiles: while tiles load — or when
-                  // they fail (errorTileCallback below) — a muted map
-                  // icon shows instead of a blank grey box.
+                  // Fallback behind the tiles: while tiles load.
                   Container(
                     color: context.colors.surfaceSubtle,
                     alignment: Alignment.center,
@@ -97,9 +87,7 @@ class VenueMapCard extends StatelessWidget {
                     options: MapOptions(
                       initialCenter: point,
                       initialZoom: 15,
-                      // Transparent so the fallback icon behind shows
-                      // through while tiles load or when they fail —
-                      // the default opaque grey would cover it.
+                      // Transparent so the fallback icon behind shows through while tiles load or when they fail.
                       backgroundColor: Colors.transparent,
                       interactionOptions: const InteractionOptions(
                         flags: InteractiveFlag.none,
@@ -110,8 +98,7 @@ class VenueMapCard extends StatelessWidget {
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'matchup-demo/1.0',
-                        // Tiles stay transparent on failure so the
-                        // fallback icon above shows through.
+                        // Tiles stay transparent on failure so the fallback icon above shows through.
                         errorTileCallback: (tile, error, stackTrace) {},
                       ),
                       MarkerLayer(
@@ -126,9 +113,7 @@ class VenueMapCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  // OSM attribution for the preview (the fullscreen map
-                  // uses RichAttributionWidget; the static preview gets
-                  // the same credit as tiny text, top-right).
+                  // OSM attribution for the preview (the fullscreen map uses RichAttributionWidget.
                   Positioned(
                     top: 6,
                     right: 6,
@@ -143,10 +128,7 @@ class VenueMapCard extends StatelessWidget {
                       ),
                       child: const Text(
                         '© OpenStreetMap',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 9),
                       ),
                     ),
                   ),
@@ -286,8 +268,7 @@ class _FullVenueMapState extends State<_FullVenueMap> {
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'matchup-demo/1.0',
               ),
               MarkerLayer(
@@ -302,9 +283,7 @@ class _FullVenueMapState extends State<_FullVenueMap> {
               ),
               const RichAttributionWidget(
                 attributions: [
-                  TextSourceAttribution(
-                    '© OpenStreetMap contributors',
-                  ),
+                  TextSourceAttribution('© OpenStreetMap contributors'),
                 ],
               ),
             ],
@@ -369,8 +348,7 @@ class _FullVenueMapState extends State<_FullVenueMap> {
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: FilledButton.icon(
-                  onPressed: () =>
-                      openVenueDirections(context, lat, lng),
+                  onPressed: () => openVenueDirections(context, lat, lng),
                   icon: const Icon(Icons.navigation_rounded, size: 18),
                   label: const Text('Open in Google Maps'),
                 ),
@@ -390,8 +368,7 @@ class _FullVenueMapState extends State<_FullVenueMap> {
                 children: [
                   InkWell(
                     onTap: () {
-                      final z =
-                          (_ctrl.camera.zoom + 1).clamp(4.0, 19.0);
+                      final z = (_ctrl.camera.zoom + 1).clamp(4.0, 19.0);
                       _ctrl.move(_ctrl.camera.center, z);
                     },
                     borderRadius: const BorderRadius.vertical(
@@ -406,13 +383,13 @@ class _FullVenueMapState extends State<_FullVenueMap> {
                   Container(
                     height: 0.5,
                     width: 28,
-                    color: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.6),
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.6,
+                    ),
                   ),
                   InkWell(
                     onTap: () {
-                      final z =
-                          (_ctrl.camera.zoom - 1).clamp(4.0, 19.0);
+                      final z = (_ctrl.camera.zoom - 1).clamp(4.0, 19.0);
                       _ctrl.move(_ctrl.camera.center, z);
                     },
                     borderRadius: const BorderRadius.vertical(

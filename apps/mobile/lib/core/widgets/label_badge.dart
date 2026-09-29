@@ -4,10 +4,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/dark_colors.dart';
 
-/// Pill-shaped label matching Figma activity badges (e.g. "BASKETBALL",
-/// "CONFIRMED", "JOINED"). Stadium shape, 11px bold text, configurable
-/// background/foreground so the same widget covers status badges across
-/// screens.
+/// Pill-shaped label matching Figma activity badges.
 class LabelBadge extends StatelessWidget {
   const LabelBadge({
     super.key,
@@ -45,8 +42,7 @@ class LabelBadge extends StatelessWidget {
   }
 }
 
-/// Status badge variant that derives its colors from a [StatusTone]. Used for
-/// participant check-in state in joined-activity flows.
+/// Status badge variant that derives its colors from a [StatusTone].
 enum StatusTone { checkedIn, pending }
 
 class StatusBadge extends StatelessWidget {
@@ -61,10 +57,7 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        // Was a separately hardcoded #D1FAE5/#097044 pair — consolidated onto
-        // the existing success status tokens (already #D1FAE5/#04694A used by
-        // the discovery "Open" chip) so the app carries one success-green
-        // family instead of two near-duplicates (PRD Appendix C.2).
+        // Was a separately hardcoded #D1FAE5/#097044 pair.
         color: isChecked
             ? context.colors.statusSuccessBg
             : context.colors.surface,

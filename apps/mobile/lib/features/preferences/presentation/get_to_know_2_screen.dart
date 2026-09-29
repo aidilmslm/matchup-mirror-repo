@@ -47,17 +47,11 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
   double _distanceKm = 5;
   bool _saving = false;
 
-  /// Keeps the local filter providers in sync only AFTER the backend
-  /// profile persist succeeds, then advances — so the picks land in the
-  /// DB even if the user never reaches the final step. Distance stays
-  /// device-local (SharedPrefs). Local writes happen post-success so a
-  /// failed save can't leave the device filters disagreeing with the
-  /// server profile.
+  /// Keeps the local filter providers in sync only AFTER the backend profile persist succeeds, then advances.
   Future<void> _onNext() async {
     if (_saving) return;
     if (_sports.isEmpty) {
-      // Fire-and-forget: persistence must never block (or hang, when the
-      // prefs plugin is unavailable) the navigation path.
+      // Fire-and-forget: persistence must never block.
       unawaited(ref.read(sportPreferencesProvider.notifier).setAll(_sports));
       ref.read(distanceFilterProvider.notifier).set(_distanceKm);
       if (!mounted) return;
@@ -66,21 +60,17 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
     }
     setState(() => _saving = true);
     try {
-      // Sport names are free-form display strings (the server accepts any
-      // non-empty sport name — it only validates/normalises *levels* via
-      // `wireSkillLevel`); trim here so stray whitespace can't create
-      // near-duplicate entries server-side. The bundled 12-sport list is
-      // display-only fallback for when the admin config is empty/offline —
-      // it is never bulk-sent; only user-picked sports reach the backend.
-      await ref.read(userRepositoryProvider).updateProfile(
+      // Sport names are free-form display strings (the server accepts any non-empty sport name.
+      await ref
+          .read(userRepositoryProvider)
+          .updateProfile(
             sports: [
               for (final e in _sports.entries)
                 if (e.key.trim().isNotEmpty)
                   (sport: e.key.trim(), level: e.value),
             ],
           );
-      // Same fire-and-forget rule as the skip path above: the backend
-      // write already succeeded, so disk persistence must not gate nav.
+      // Same fire-and-forget rule as the skip path above: the backend write already succeeded.
       unawaited(ref.read(sportPreferencesProvider.notifier).setAll(_sports));
       ref.read(distanceFilterProvider.notifier).set(_distanceKm);
       if (!mounted) return;
@@ -97,8 +87,7 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
     }
   }
 
-  /// Tapping a chip: an unselected sport asks for a skill level before it is
-  /// added (so nothing is silently defaulted); a selected one is removed.
+  /// Tapping a chip: an unselected sport asks for a skill level before it is added (so nothing is silently defaulted).
   Future<void> _onChipTap(String name) async {
     if (_sports.containsKey(name)) {
       setState(() => _sports.remove(name));
@@ -141,7 +130,7 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
         children: [
           OnboardingProgressHeader(step: 2, total: 3),
 
-          // ── Scrollable: title + sport grid ─────────────────────────
+          // Scrollable: title sport grid.
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
@@ -164,9 +153,9 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
                   const SizedBox(height: AppSpacing.x2),
                   Text(
                     'Pick any - then set your skill level.',
-                    style: AppTypography.bodyMedium(context).copyWith(
-                      color: context.colors.textSecondary,
-                    ),
+                    style: AppTypography.bodyMedium(
+                      context,
+                    ).copyWith(color: context.colors.textSecondary),
                   ),
                   const SizedBox(height: AppSpacing.x4),
 
@@ -176,11 +165,11 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: AppSpacing.x3,
-                      mainAxisSpacing: AppSpacing.x3,
-                      childAspectRatio: 1.45,
-                    ),
+                          crossAxisCount: 3,
+                          crossAxisSpacing: AppSpacing.x3,
+                          mainAxisSpacing: AppSpacing.x3,
+                          childAspectRatio: 1.45,
+                        ),
                     itemCount: sportOptions.length,
                     itemBuilder: (_, i) {
                       final name = sportOptions[i];
@@ -200,12 +189,10 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
             ),
           ),
 
-          // ── Discovery distance ─────────────────────────────────────
+          // Discovery distance.
           Container(
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: context.colors.border),
-              ),
+              border: Border(top: BorderSide(color: context.colors.border)),
             ),
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.x5,
@@ -220,10 +207,9 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
                   children: [
                     Text(
                       'Discovery distance',
-                      style: AppTypography.labelField(context).copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.labelField(
+                        context,
+                      ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),
                     ),
                     const Spacer(),
                     Text(
@@ -260,12 +246,10 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
             ),
           ),
 
-          // ── Next button ────────────────────────────────────────────
+          // Next button.
           Container(
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: context.colors.border),
-              ),
+              border: Border(top: BorderSide(color: context.colors.border)),
             ),
             padding: EdgeInsets.fromLTRB(
               AppSpacing.x5,
@@ -299,7 +283,7 @@ class _GetToKnow2ScreenState extends ConsumerState<GetToKnow2Screen> {
   }
 }
 
-// ─── Sport chip — oval, no icon ───────────────────────────────────────────────
+// Sport chip — oval, no icon.
 
 class _SportChip extends StatelessWidget {
   const _SportChip({
@@ -317,14 +301,9 @@ class _SportChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = level != null;
-    // Unselected fill/border resolve via theme tokens so dark mode gets
-    // the muted dark surface instead of a light hardcoded fill. Light
-    // values match the old literals exactly (surfaceMuted 0xFFF1F5F9,
-    // divider 0xFFE5E7EB).
+    // Unselected fill/border resolve via theme tokens so dark mode gets the muted dark surface instead of a light.
 
-    // PressableScale (not AppTappable) because AppTappable wraps its child in
-    // a Stack, which lets the container shrink to its content instead of
-    // filling the grid cell — the chip must stretch edge-to-edge.
+    // PressableScale (not AppTappable) because AppTappable wraps its child in a Stack, which lets the container.
     return Semantics(
       button: true,
       label: selected ? '$name, $level' : '$name, not selected',
@@ -364,13 +343,7 @@ class _SportChip extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               if (selected)
-                // Nested tap target: Flutter's gesture arena lets only one
-                // `onTap` win, so a tap on this pill fires `onLevelTap`
-                // WITHOUT bubbling to the outer chip's `onTap` (and taps
-                // elsewhere on the chip reach only the outer handler).
-                // `opaque` (PressableScale's default, stated explicitly)
-                // keeps the whole pill row hittable. No sibling-row
-                // restructure needed — visuals and hit areas unchanged.
+                // Nested tap target: Flutter's gesture arena lets only one `onTap` win.
                 PressableScale(
                   onTap: onLevelTap,
                   behavior: HitTestBehavior.opaque,
@@ -408,7 +381,7 @@ class _SportChip extends StatelessWidget {
   }
 }
 
-// ─── Level picker sheet ───────────────────────────────────────────────────────
+// Level picker sheet.
 
 class _LevelSheet extends StatelessWidget {
   const _LevelSheet({
@@ -419,8 +392,7 @@ class _LevelSheet extends StatelessWidget {
 
   final String sport;
 
-  /// `null` when the sport is being added for the first time — nothing is
-  /// pre-selected, so the user has to make a deliberate choice.
+  /// `null` when the sport is being added for the first time.
   final String? current;
 
   final List<String> levels;

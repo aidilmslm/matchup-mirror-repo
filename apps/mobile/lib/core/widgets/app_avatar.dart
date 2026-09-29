@@ -26,13 +26,8 @@ extension _AvatarSizeX on AppAvatarSize {
   };
 }
 
-/// Circular avatar that renders a network/asset image, falling back to
-/// initials on error or when no image is provided.
-///
-/// ```dart
-/// AppAvatar(imageUrl: user.avatarUrl, name: user.name)
-/// AppAvatar.asset('assets/images/discovery/avatars/avatar_1.png', size: AppAvatarSize.sm)
-/// ```
+/// Circular avatar that renders a network/asset image, falling back to initials on error or when no image is provided.
+/// dart AppAvatar(imageUrl: user.avatarUrl, name: user.name).
 class AppAvatar extends StatelessWidget {
   const AppAvatar({
     super.key,
@@ -124,10 +119,7 @@ class AppAvatar extends StatelessWidget {
       );
     }
 
-    // Network image — disk + memory cache. Placeholder + error state
-    // keduanya inisial STATIS (bukan shimmer): avatar kecil (24-80px)
-    // dan puluhan instance per layar — satu shimmer per avatar berarti
-    // puluhan AnimationController jalan bareng + kedip satu-satu.
+    // Network image — disk + memory cache.
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       final dpr = MediaQuery.devicePixelRatioOf(context);
       final cacheSize = (d * dpr).round().clamp(1, 400);

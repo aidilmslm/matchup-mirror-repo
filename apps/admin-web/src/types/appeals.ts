@@ -1,3 +1,4 @@
+// appeals.
 export type AppealStatus = 'Pending' | 'Approved' | 'Rejected';
 export type AppealType = 'Suspension' | 'Activity Removal' | 'Account Ban' | 'Content Removal';
 

@@ -22,7 +22,7 @@ import '../domain/user_model.dart';
 import '../data/user_repository.dart';
 import '../../activities/presentation/create/components/image_picker_modal.dart';
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// Screen.
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -47,10 +47,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _initialised = false;
   bool _dirty = false;
 
-  /// Id of the user the fields were last initialised from. The screen
-  /// stays mounted across `myProfileProvider` invalidations, so a plain
-  /// `_initialised` flag would never refresh — re-init when a DIFFERENT
-  /// user arrives (e.g. account switch), keep edits otherwise.
+  /// Id of the user the fields were last initialised from.
   String? _loadedUserId;
 
   final List<_SportEntry> _sports = [];
@@ -157,11 +154,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       );
       return;
     }
-    // Height now persists (PATCH /me accepts 50–300); reject garbage
-    // locally so the backend 400 never fires for a typo.
+    // Height now persists (PATCH /me accepts 50–300); reject garbage locally so the backend 400 never fires for a typo.
     final heightRaw = _heightController.text.trim();
     final height = heightRaw.isEmpty ? null : int.tryParse(heightRaw);
-    if (heightRaw.isNotEmpty && (height == null || height < 50 || height > 300)) {
+    if (heightRaw.isNotEmpty &&
+        (height == null || height < 50 || height > 300)) {
       AppSnackbar.show(
         context,
         message: 'Height must be between 50 and 300 cm.',
@@ -172,7 +169,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     // Same for weight (PATCH /me accepts 30–300).
     final weightRaw = _weightController.text.trim();
     final weight = weightRaw.isEmpty ? null : int.tryParse(weightRaw);
-    if (weightRaw.isNotEmpty && (weight == null || weight < 30 || weight > 300)) {
+    if (weightRaw.isNotEmpty &&
+        (weight == null || weight < 30 || weight > 300)) {
       AppSnackbar.show(
         context,
         message: 'Weight must be between 30 and 300 kg.',
@@ -182,26 +180,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
     setState(() => _loading = true);
     try {
-      await ref.read(userRepositoryProvider).updateProfile(
-        displayName: name,
-        bio: _bioController.text.trim(),
-        location: _locationController.text.trim(),
-        email: _emailController.text.trim(),
-        dateOfBirth: _dob,
-        heightCm: height,
-        weightKg: weight,
-        goal: _goalController.text.trim(),
-        sports: _sports
-            .map((s) => (
-                  sport: s.name,
-                  level: const [
-                    'Beginner',
-                    'Intermediate',
-                    'Advanced',
-                  ][s.level],
-                ))
-            .toList(),
-      );
+      await ref
+          .read(userRepositoryProvider)
+          .updateProfile(
+            displayName: name,
+            bio: _bioController.text.trim(),
+            location: _locationController.text.trim(),
+            email: _emailController.text.trim(),
+            dateOfBirth: _dob,
+            heightCm: height,
+            weightKg: weight,
+            goal: _goalController.text.trim(),
+            sports: _sports
+                .map(
+                  (s) => (
+                    sport: s.name,
+                    level: const [
+                      'Beginner',
+                      'Intermediate',
+                      'Advanced',
+                    ][s.level],
+                  ),
+                )
+                .toList(),
+          );
       ref.invalidate(myProfileProvider);
       if (!mounted) return;
       _dirty = false;
@@ -225,14 +227,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  /// Picks a gallery photo, uploads it, and persists the URL as the
-  /// profile photo. Independent from the text-field save flow — the
-  /// photo applies immediately so the preview below is always real.
+  /// Picks a gallery photo, uploads it, and persists the URL as the profile photo.
   Future<void> _changePhoto() async {
     if (_uploadingPhoto) return;
     // Gallery or camera — same source chooser as the create flow.
-    // A missing camera (denied permission, no hardware) surfaces as a
-    // picker failure below, not a crash.
     final choice = await showModalBottomSheet<ImageSourceChoice>(
       context: context,
       isScrollControlled: true,
@@ -317,7 +315,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         backgroundColor: context.colors.background,
         body: Column(
           children: [
-            // ── Header ────────────────────────────────────────────────
+            // Header.
             Container(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.x4,
@@ -343,8 +341,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         height: 38,
                         decoration: BoxDecoration(
                           color: context.colors.surfaceMuted,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         alignment: Alignment.center,
                         child: Icon(
@@ -388,13 +385,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
 
-            // ── Body ──────────────────────────────────────────────────
+            // Body.
             Expanded(
               child: profileAsync.when(
                 loading: () => const SkeletonList(count: 6),
-                error: (_, _) => const Center(
-                  child: Text('Could not load profile.'),
-                ),
+                error: (_, _) =>
+                    const Center(child: Text('Could not load profile.')),
                 data: (user) {
                   _initFields(user);
                   return SingleChildScrollView(
@@ -459,10 +455,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ),
                         const SizedBox(height: AppSpacing.x4),
 
-                        // Contact card — PATCH /me persists none of these
-                        // yet (see RemoteUserRepository.updateProfile), so
-                        // the inputs are disabled with an honest caption
-                        // instead of faking a save.
+                        // Contact card — PATCH /me persists none of these yet (see RemoteUserRepository.updateProfile).
                         _SectionCard(
                           title: 'Contact',
                           icon: Icons.mail_outline_rounded,
@@ -481,11 +474,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         ),
                         const SizedBox(height: AppSpacing.x4),
 
-                        // Physical card — height, weight and goal all
-                        // persist via PATCH /me (weight 30–300, goal
-                        // free text). Validation mirrors the repo
-                        // guards; garbage is rejected with a snackbar
-                        // before the request leaves the device.
+                        // Physical card — height, weight and goal all persist via PATCH /me.
                         _SectionCard(
                           title: 'Physical',
                           icon: Icons.fitness_center_outlined,
@@ -537,8 +526,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: context.colors.primarySoft,
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.pill),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.pill,
+                                ),
                                 border: Border.all(
                                   color: context.colors.primaryOnSurface
                                       .withValues(alpha: 0.4),
@@ -555,12 +545,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   const SizedBox(width: 4),
                                   Text(
                                     'Add sport',
-                                    style:
-                                        AppTypography.chipLabel(context)
-                                            .copyWith(
-                                      color: context.colors.primaryOnSurface,
-                                      fontSize: 12,
-                                    ),
+                                    style: AppTypography.chipLabel(context)
+                                        .copyWith(
+                                          color:
+                                              context.colors.primaryOnSurface,
+                                          fontSize: 12,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -582,14 +572,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                       ),
                                       child: _SportCard(
                                         entry: _sports[i],
-                                        onLevelChanged: (level) =>
-                                            setState(() {
-                                              _sports[i] = _SportEntry(
-                                                name: _sports[i].name,
-                                                level: level,
-                                              );
-                                              _dirty = true;
-                                            }),
+                                        onLevelChanged: (level) => setState(() {
+                                          _sports[i] = _SportEntry(
+                                            name: _sports[i].name,
+                                            level: level,
+                                          );
+                                          _dirty = true;
+                                        }),
                                         onRemove: () => setState(() {
                                           _sports.removeAt(i);
                                           _dirty = true;
@@ -606,7 +595,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ),
 
-            // ── Pinned save bar ────────────────────────────────────────
+            // Pinned save bar.
             _SaveBar(loading: _loading, onSave: _save),
           ],
         ),
@@ -627,8 +616,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _showAddSportSheet(BuildContext context) async {
     final existing = _sports.map((s) => s.name).toSet();
-    final options =
-        _addableSports.where((s) => !existing.contains(s)).toList();
+    final options = _addableSports.where((s) => !existing.contains(s)).toList();
     if (options.isEmpty) return;
 
     final picked = await showModalBottomSheet<String>(
@@ -707,7 +695,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 }
 
-// ─── Section card ─────────────────────────────────────────────────────────────
+// Section card.
 
 /// Caption under fields the backend can't persist yet.
 class _NotSyncedCaption extends StatelessWidget {
@@ -735,9 +723,9 @@ class _NotSyncedCaption extends StatelessWidget {
           Expanded(
             child: Text(
               'Saved on this device only for now',
-              style: AppTypography.metaSub(context).copyWith(
-                color: context.colors.primaryOnSurface,
-              ),
+              style: AppTypography.metaSub(
+                context,
+              ).copyWith(color: context.colors.primaryOnSurface),
             ),
           ),
         ],
@@ -790,10 +778,7 @@ class _SectionCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.x3),
               Expanded(
-                child: Text(
-                  title,
-                  style: AppTypography.titleMedium(context),
-                ),
+                child: Text(title, style: AppTypography.titleMedium(context)),
               ),
               ?trailing,
             ],
@@ -806,7 +791,7 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-// ─── Avatar block ─────────────────────────────────────────────────────────────
+// Avatar block.
 
 class _AvatarBlock extends StatelessWidget {
   const _AvatarBlock({
@@ -926,7 +911,7 @@ class _AvatarBlock extends StatelessWidget {
   }
 }
 
-// ─── Sport entry + card ───────────────────────────────────────────────────────
+// Sport entry card.
 
 class _SportEntry {
   const _SportEntry({required this.name, required this.level});
@@ -965,9 +950,9 @@ class _SportCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   entry.name,
-                  style: AppTypography.labelField(context).copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTypography.labelField(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               AppTappable(
@@ -1022,11 +1007,8 @@ class _SportCard extends StatelessWidget {
                                 ],
                               )
                             : null,
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.pill),
-                        boxShadow: selected
-                            ? AppShadows.glowPrimary
-                            : null,
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        boxShadow: selected ? AppShadows.glowPrimary : null,
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -1053,7 +1035,7 @@ class _SportCard extends StatelessWidget {
   }
 }
 
-// ─── Save bar ─────────────────────────────────────────────────────────────────
+// Save bar.
 
 class _SaveBar extends StatelessWidget {
   const _SaveBar({required this.loading, required this.onSave});
@@ -1102,10 +1084,7 @@ class _SaveBar extends StatelessWidget {
                     valueColor: AlwaysStoppedAnimation(AppColors.textOnPrimary),
                   ),
                 )
-              : Text(
-                  'Save Changes',
-                  style: AppTypography.buttonPrimary,
-                ),
+              : Text('Save Changes', style: AppTypography.buttonPrimary),
         ),
       ),
     );

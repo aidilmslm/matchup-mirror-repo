@@ -63,44 +63,43 @@ void main() {
       expect(find.text('Enter a valid email address'), findsOneWidget);
     });
 
-    testWidgets(
-      'should push reset-link-sent with the email once submitted',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(600, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        when(
-          () => _mockAuth.forgotPassword(email: any(named: 'email')),
-        ).thenAnswer((_) async {});
+    testWidgets('should push reset-link-sent with the email once submitted', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(600, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      when(
+        () => _mockAuth.forgotPassword(email: any(named: 'email')),
+      ).thenAnswer((_) async {});
 
-        await _pumpRouter(
-          tester,
-          initialLocation: '/forgot-password',
-          routes: [
-            GoRoute(
-              path: '/forgot-password',
-              builder: (_, _) => const ForgotPasswordScreen(),
-            ),
-            GoRoute(
-              path: '/reset-link-sent',
-              builder: (_, state) {
-                final email =
-                    state.uri.queryParameters['email'] ??
-                    (state.extra as String? ?? '');
-                return Scaffold(body: Text('Reset link for $email'));
-              },
-            ),
-          ],
-        );
+      await _pumpRouter(
+        tester,
+        initialLocation: '/forgot-password',
+        routes: [
+          GoRoute(
+            path: '/forgot-password',
+            builder: (_, _) => const ForgotPasswordScreen(),
+          ),
+          GoRoute(
+            path: '/reset-link-sent',
+            builder: (_, state) {
+              final email =
+                  state.uri.queryParameters['email'] ??
+                  (state.extra as String? ?? '');
+              return Scaffold(body: Text('Reset link for $email'));
+            },
+          ),
+        ],
+      );
 
-        await tester.enterText(find.byType(TextField), 'jordan@example.com');
-        await tester.tap(find.text('Send Reset Link'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 1000));
-        await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'jordan@example.com');
+      await tester.tap(find.text('Send Reset Link'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1000));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Reset link for jordan@example.com'), findsOneWidget);
-      },
-    );
+      expect(find.text('Reset link for jordan@example.com'), findsOneWidget);
+    });
 
     testWidgets('should show an error when sending fails', (tester) async {
       await tester.binding.setSurfaceSize(const Size(600, 1000));
@@ -236,10 +235,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Resend'), findsNothing);
-      expect(
-        find.text('Open this link from your email app.'),
-        findsOneWidget,
-      );
+      expect(find.text('Open this link from your email app.'), findsOneWidget);
     });
   });
 }

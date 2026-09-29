@@ -1,10 +1,13 @@
+// Tests for authService.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const { signInWithEmailAndPasswordMock, firebaseSignOutMock, onIdTokenChangedMock } = vi.hoisted(() => ({
-  signInWithEmailAndPasswordMock: vi.fn(),
-  firebaseSignOutMock: vi.fn(),
-  onIdTokenChangedMock: vi.fn((_auth: unknown, _cb: unknown) => () => undefined),
-}));
+const { signInWithEmailAndPasswordMock, firebaseSignOutMock, onIdTokenChangedMock } = vi.hoisted(
+  () => ({
+    signInWithEmailAndPasswordMock: vi.fn(),
+    firebaseSignOutMock: vi.fn(),
+    onIdTokenChangedMock: vi.fn((_auth: unknown, _cb: unknown) => () => undefined),
+  }),
+);
 
 vi.mock('firebase/auth', () => ({
   signInWithEmailAndPassword: signInWithEmailAndPasswordMock,
@@ -120,19 +123,36 @@ describe('authService signIn/signOut', () => {
         getIdToken: vi.fn().mockResolvedValue('id-token'),
       },
     });
-    apiFetchMock.mockResolvedValue({ ok: true, data: { uid: 'uid-1', email: 'bob@example.com', admin: true } });
+    apiFetchMock.mockResolvedValue({
+      ok: true,
+      data: { uid: 'uid-1', email: 'bob@example.com', admin: true },
+    });
 
     const session = await signIn('  bob@example.com  ', 'pw', false);
 
-    expect(signInWithEmailAndPasswordMock).toHaveBeenCalledWith(expect.anything(), 'bob@example.com', 'pw');
+    expect(signInWithEmailAndPasswordMock).toHaveBeenCalledWith(
+      expect.anything(),
+      'bob@example.com',
+      'pw',
+    );
     expect(setAdminIdTokenMock).toHaveBeenCalledWith('id-token');
-    expect(session.user).toMatchObject({ id: 'uid-1', name: 'bob', email: 'bob@example.com', role: 'Admin' });
+    expect(session.user).toMatchObject({
+      id: 'uid-1',
+      name: 'bob',
+      email: 'bob@example.com',
+      role: 'Admin',
+    });
     expect(loadSession()?.token).toBe('id-token');
   });
 
   it('falls back to the uid for the display name when the email has no local part', async () => {
     signInWithEmailAndPasswordMock.mockResolvedValue({
-      user: { uid: 'uid-2', email: null, photoURL: null, getIdToken: vi.fn().mockResolvedValue('tok') },
+      user: {
+        uid: 'uid-2',
+        email: null,
+        photoURL: null,
+        getIdToken: vi.fn().mockResolvedValue('tok'),
+      },
     });
     apiFetchMock.mockResolvedValue({ ok: true, data: { uid: 'uid-2', email: null, admin: true } });
 
@@ -144,35 +164,60 @@ describe('authService signIn/signOut', () => {
     signInWithEmailAndPasswordMock.mockRejectedValue(new Error('auth/wrong-password'));
 
     await expect(signIn('bob@example.com', 'wrong', false)).rejects.toThrow(AuthError);
-    await expect(signIn('bob@example.com', 'wrong', false)).rejects.toThrow('Invalid email or password.');
+    await expect(signIn('bob@example.com', 'wrong', false)).rejects.toThrow(
+      'Invalid email or password.',
+    );
     expect(setAdminIdTokenMock).not.toHaveBeenCalled();
   });
 
   it('clears the token and throws when the account is not an admin', async () => {
     signInWithEmailAndPasswordMock.mockResolvedValue({
-      user: { uid: 'uid-3', email: 'nobody@example.com', photoURL: null, getIdToken: vi.fn().mockResolvedValue('tok') },
+      user: {
+        uid: 'uid-3',
+        email: 'nobody@example.com',
+        photoURL: null,
+        getIdToken: vi.fn().mockResolvedValue('tok'),
+      },
     });
     apiFetchMock.mockResolvedValue({ ok: false, error: { code: 'FORBIDDEN', message: 'nope' } });
 
-    await expect(signIn('nobody@example.com', 'pw', false)).rejects.toThrow('This account is not an admin.');
+    await expect(signIn('nobody@example.com', 'pw', false)).rejects.toThrow(
+      'This account is not an admin.',
+    );
     expect(clearAdminIdTokenMock).toHaveBeenCalled();
     expect(loadSession()).toBeNull();
   });
 
   it('propagates a non-FORBIDDEN admin-check error message as-is', async () => {
     signInWithEmailAndPasswordMock.mockResolvedValue({
-      user: { uid: 'uid-4', email: 'x@example.com', photoURL: null, getIdToken: vi.fn().mockResolvedValue('tok') },
+      user: {
+        uid: 'uid-4',
+        email: 'x@example.com',
+        photoURL: null,
+        getIdToken: vi.fn().mockResolvedValue('tok'),
+      },
     });
-    apiFetchMock.mockResolvedValue({ ok: false, error: { code: 'NETWORK_ERROR', message: 'server unreachable' } });
+    apiFetchMock.mockResolvedValue({
+      ok: false,
+      error: { code: 'NETWORK_ERROR', message: 'server unreachable' },
+    });
 
     await expect(signIn('x@example.com', 'pw', false)).rejects.toThrow('server unreachable');
   });
 
   it('uses the 30-day TTL when remember is true and the 8h TTL otherwise', async () => {
     signInWithEmailAndPasswordMock.mockResolvedValue({
-      user: { uid: 'uid-5', email: 'x@example.com', photoURL: null, getIdToken: vi.fn().mockResolvedValue('tok') },
+      user: {
+        uid: 'uid-5',
+        email: 'x@example.com',
+        photoURL: null,
+        getIdToken: vi.fn().mockResolvedValue('tok'),
+      },
     });
-    apiFetchMock.mockResolvedValue({ ok: true, data: { uid: 'uid-5', email: 'x@example.com', admin: true } });
+    apiFetchMock.mockResolvedValue({
+      ok: true,
+      data: { uid: 'uid-5', email: 'x@example.com', admin: true },
+    });
 
     const before = Date.now();
     const session = await signIn('x@example.com', 'pw', true);

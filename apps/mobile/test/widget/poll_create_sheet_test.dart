@@ -32,8 +32,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('creates a poll with the entered question and options',
-      (tester) async {
+  testWidgets('creates a poll with the entered question and options', (
+    tester,
+  ) async {
     when(
       () => repo.createPoll(
         activityId: any(named: 'activityId'),
@@ -44,7 +45,10 @@ void main() {
 
     await pumpSheet(tester);
 
-    await tester.enterText(find.byType(TextField).at(0), 'What time shall we play?');
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      'What time shall we play?',
+    );
     await tester.enterText(find.byType(TextField).at(1), '4 PM');
     await tester.enterText(find.byType(TextField).at(2), '5 PM');
     await tester.pump();
@@ -61,11 +65,15 @@ void main() {
     ).called(1);
   });
 
-  testWidgets('refuses to create a poll with fewer than 2 options',
-      (tester) async {
+  testWidgets('refuses to create a poll with fewer than 2 options', (
+    tester,
+  ) async {
     await pumpSheet(tester);
 
-    await tester.enterText(find.byType(TextField).at(0), 'What time shall we play?');
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      'What time shall we play?',
+    );
     await tester.enterText(find.byType(TextField).at(1), '4 PM');
     await tester.pump();
 
@@ -79,9 +87,6 @@ void main() {
         options: any(named: 'options'),
       ),
     );
-    expect(
-      find.text('Add a question and at least 2 options.'),
-      findsOneWidget,
-    );
+    expect(find.text('Add a question and at least 2 options.'), findsOneWidget);
   });
 }

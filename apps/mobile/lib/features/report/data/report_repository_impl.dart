@@ -1,8 +1,6 @@
 import 'report_repository.dart';
 
-/// Offline-only [ReportRepository]. Reads are N/A; writes throw.
-/// The app **always** talks to the live backend for reports — a
-/// report must never be faked as submitted.
+/// Offline-only [ReportRepository]. The app **always** talks to the live backend for reports.
 class LocalReportRepository implements ReportRepository {
   @override
   Future<void> submit({

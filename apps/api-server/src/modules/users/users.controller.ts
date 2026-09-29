@@ -9,10 +9,7 @@ import {
   type SkillLevel,
   type UpdateUserProfileInput,
 } from './users.service.js';
-import {
-  createNotification,
-  renderTemplate,
-} from '../notifications/notifications.service.js';
+import { createNotification, renderTemplate } from '../notifications/notifications.service.js';
 import {
   attachViewerActivityContext,
   listMyActivities,
@@ -40,17 +37,12 @@ const editableProfileFields = [
 
 function isSkillLevel(value: unknown): value is SkillLevel {
   return (
-    value === 'beginner' ||
-    value === 'intermediate' ||
-    value === 'advanced' ||
-    value === 'any'
+    value === 'beginner' || value === 'intermediate' || value === 'advanced' || value === 'any'
   );
 }
 
 function hasUnknownProfileFields(body: Record<string, unknown>): boolean {
-  return Object.keys(body).some(
-    (key) => !editableProfileFields.includes(key as never),
-  );
+  return Object.keys(body).some((key) => !editableProfileFields.includes(key as never));
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -290,9 +282,7 @@ export async function updateMyUserProfileHandler(req: Request, res: Response) {
       });
     }
 
-    // Key-only debug logging (no values — privacy safe) for
-    // client/server contract mismatches. Opt-in via
-    // `DEBUG_USER_PATCH=1` so production logs stay quiet by default.
+    // Key-only debug logging (no values — privacy safe) for client/server contract mismatches.
     if (process.env.DEBUG_USER_PATCH === '1') {
       try {
         console.debug(`[users] PATCH /me keys=${Object.keys(body ?? {}).join(',')}`);
@@ -414,7 +404,8 @@ export async function updateMyUserProfileHandler(req: Request, res: Response) {
         ok: false,
         error: {
           code: 'INVALID_INPUT',
-          message: 'sportSkillLevels must map sport names to beginner, intermediate, advanced, or any',
+          message:
+            'sportSkillLevels must map sport names to beginner, intermediate, advanced, or any',
         },
       });
     }
@@ -551,13 +542,19 @@ export async function updateMyUserPhotoHandler(req: Request, res: Response) {
 const USER_ACTIVITIES_LIMIT_DEFAULT = 20;
 const USER_ACTIVITIES_LIMIT_MAX = 50;
 
-function parseUserActivitiesPaging(req: Request):
-  | { limit: number; offset: number }
-  | { error: { code: string; message: string } } {
+function parseUserActivitiesPaging(
+  req: Request,
+): { limit: number; offset: number } | { error: { code: string; message: string } } {
   const { limit, offset } = req.query as { limit?: unknown; offset?: unknown };
   const parsedLimit = limit === undefined ? USER_ACTIVITIES_LIMIT_DEFAULT : Number(limit);
-  if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > USER_ACTIVITIES_LIMIT_MAX) {
-    return { error: { code: 'INVALID_INPUT', message: 'limit must be an integer between 1 and 50' } };
+  if (
+    !Number.isInteger(parsedLimit) ||
+    parsedLimit <= 0 ||
+    parsedLimit > USER_ACTIVITIES_LIMIT_MAX
+  ) {
+    return {
+      error: { code: 'INVALID_INPUT', message: 'limit must be an integer between 1 and 50' },
+    };
   }
   const parsedOffset = offset === undefined ? 0 : Number(offset);
   if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
@@ -566,16 +563,7 @@ function parseUserActivitiesPaging(req: Request):
   return { limit: parsedLimit, offset: parsedOffset };
 }
 
-/**
- * Legacy contract aliases — thin wrappers over the activities service:
- * - `joined-activities` → `?mine=joined`
- * - `hosted-activities` → `?mine=hosted`
- * - `past-activities` → `status == completed` (hosted + joined)
- *
- * NOTE on 409 email-taken: already covered — `bootstrapUser` throws
- * `Email already in use`, mapped to 409 CONFLICT in
- * [bootstrapUserHandler] above. No extra check needed here.
- */
+/** Legacy contract aliases — thin wrappers over the activities service: `joined-activities` → `?mine=joined`. */
 async function userActivitiesHandler(
   req: Request<PublicProfileParams>,
   res: Response,
@@ -617,15 +605,24 @@ async function userActivitiesHandler(
   }
 }
 
-export async function getUserJoinedActivitiesHandler(req: Request<PublicProfileParams>, res: Response) {
+export async function getUserJoinedActivitiesHandler(
+  req: Request<PublicProfileParams>,
+  res: Response,
+) {
   return userActivitiesHandler(req, res, 'joined');
 }
 
-export async function getUserHostedActivitiesHandler(req: Request<PublicProfileParams>, res: Response) {
+export async function getUserHostedActivitiesHandler(
+  req: Request<PublicProfileParams>,
+  res: Response,
+) {
   return userActivitiesHandler(req, res, 'hosted');
 }
 
-export async function getUserPastActivitiesHandler(req: Request<PublicProfileParams>, res: Response) {
+export async function getUserPastActivitiesHandler(
+  req: Request<PublicProfileParams>,
+  res: Response,
+) {
   return userActivitiesHandler(req, res, 'past');
 }
 

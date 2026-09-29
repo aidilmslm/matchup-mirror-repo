@@ -1,15 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-/// Perkiraan cuaca via Open-Meteo (gratis, tanpa API key).
-///
-/// Dipakai saat buat activity: user sudah punya venue (lat/lng) + tanggal
-/// & jam, jadi kita bisa tampilkan suhu + peluang hujan untuk jam tersebut.
-///
-/// API: https://api.open-meteo.com/v1/forecast
-/// Batasan: forecast hanya tersedia ~16 hari ke depan. Di luar itu
-/// service mengembalikan null dan UI menampilkan "belum tersedia"
-/// tanpa memblokir submit.
+/// Open-Meteo (Free).
+/// Used when creating an activity: venue, date and time are known, so show temperature and rain chance.
+/// Upstream: https://api.open-meteo.com/v1/forecast (16-day limit).
 class WeatherInfo {
   const WeatherInfo({
     required this.temperatureC,
@@ -27,7 +21,7 @@ class WeatherInfo {
   IconData get icon => weatherIconFor(weatherCode);
 }
 
-/// Ringkasan harian untuk ikon per-tanggal di [DatePickerSheet].
+/// Daily summary for the per-date icons in [DatePickerSheet].
 class DailyWeather {
   const DailyWeather({
     required this.date,
@@ -70,7 +64,7 @@ String weatherDescriptionFor(int code) {
   };
 }
 
-/// WMO weathercode -> Material icon (hanya ikon umum agar aman di test).
+/// WMO weather code to Material icon (common icons only, test-safe).
 IconData weatherIconFor(int code) {
   return switch (code) {
     0 => Icons.wb_sunny_outlined,
@@ -91,12 +85,10 @@ class WeatherService {
 
   static final WeatherService instance = WeatherService._();
 
-  /// Test-only override. Saat di-set, [fetchHourly]/[fetchDaily] memanggil
-  /// ini (tanpa network) agar widget test tidak flaky. Reset ke null
-  /// di tearDown.
+  /// Test-only override.
   @visibleForTesting
   static Future<Map<String, dynamic>?> Function(double lat, double lng)?
-      debugFetchJson;
+  debugFetchJson;
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -107,8 +99,8 @@ class WeatherService {
   );
 
   static const _cacheTtl = Duration(minutes: 10);
-  final Map<String, ({DateTime fetchedAt, Map<String, dynamic> json})>
-      _cache = {};
+  final Map<String, ({DateTime fetchedAt, Map<String, dynamic> json})> _cache =
+      {};
 
   String _key(double lat, double lng) =>
       '${lat.toStringAsFixed(3)},${lng.toStringAsFixed(3)}';
@@ -152,11 +144,8 @@ class WeatherService {
     }
   }
 
-  /// Prakiraan harian (16 hari) untuk ikon kalender.
-  Future<Map<DateTime, DailyWeather>> fetchDaily(
-    double lat,
-    double lng,
-  ) async {
+  /// Daily forecast (16 days) for the calendar icons.
+  Future<Map<DateTime, DailyWeather>> fetchDaily(double lat, double lng) async {
     final json = await _getJson(lat, lng);
     if (json == null) return const {};
     try {
@@ -174,12 +163,14 @@ class WeatherService {
         if (day == null) continue;
         out[DateTime(day.year, day.month, day.day)] = DailyWeather(
           date: DateTime(day.year, day.month, day.day),
-          tempMax: (maxs.length > i ? (maxs[i] as num?)?.toDouble() : null) ??
+          tempMax:
+              (maxs.length > i ? (maxs[i] as num?)?.toDouble() : null) ??
               double.nan,
-          tempMin: (mins.length > i ? (mins[i] as num?)?.toDouble() : null) ??
+          tempMin:
+              (mins.length > i ? (mins[i] as num?)?.toDouble() : null) ??
               double.nan,
-          weatherCode: (codes.length > i ? (codes[i] as num?)?.toInt() : null) ??
-              2,
+          weatherCode:
+              (codes.length > i ? (codes[i] as num?)?.toInt() : null) ?? 2,
           precipitationProbabilityMax:
               (pops.length > i ? (pops[i] as num?)?.toInt() : null) ?? 0,
         );
@@ -192,12 +183,7 @@ class WeatherService {
   }
 
   /// Hourly forecast map (hour -> info) for live lookups.
-  /// Shares the same cached JSON as [fetchDaily], so calling both
-  /// only hits the network once per location.
-  Future<Map<DateTime, WeatherInfo>> fetchHourly(
-    double lat,
-    double lng,
-  ) async {
+  Future<Map<DateTime, WeatherInfo>> fetchHourly(double lat, double lng) async {
     final json = await _getJson(lat, lng);
     if (json == null) return const {};
     try {
@@ -214,7 +200,7 @@ class WeatherService {
         out[DateTime(t.year, t.month, t.day, t.hour)] = WeatherInfo(
           temperatureC:
               (temps.length > i ? (temps[i] as num?)?.toDouble() : null) ??
-                  double.nan,
+              double.nan,
           weatherCode:
               (codes.length > i ? (codes[i] as num?)?.toInt() : null) ?? 2,
           precipitationProbability:
@@ -230,14 +216,12 @@ class WeatherService {
   }
 
   /// Forecast for the picked date-time (matched to the nearest hour).
-  /// Null when out of range / network fails — UI must degrade
-  /// gracefully (never block submit).
   Future<WeatherInfo?> fetchForDateTime(
     double lat,
     double lng,
     DateTime dateTime,
   ) async {
-    // Open-Meteo hanya ~16 hari: jangan tembak network sia-sia.
+    // Open-Meteo spans ~16 days: skip network calls beyond that.
     final now = DateTime.now();
     if (dateTime.difference(now).inDays > 16) return null;
     final json = await _getJson(lat, lng);
@@ -248,11 +232,10 @@ class WeatherService {
       final times = (hourly['time'] as List?) ?? const [];
       final temps = (hourly['temperature_2m'] as List?) ?? const [];
       final codes = (hourly['weathercode'] as List?) ?? const [];
-      final pops =
-          (hourly['precipitation_probability'] as List?) ?? const [];
+      final pops = (hourly['precipitation_probability'] as List?) ?? const [];
       if (times.isEmpty) return null;
 
-      // Cari index jam terdekat dengan tanggal pilihan.
+      // Find the hour index closest to the chosen date.
       var best = 0;
       var bestDiff = 1 << 62;
       for (var i = 0; i < times.length; i++) {
@@ -264,14 +247,13 @@ class WeatherService {
           best = i;
         }
       }
-      // Tolak jika jam terdekat masih > 12 jam meleset (di luar range).
+      // Reject when the closest hour is still off by >12h (out of range).
       if (bestDiff > 12 * 60) return null;
-      final bestTime =
-          DateTime.tryParse('${times[best]}') ?? dateTime;
+      final bestTime = DateTime.tryParse('${times[best]}') ?? dateTime;
       return WeatherInfo(
         temperatureC:
             (temps.length > best ? (temps[best] as num?)?.toDouble() : null) ??
-                double.nan,
+            double.nan,
         weatherCode:
             (codes.length > best ? (codes[best] as num?)?.toInt() : null) ?? 2,
         precipitationProbability:

@@ -2,11 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { fetchAuditLog } from '../services/auditLogService';
 import type { AuditLogEntry } from '../services/auditLogService';
 
-/**
- * Loads the full recent audit log once; the page filters/searches/
- * paginates client-side over this set (matches the AppealsPage
- * pattern — read-mostly, no mutations, so no reducer needed).
- */
+/** Loads the full recent audit log once; the page filters/searches/ paginates client-side over this set. */
 export function useAuditLog() {
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);

@@ -34,8 +34,11 @@ describe('NotificationTemplatesPage audit fixes', () => {
 
   it('F5: unfired triggers show an "Inactive trigger" badge', () => {
     useNotifTemplatesMock.mockReturnValue({
-      loading: false, error: null, reload: vi.fn(),
-      handleUpdate: vi.fn(), handleToggle: vi.fn(),
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+      handleUpdate: vi.fn(),
+      handleToggle: vi.fn(),
       templates: [
         makeTemplate({ id: 't1', trigger: 'activity.reminder', name: 'Reminder' }),
         makeTemplate({ id: 't2', trigger: 'activity.joined', name: 'Joined' }),
@@ -49,8 +52,11 @@ describe('NotificationTemplatesPage audit fixes', () => {
 
   it('P1: clicking a variable chip inserts at the textarea cursor', async () => {
     useNotifTemplatesMock.mockReturnValue({
-      loading: false, error: null, reload: vi.fn(),
-      handleUpdate: vi.fn(), handleToggle: vi.fn(),
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+      handleUpdate: vi.fn(),
+      handleToggle: vi.fn(),
       templates: [makeTemplate()],
     });
     const user = userEvent.setup();
@@ -60,6 +66,8 @@ describe('NotificationTemplatesPage audit fixes', () => {
     body.focus();
     body.setSelectionRange(8, 8); // after "Welcome "
     await user.click(screen.getByTitle('Insert {{userName}}'));
-    expect((screen.getByDisplayValue(/Welcome/) as HTMLTextAreaElement).value).toContain('Welcome {{userName}}{{userName}}');
+    expect((screen.getByDisplayValue(/Welcome/) as HTMLTextAreaElement).value).toContain(
+      'Welcome {{userName}}{{userName}}',
+    );
   });
 });

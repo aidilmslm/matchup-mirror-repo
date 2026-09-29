@@ -1,10 +1,6 @@
+// Tests for api.
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import {
-  apiFetch,
-  clearAdminIdToken,
-  onUnauthorized,
-  setAdminIdToken,
-} from './api';
+import { apiFetch, clearAdminIdToken, onUnauthorized, setAdminIdToken } from './api';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -67,7 +63,9 @@ describe('api service', () => {
   });
 
   it('returns the parsed body on success', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true, data: { hello: 'world' } }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: true, data: { hello: 'world' } }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await apiFetch<{ hello: string }>('/api/ping');
@@ -96,7 +94,10 @@ describe('api service', () => {
   });
 
   it('reports UNAUTHORIZED for a non-JSON 401 response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('unauthorized', { status: 401 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('unauthorized', { status: 401 })),
+    );
 
     const result = await apiFetch('/api/ping');
     expect(result.ok).toBe(false);
@@ -104,7 +105,12 @@ describe('api service', () => {
   });
 
   it('notifies onUnauthorized listeners on an HTTP 401', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ ok: false, error: { code: 'X', message: 'nope' } }, 401)));
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ ok: false, error: { code: 'X', message: 'nope' } }, 401)),
+    );
 
     const listener = vi.fn();
     const unsubscribe = onUnauthorized(listener);
@@ -116,7 +122,11 @@ describe('api service', () => {
   it('notifies onUnauthorized listeners on a 200 body carrying an UNAUTHORIZED error code', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ ok: false, error: { code: 'UNAUTHORIZED', message: 'expired' } }, 200)),
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ ok: false, error: { code: 'UNAUTHORIZED', message: 'expired' } }, 200),
+        ),
     );
 
     const listener = vi.fn();
@@ -127,7 +137,12 @@ describe('api service', () => {
   });
 
   it('stops notifying a listener after it unsubscribes', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ ok: false, error: { code: 'X', message: 'nope' } }, 401)));
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ ok: false, error: { code: 'X', message: 'nope' } }, 401)),
+    );
 
     const listener = vi.fn();
     const unsubscribe = onUnauthorized(listener);
@@ -137,7 +152,12 @@ describe('api service', () => {
   });
 
   it('does not let a throwing listener break the fetch result', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ ok: false, error: { code: 'X', message: 'nope' } }, 401)));
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ ok: false, error: { code: 'X', message: 'nope' } }, 401)),
+    );
 
     const unsubscribe = onUnauthorized(() => {
       throw new Error('listener boom');

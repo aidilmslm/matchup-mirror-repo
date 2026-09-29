@@ -69,17 +69,15 @@ void main() {
       expect(configs.first.canHost, isTrue);
     });
 
-    test('empty server list resolves to empty (callers use fallback)', () async {
-      final client = _MockApiClient();
-      when(
-        () => client.dio,
-      ).thenReturn(_cannedDio({'ok': true, 'data': []}));
+    test(
+      'empty server list resolves to empty (callers use fallback)',
+      () async {
+        final client = _MockApiClient();
+        when(() => client.dio).thenReturn(_cannedDio({'ok': true, 'data': []}));
 
-      expect(
-        await RemoteSportsRepository(client: client).configs(),
-        isEmpty,
-      );
-    });
+        expect(await RemoteSportsRepository(client: client).configs(), isEmpty);
+      },
+    );
 
     test('transport failure propagates so callers keep bundled list', () async {
       final client = _MockApiClient();

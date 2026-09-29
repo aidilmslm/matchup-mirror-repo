@@ -109,15 +109,17 @@ class _ReportActivitySheetState extends ConsumerState<ReportActivitySheet> {
     }
     setState(() => _submitting = true);
     try {
-      await ref.read(reportRepositoryProvider).submit(
-        targetId: widget.activityId,
-        targetType: ReportTargetType.activity,
-        reason: _reason!,
-        details: _detailsController.text.trim().isEmpty
-            ? null
-            : _detailsController.text.trim(),
-        evidenceUrls: _evidenceUrls.isEmpty ? null : _evidenceUrls,
-      );
+      await ref
+          .read(reportRepositoryProvider)
+          .submit(
+            targetId: widget.activityId,
+            targetType: ReportTargetType.activity,
+            reason: _reason!,
+            details: _detailsController.text.trim().isEmpty
+                ? null
+                : _detailsController.text.trim(),
+            evidenceUrls: _evidenceUrls.isEmpty ? null : _evidenceUrls,
+          );
     } catch (_) {
       // Surface the failure and keep the sheet open — a failed report
       // must never be presented as submitted.
@@ -125,7 +127,8 @@ class _ReportActivitySheetState extends ConsumerState<ReportActivitySheet> {
       setState(() => _submitting = false);
       AppSnackbar.show(
         context,
-        message: 'Could not submit report. Check your connection and try again.',
+        message:
+            'Could not submit report. Check your connection and try again.',
         variant: AppSnackbarVariant.error,
       );
       return;
@@ -181,9 +184,9 @@ class _ReportActivitySheetState extends ConsumerState<ReportActivitySheet> {
                     const SizedBox(height: AppSpacing.x5),
                     Text(
                       "What's the issue?",
-                      style: AppTypography.labelField(context).copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.labelField(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: AppSpacing.x3),
                     ReportReasonsCard(
@@ -195,8 +198,7 @@ class _ReportActivitySheetState extends ConsumerState<ReportActivitySheet> {
                     ReportDetailsField(controller: _detailsController),
                     const SizedBox(height: AppSpacing.x4),
                     ReportEvidencePicker(
-                      onChanged: (urls) =>
-                          setState(() => _evidenceUrls = urls),
+                      onChanged: (urls) => setState(() => _evidenceUrls = urls),
                       onBusyChanged: (busy) =>
                           setState(() => _evidenceBusy = busy),
                     ),

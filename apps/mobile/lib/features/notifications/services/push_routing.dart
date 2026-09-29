@@ -1,11 +1,13 @@
-// Payload carried by an FCM data message, mirrored from the backend's
-// `deliverPush` (`data: {type, activityId?}`). Pure parsing + routing
-// lives here so it is unit-testable without Firebase or widgets.
+// Payload carried by an FCM data message, mirrored from the backend's `deliverPush` (`data: {type, activityId?}`).
 import '../domain/app_notification.dart';
 
 class PushPayload {
-  const PushPayload(
-      {required this.type, this.activityId, this.senderUid, this.title});
+  const PushPayload({
+    required this.type,
+    this.activityId,
+    this.senderUid,
+    this.title,
+  });
 
   /// Backend notification type, e.g. `chat_message`, `activity_completed`.
   final String type;
@@ -19,9 +21,7 @@ class PushPayload {
   /// Human-readable title for foreground snackbars.
   final String? title;
 
-  /// Parses an FCM `RemoteMessage.data` map (values arrive as
-  /// `Map<String, dynamic>` from the plugin). Returns null when the
-  /// map carries no usable type (caller should ignore the message).
+  /// Parses an FCM `RemoteMessage.data` map (values arrive as `Map<String, dynamic>` from the plugin).
   static PushPayload? parse(Map<String, dynamic> data, {String? title}) {
     final type = data['type']?.toString().trim() ?? '';
     if (type.isEmpty) return null;
@@ -36,18 +36,10 @@ class PushPayload {
   }
 }
 
-/// SharedPreferences key for the locally muted group-chat ids
-/// (string list of activity ids). Mute is local-only (no backend
-/// support): the chat settings sheet toggles it, the foreground push
-/// banner skips muted chats.
+/// SharedPreferences key for the locally muted group-chat ids (string list of activity ids).
 const mutedChatsKey = 'muted_chats';
 
-/// True when a push of this type can change My Games membership —
-/// cancelled/completed/removed games leave Upcoming, joins/requests/
-/// removals enter or move rows. The app shell invalidates the My Games
-/// tab providers on these pushes so a cancelled game vanishes without
-/// a manual pull-to-refresh (lists render stale-while-revalidate, so
-/// there is no skeleton flash). Chat/system pushes never qualify.
+/// True when a push of this type can change My Games membership.
 bool invalidatesMyGames(PushPayload payload) {
   return switch (payload.type) {
     'activity_cancelled' ||
@@ -55,17 +47,12 @@ bool invalidatesMyGames(PushPayload payload) {
     'activity_joined' ||
     'activity_left' ||
     'participant_removed' ||
-    'join_request' =>
-      true,
+    'join_request' => true,
     _ => false,
   };
 }
 
-/// Deep-link route for a parsed payload, or null when the payload has
-/// no usable target (unknown type). Callers must no-op (or snackbar)
-/// on null instead of pushing the notifications feed — dropping the
-/// user on the feed for a tap they already sit on is a navigation
-/// surprise, not a recovery.
+/// Deep-link route for a parsed payload, or null when the payload has no usable target (unknown type).
 String? routeForPush(PushPayload payload) {
   final id = payload.activityId;
   switch (payload.type) {
@@ -96,10 +83,7 @@ String? routeForPush(PushPayload payload) {
   }
 }
 
-/// Deep-link route for a feed notification, reusing the push table so
-/// tray taps and feed taps always agree. Returns null when the row has
-/// no usable target (unknown backend type) — the feed stays put (it is
-/// already showing, so staying is the honest default).
+/// Deep-link route for a feed notification, reusing the push table so tray taps and feed taps always agree.
 String? routeForNotification(AppNotification notif) {
   return routeForPush(
     PushPayload(

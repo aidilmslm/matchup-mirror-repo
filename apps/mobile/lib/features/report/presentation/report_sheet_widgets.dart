@@ -7,19 +7,17 @@ import '../../../core/theme/dark_colors.dart';
 import '../../../core/widgets/app_tappable.dart';
 import '../../../core/widgets/pressable_scale.dart';
 
-/// Shared building blocks for [ReportUserSheet] and
-/// [ReportActivitySheet]. Extracted verbatim (zero visual/behavior change)
-/// from the duplicated private widgets both sheets carried.
-///
-/// Theme note: `errorLight` resolves via token (light value is identical to
-/// the old `AppColors.errorLight` literal); `danger`/`primary`/
-/// `textOnPrimary` are saturated theme-invariant accents that stay on
-/// `AppColors` by design (see `dark_colors.dart`).
+/// Shared building blocks for [ReportUserSheet] and [ReportActivitySheet].
+/// Theme note: `errorLight` resolves via token (light value is identical to the old `AppColors.errorLight` literal).
 
-// ─── Header ───────────────────────────────────────────────────────────────────
+// Header.
 
 class ReportSheetHeader extends StatelessWidget {
-  const ReportSheetHeader({super.key, required this.title, required this.onClose});
+  const ReportSheetHeader({
+    super.key,
+    required this.title,
+    required this.onClose,
+  });
 
   final String title;
   final VoidCallback onClose;
@@ -47,10 +45,7 @@ class ReportSheetHeader extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  title,
-                  style: AppTypography.titleSheet(context),
-                ),
+                child: Text(title, style: AppTypography.titleSheet(context)),
               ),
               PressableScale(
                 onTap: onClose,
@@ -77,10 +72,11 @@ class ReportSheetHeader extends StatelessWidget {
   }
 }
 
-// ─── Target card ──────────────────────────────────────────────────────────────
+// Target card.
 
 class ReportTargetCard extends StatelessWidget {
-  const ReportTargetCard({super.key, 
+  const ReportTargetCard({
+    super.key,
     required this.heading,
     required this.targetName,
     required this.icon,
@@ -109,11 +105,7 @@ class ReportTargetCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: 20,
-              color: context.colors.errorText,
-            ),
+            child: Icon(icon, size: 20, color: context.colors.errorText),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
@@ -146,10 +138,11 @@ class ReportTargetCard extends StatelessWidget {
   }
 }
 
-// ─── Reasons list ─────────────────────────────────────────────────────────────
+// Reasons list.
 
 class ReportReasonsCard extends StatelessWidget {
-  const ReportReasonsCard({super.key, 
+  const ReportReasonsCard({
+    super.key,
     required this.reasons,
     required this.selected,
     required this.onSelect,
@@ -219,8 +212,9 @@ class ReportReasonsCard extends StatelessWidget {
                             color: isSelected
                                 ? context.colors.textPrimary
                                 : context.colors.textSecondary,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                             fontSize: 15,
                           ),
                         ),
@@ -243,7 +237,7 @@ class ReportReasonsCard extends StatelessWidget {
   }
 }
 
-// ─── Details field ────────────────────────────────────────────────────────────
+// Details field.
 
 class ReportDetailsField extends StatelessWidget {
   const ReportDetailsField({super.key, required this.controller});
@@ -257,9 +251,9 @@ class ReportDetailsField extends StatelessWidget {
       children: [
         Text(
           'Additional details',
-          style: AppTypography.labelField(context).copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: AppTypography.labelField(
+            context,
+          ).copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 4),
         Text(
@@ -286,8 +280,9 @@ class ReportDetailsField extends StatelessWidget {
             style: AppTypography.bodyReading(context),
             decoration: InputDecoration(
               hintText: 'Describe the issue...',
-              hintStyle: AppTypography.bodyReading(context)
-                  .copyWith(color: context.colors.textTertiary),
+              hintStyle: AppTypography.bodyReading(
+                context,
+              ).copyWith(color: context.colors.textTertiary),
               filled: true,
               fillColor: Colors.transparent,
               border: InputBorder.none,
@@ -303,7 +298,7 @@ class ReportDetailsField extends StatelessWidget {
   }
 }
 
-// ─── Disclaimer ───────────────────────────────────────────────────────────────
+// Disclaimer.
 
 class ReportDisclaimer extends StatelessWidget {
   const ReportDisclaimer({super.key});
@@ -338,10 +333,14 @@ class ReportDisclaimer extends StatelessWidget {
   }
 }
 
-// ─── Submit bar ───────────────────────────────────────────────────────────────
+// Submit bar.
 
 class ReportSubmitBar extends StatelessWidget {
-  const ReportSubmitBar({super.key, required this.submitting, required this.onSubmit});
+  const ReportSubmitBar({
+    super.key,
+    required this.submitting,
+    required this.onSubmit,
+  });
 
   final bool submitting;
   final VoidCallback onSubmit;
@@ -391,10 +390,7 @@ class ReportSubmitBar extends StatelessWidget {
                       color: context.colors.textOnPrimary,
                     ),
                     const SizedBox(width: AppSpacing.x2),
-                    Text(
-                      'Submit Report',
-                      style: AppTypography.buttonPrimary,
-                    ),
+                    Text('Submit Report', style: AppTypography.buttonPrimary),
                   ],
                 ),
         ),

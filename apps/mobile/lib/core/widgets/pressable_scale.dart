@@ -2,22 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
 
-/// Minimal scale-down-on-press wrapper for bare tap targets that can't
-/// easily adopt [AppTappable] (e.g. a `StatelessWidget` `build()` with no
-/// local state, or a call site that needs to keep an existing
-/// `GestureDetector`-shaped tree for a test/`Semantics` wrapper).
-///
-/// Mirrors the exact scale feedback used by `AppTappable`'s
-/// `AppTapFeedback.scale` mode — same 0.97 scale, same [AppDurations.fast]
-/// duration, same `Curves.easeOut` — just without the 44pt hit-area padding
-/// or ripple option, so it drops in without changing layout.
-///
-/// ```dart
-/// PressableScale(
-///   onTap: _handleTap,
-///   child: ExistingChildTree(...),
-/// )
-/// ```
+/// Minimal scale-down-on-press wrapper for bare tap targets that can't easily adopt [AppTappable].
+/// Mirrors the exact scale feedback used by `AppTappable`'s `AppTapFeedback.scale` mode.
+/// ```dart PressableScale( onTap: _handleTap, child: ExistingChildTree(...), ) ```.
 class PressableScale extends StatefulWidget {
   const PressableScale({
     super.key,

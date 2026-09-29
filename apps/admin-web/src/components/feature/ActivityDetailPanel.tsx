@@ -4,14 +4,16 @@ import type { AdminActivity, ActivityStatus } from '../../types/activities';
 
 function StatusBadge({ status }: { status: ActivityStatus }) {
   const map: Record<ActivityStatus, string> = {
-    Active:    'bg-brand-50  text-brand-700  border-brand-200',
-    Full:      'bg-warning-100 text-warning-700 border-warning-200',
+    Active: 'bg-brand-50  text-brand-700  border-brand-200',
+    Full: 'bg-warning-100 text-warning-700 border-warning-200',
     Completed: 'bg-ink-100   text-ink-600    border-ink-200',
     Cancelled: 'bg-danger-50 text-danger-700 border-danger-200',
-    Flagged:   'bg-danger-50 text-danger-700 border-danger-200',
+    Flagged: 'bg-danger-50 text-danger-700 border-danger-200',
   };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${map[status]}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${map[status]}`}
+    >
       {status}
     </span>
   );
@@ -19,11 +21,21 @@ function StatusBadge({ status }: { status: ActivityStatus }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-400">{children}</p>
+    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-400">
+      {children}
+    </p>
   );
 }
 
-function MetaItem({ icon, primary, secondary }: { icon: React.ReactNode; primary: string; secondary?: string }) {
+function MetaItem({
+  icon,
+  primary,
+  secondary,
+}: {
+  icon: React.ReactNode;
+  primary: string;
+  secondary?: string;
+}) {
   return (
     <div className="flex items-start gap-3 py-3 border-b border-ink-100 last:border-0">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500">
@@ -68,10 +80,15 @@ export function ActivityDetailPanel({
             ⚡ {activity.skillLevel}
           </span>
           <StatusBadge status={activity.status} />
-          {activity.isPaid
-            ? <span className="rounded-full border border-warning-200 bg-warning-50 px-2.5 py-0.5 text-xs font-semibold text-warning-700">Paid · ${activity.fee}</span>
-            : <span className="rounded-full border border-success-100 bg-success-100 px-2.5 py-0.5 text-xs font-semibold text-success-700">Free</span>
-          }
+          {activity.isPaid ? (
+            <span className="rounded-full border border-warning-200 bg-warning-50 px-2.5 py-0.5 text-xs font-semibold text-warning-700">
+              Paid · ${activity.fee}
+            </span>
+          ) : (
+            <span className="rounded-full border border-success-100 bg-success-100 px-2.5 py-0.5 text-xs font-semibold text-success-700">
+              Free
+            </span>
+          )}
         </div>
 
         {/* Host card — mirrors _HostCard */}
@@ -88,7 +105,9 @@ export function ActivityDetailPanel({
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <span className="text-warning-400 text-sm">★</span>
-            <span className="text-sm font-bold text-success-700">{activity.hostRating.toFixed(1)}</span>
+            <span className="text-sm font-bold text-success-700">
+              {activity.hostRating.toFixed(1)}
+            </span>
             <span className="text-xs text-ink-400">({activity.hostGamesCount})</span>
           </div>
         </div>
@@ -101,8 +120,17 @@ export function ActivityDetailPanel({
           <div className="rounded-xl border border-ink-200 bg-white px-4">
             <MetaItem
               icon={
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-                  <rect x="1" y="3" width="16" height="14" rx="2" /><path d="M1 7h16M5 1v4M13 1v4" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                >
+                  <rect x="1" y="3" width="16" height="14" rx="2" />
+                  <path d="M1 7h16M5 1v4M13 1v4" />
                 </svg>
               }
               primary={`${activity.scheduledDate} · ${activity.startTime} – ${activity.endTime}`}
@@ -110,18 +138,38 @@ export function ActivityDetailPanel({
             />
             <MetaItem
               icon={
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                >
                   <path d="M9 1C5.686 1 3 3.686 3 7c0 4.5 6 10 6 10s6-5.5 6-10c0-3.314-2.686-6-6-6z" />
                   <circle cx="9" cy="7" r="2" />
                 </svg>
               }
               primary={activity.location}
-              secondary={activity.addressLine ?? (activity.distanceKm ? `${activity.distanceKm} km away` : undefined)}
+              secondary={
+                activity.addressLine ??
+                (activity.distanceKm ? `${activity.distanceKm} km away` : undefined)
+              }
             />
             <MetaItem
               icon={
-                <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-                  <circle cx="9" cy="9" r="8" /><path d="M9 5v4l2.5 2" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                >
+                  <circle cx="9" cy="9" r="8" />
+                  <path d="M9 5v4l2.5 2" />
                 </svg>
               }
               primary={activity.isPaid ? `Paid — $${activity.fee} per person` : 'Free to join'}
@@ -168,7 +216,10 @@ export function ActivityDetailPanel({
             <SectionLabel>Vibe</SectionLabel>
             <div className="flex flex-wrap gap-2">
               {activity.vibeTags.map((tag) => (
-                <span key={tag} className="rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-xs font-medium text-ink-600">
+                <span
+                  key={tag}
+                  className="rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-xs font-medium text-ink-600"
+                >
                   {tag}
                 </span>
               ))}

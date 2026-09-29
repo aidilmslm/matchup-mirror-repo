@@ -5,30 +5,30 @@ import { PageSkeleton, PageError, EmptyState, EmptyIcons } from '../../component
 import { Avatar } from '../../components/ui/Avatar';
 import type { Appeal, AppealStatus, AppealType } from '../../types/appeals';
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+// Status badge.
 
 function StatusBadge({ status }: { status: AppealStatus }) {
   const map: Record<AppealStatus, string> = {
-    Pending:  'badge-yellow',
+    Pending: 'badge-yellow',
     Approved: 'badge-green',
     Rejected: 'badge-red',
   };
   return <span className={map[status]}>{status}</span>;
 }
 
-// ─── Type badge ───────────────────────────────────────────────────────────────
+// Type badge.
 
 function TypeBadge({ type }: { type: AppealType }) {
   const map: Record<AppealType, string> = {
-    'Suspension':        'badge-red',
-    'Activity Removal':  'badge-yellow',
-    'Account Ban':       'badge-red',
-    'Content Removal':   'badge-neutral',
+    Suspension: 'badge-red',
+    'Activity Removal': 'badge-yellow',
+    'Account Ban': 'badge-red',
+    'Content Removal': 'badge-neutral',
   };
   return <span className={map[type]}>{type}</span>;
 }
 
-// ─── Review modal ─────────────────────────────────────────────────────────────
+// Review modal.
 
 function ReviewModal({
   appeal,
@@ -44,7 +44,10 @@ function ReviewModal({
   const [error, setError] = useState('');
 
   function handleSubmit() {
-    if (!response.trim()) { setError('A response to the user is required.'); return; }
+    if (!response.trim()) {
+      setError('A response to the user is required.');
+      return;
+    }
     onConfirm(decision, response.trim());
   }
 
@@ -53,7 +56,12 @@ function ReviewModal({
       <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-ink-800 p-6 shadow-panel">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-ink-900">Review Appeal</h2>
-          <button onClick={onCancel} className="text-ink-400 hover:text-ink-700 text-xl leading-none">×</button>
+          <button
+            onClick={onCancel}
+            className="text-ink-400 hover:text-ink-700 text-xl leading-none"
+          >
+            ×
+          </button>
         </div>
 
         {/* User + appeal summary */}
@@ -69,11 +77,17 @@ function ReviewModal({
               <p className="text-sm font-semibold text-ink-900">{appeal.userName}</p>
               <p className="text-xs text-ink-500">{appeal.userEmail}</p>
             </div>
-            <div className="ml-auto"><TypeBadge type={appeal.type} /></div>
+            <div className="ml-auto">
+              <TypeBadge type={appeal.type} />
+            </div>
           </div>
-          <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide pt-1">Original action</p>
+          <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide pt-1">
+            Original action
+          </p>
           <p className="text-sm text-ink-700">{appeal.originalAction}</p>
-          <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide pt-1">User's statement</p>
+          <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide pt-1">
+            User's statement
+          </p>
           <p className="text-sm text-ink-700 italic">"{appeal.statement}"</p>
         </div>
 
@@ -112,7 +126,10 @@ function ReviewModal({
                 : 'Explain the reasoning for rejection and any next steps…'
             }
             value={response}
-            onChange={(e) => { setResponse(e.target.value); setError(''); }}
+            onChange={(e) => {
+              setResponse(e.target.value);
+              setError('');
+            }}
             maxLength={500}
           />
           <div className="flex justify-between mt-0.5">
@@ -125,7 +142,9 @@ function ReviewModal({
           <button
             onClick={handleSubmit}
             className={`flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-colors ${
-              decision === 'approve' ? 'bg-success-500 hover:bg-success-600' : 'bg-danger-500 hover:bg-danger-600'
+              decision === 'approve'
+                ? 'bg-success-500 hover:bg-success-600'
+                : 'bg-danger-500 hover:bg-danger-600'
             }`}
           >
             {decision === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
@@ -139,21 +158,19 @@ function ReviewModal({
   );
 }
 
-// ─── Appeal card ──────────────────────────────────────────────────────────────
+// Appeal card.
 
-function AppealCard({
-  appeal,
-  onReview,
-}: {
-  appeal: Appeal;
-  onReview: () => void;
-}) {
+function AppealCard({ appeal, onReview }: { appeal: Appeal; onReview: () => void }) {
   const isPending = appeal.status === 'Pending';
 
   return (
-    <div className={`rounded-xl border px-4 py-4 space-y-3 transition-colors ${
-      isPending ? 'border-ink-200 bg-white dark:border-ink-600 dark:bg-ink-800' : 'border-ink-100 bg-ink-50 dark:border-ink-700 dark:bg-ink-800/50'
-    }`}>
+    <div
+      className={`rounded-xl border px-4 py-4 space-y-3 transition-colors ${
+        isPending
+          ? 'border-ink-200 bg-white dark:border-ink-600 dark:bg-ink-800'
+          : 'border-ink-100 bg-ink-50 dark:border-ink-700 dark:bg-ink-800/50'
+      }`}
+    >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -176,20 +193,28 @@ function AppealCard({
 
       {/* Original action */}
       <div className="rounded-lg bg-ink-100 dark:bg-ink-700/50 px-3 py-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-500 mb-0.5">Admin action appealed</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-500 mb-0.5">
+          Admin action appealed
+        </p>
         <p className="text-xs text-ink-700 dark:text-ink-300">{appeal.originalAction}</p>
       </div>
 
       {/* User statement */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-500 mb-1">User's statement</p>
-        <p className="text-sm text-ink-600 dark:text-ink-400 line-clamp-3 italic">"{appeal.statement}"</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-500 mb-1">
+          User's statement
+        </p>
+        <p className="text-sm text-ink-600 dark:text-ink-400 line-clamp-3 italic">
+          "{appeal.statement}"
+        </p>
       </div>
 
       {/* Admin response (resolved) */}
       {appeal.adminResponse && (
         <div className="rounded-lg border border-brand-100 dark:border-brand-900/40 bg-brand-50 dark:bg-brand-900/20 px-3 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400 mb-0.5">Admin response</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400 mb-0.5">
+            Admin response
+          </p>
           <p className="text-xs text-brand-700 dark:text-brand-300">{appeal.adminResponse}</p>
         </div>
       )}
@@ -197,9 +222,21 @@ function AppealCard({
       {/* Footer */}
       <div className="flex items-center justify-between pt-0.5">
         <p className="text-xs text-ink-400">
-          Submitted {new Date(appeal.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          Submitted{' '}
+          {new Date(appeal.createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}
           {appeal.resolvedAt && (
-            <> · Resolved {new Date(appeal.resolvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>
+            <>
+              {' '}
+              · Resolved{' '}
+              {new Date(appeal.resolvedAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </>
           )}
         </p>
         {isPending && (
@@ -212,10 +249,16 @@ function AppealCard({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page.
 
 const STATUS_TABS: Array<AppealStatus | 'All'> = ['All', 'Pending', 'Approved', 'Rejected'];
-const TYPE_OPTIONS: Array<AppealType | 'All'> = ['All', 'Suspension', 'Activity Removal', 'Account Ban', 'Content Removal'];
+const TYPE_OPTIONS: Array<AppealType | 'All'> = [
+  'All',
+  'Suspension',
+  'Activity Removal',
+  'Account Ban',
+  'Content Removal',
+];
 
 export function AppealsPage() {
   const { loading, error, appeals, handleDecision, reload } = useAppeals();
@@ -228,9 +271,13 @@ export function AppealsPage() {
   // Keyboard shortcut: A = open first pending
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      )
+        return;
       if ((e.key === 'a' || e.key === 'A') && !modal) {
-        const first = appeals.find(a => a.status === 'Pending');
+        const first = appeals.find((a) => a.status === 'Pending');
         if (first) setModal(first);
       }
     }
@@ -257,7 +304,7 @@ export function AppealsPage() {
   }
 
   const filtered = appeals.filter((a) => {
-    const matchTab  = activeTab === 'All' || a.status === activeTab;
+    const matchTab = activeTab === 'All' || a.status === activeTab;
     const matchType = typeFilter === 'All' || a.type === typeFilter;
     const matchSearch =
       a.userName.toLowerCase().includes(search.toLowerCase()) ||
@@ -266,23 +313,27 @@ export function AppealsPage() {
     return matchTab && matchType && matchSearch;
   });
 
-  const pendingCount = appeals.filter(a => a.status === 'Pending').length;
+  const pendingCount = appeals.filter((a) => a.status === 'Pending').length;
 
   const stats = [
-    { label: 'Total Appeals', value: appeals.length,                                           color: 'text-ink-900' },
-    { label: 'Pending',       value: pendingCount,                                             color: 'text-warning-600' },
-    { label: 'Approved',      value: appeals.filter(a => a.status === 'Approved').length,      color: 'text-success-600' },
-    { label: 'Rejected',      value: appeals.filter(a => a.status === 'Rejected').length,      color: 'text-danger-500' },
+    { label: 'Total Appeals', value: appeals.length, color: 'text-ink-900' },
+    { label: 'Pending', value: pendingCount, color: 'text-warning-600' },
+    {
+      label: 'Approved',
+      value: appeals.filter((a) => a.status === 'Approved').length,
+      color: 'text-success-600',
+    },
+    {
+      label: 'Rejected',
+      value: appeals.filter((a) => a.status === 'Rejected').length,
+      color: 'text-danger-500',
+    },
   ];
 
   return (
     <div className="page-container space-y-5">
       {modal && (
-        <ReviewModal
-          appeal={modal}
-          onConfirm={handleConfirm}
-          onCancel={() => setModal(null)}
-        />
+        <ReviewModal appeal={modal} onConfirm={handleConfirm} onCancel={() => setModal(null)} />
       )}
 
       {/* Header */}
@@ -323,19 +374,32 @@ export function AppealsPage() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  activeTab === tab ? 'bg-brand-500 text-white' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
+                  activeTab === tab
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
                 }`}
               >
                 {tab}
                 {tab === 'Pending' && pendingCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-warning-500 px-1.5 text-[10px] text-white">{pendingCount}</span>
+                  <span className="ml-1.5 rounded-full bg-warning-500 px-1.5 text-[10px] text-white">
+                    {pendingCount}
+                  </span>
                 )}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2 rounded-full bg-ink-50 dark:bg-ink-700/50 px-3 py-1.5 w-full sm:w-auto">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <circle cx="6" cy="6" r="4" /><path d="M11 11l-2.5-2.5" />
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            >
+              <circle cx="6" cy="6" r="4" />
+              <path d="M11 11l-2.5-2.5" />
             </svg>
             <input
               type="text"
@@ -349,13 +413,17 @@ export function AppealsPage() {
 
         {/* Type filter row */}
         <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 dark:border-ink-700 bg-ink-50 dark:bg-ink-900/20 px-4 sm:px-6 py-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">Type:</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+            Type:
+          </span>
           {TYPE_OPTIONS.map((t) => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
               className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${
-                typeFilter === t ? 'bg-brand-500 text-white' : 'text-ink-500 hover:bg-ink-200 dark:hover:bg-ink-700'
+                typeFilter === t
+                  ? 'bg-brand-500 text-white'
+                  : 'text-ink-500 hover:bg-ink-200 dark:hover:bg-ink-700'
               }`}
             >
               {t}

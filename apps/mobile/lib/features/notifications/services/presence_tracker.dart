@@ -8,17 +8,8 @@ import '../../../core/providers/repository_providers.dart';
 import '../../../core/storage/secure_token_store.dart';
 import '../domain/presence_state.dart';
 
-/// Bridges Flutter's app-lifecycle events to the backend's presence
-/// API. Wraps the navigator's child so it can listen to
-/// [WidgetsBindingObserver.didChangeAppLifecycleState] without the
-/// screens below having to wire that up themselves.
-///
-/// On every `resumed` we mark the user `online`; on `paused`,
-/// `detached`, and `hidden` we mark them `offline`. The backend
-/// additionally has its own `onDisconnect` RTDB handler that flips the
-/// state to `offline` if the socket drops without a clean shutdown, so
-/// the user can never get stuck appearing "online" after killing the
-/// app.
+/// Bridges Flutter's app-lifecycle events to the backend's presence API.
+/// On every `resumed` we mark the user `online`; on `paused`, `detached`, and `hidden` we mark them `offline`.
 class PresenceTracker extends ConsumerStatefulWidget {
   const PresenceTracker({super.key, required this.child});
 
@@ -34,9 +25,7 @@ class _PresenceTrackerState extends ConsumerState<PresenceTracker>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Fire one online update on first build — the observer fires
-    // `resumed` for the *current* state, but a cold start in the
-    // background can miss that.
+    // Fire one online update on first build — the observer fires `resumed` for the *current* state.
     unawaited(_set(PresenceState.online));
   }
 
@@ -56,18 +45,14 @@ class _PresenceTrackerState extends ConsumerState<PresenceTracker>
       case AppLifecycleState.hidden:
         unawaited(_set(PresenceState.offline));
       case AppLifecycleState.inactive:
-        // `inactive` is brief (control centre, incoming call). Skip
-        // both writes — flipping to offline here would make the user
-        // flicker offline during a phone call.
+        // `inactive` is brief (control centre, incoming call).
         break;
     }
   }
 
   Future<void> _set(PresenceState state) async {
     try {
-      // Auth guard: with no session (logged out, tokens cleared) there
-      // is no uid to mark — skip the write instead of posting an
-      // anonymous presence that the backend can't attribute.
+      // Auth guard: with no session (logged out, tokens cleared) there is no uid to mark.
       final uid = await SecureTokenStore.instance.readUserId();
       if (uid == null || uid.isEmpty) return;
       final repo = ref.read(presenceRepositoryProvider);

@@ -9,10 +9,7 @@ import {
   activityParticipantsCollectionPath,
 } from '../../database/paths.js';
 import type { ActivityStatus } from './activities.service.js';
-import {
-  getPublicUserProfile,
-  type PublicUserProfile,
-} from '../users/users.service.js';
+import { getPublicUserProfile, type PublicUserProfile } from '../users/users.service.js';
 import { createNotification } from '../notifications/notifications.service.js';
 
 export type ActivityParticipantRecord = {
@@ -41,13 +38,7 @@ type ActivityParticipantBaseWithId = ActivityParticipantRecord & {
   isCheckedIn: boolean;
 };
 
-/**
- * Join cutoff (best practice, Meetup/OpenSports-style): nobody can join
- * or request to join once the game has started. Guests discover games
- * to attend, not games already in play — and an organizer adding
- * someone mid-game does it out-of-band. Hosts may still approve
- * pre-start pending requests afterwards at their discretion.
- */
+/** Join cutoff (best practice, Meetup/OpenSports-style): nobody can join or request to join once the game has. */
 function assertJoinableStartTime(activityData: FirebaseFirestore.DocumentData): void {
   const raw = activityData?.startTime;
   const startMs = typeof raw === 'string' ? Date.parse(raw) : Number.NaN;
@@ -56,10 +47,7 @@ function assertJoinableStartTime(activityData: FirebaseFirestore.DocumentData): 
   }
 }
 
-export async function joinActivity(
-  activityId: string,
-  uid: string,
-): Promise<void> {
+export async function joinActivity(activityId: string, uid: string): Promise<void> {
   const normalizedActivityId = activityId.trim();
   const normalizedUid = uid.trim();
 
@@ -100,9 +88,7 @@ export async function joinActivity(
     }
 
     if (typeof activityData.participantCount !== 'number') {
-      throw new Error(
-        'Invalid activity record: participantCount must be a number',
-      );
+      throw new Error('Invalid activity record: participantCount must be a number');
     }
 
     if (activityData.status !== 'open') {
@@ -142,9 +128,7 @@ export async function joinActivity(
   });
 }
 
-export async function getParticipants(
-  activityId: string,
-): Promise<ActivityParticipantWithId[]> {
+export async function getParticipants(activityId: string): Promise<ActivityParticipantWithId[]> {
   const normalizedActivityId = activityId.trim();
 
   if (!normalizedActivityId) {
@@ -152,18 +136,13 @@ export async function getParticipants(
   }
 
   const [participantsSnap, activitySnap, attendanceSnap] = await Promise.all([
-    firestore
-      .collection(activityParticipantsCollectionPath(normalizedActivityId))
-      .get(),
+    firestore.collection(activityParticipantsCollectionPath(normalizedActivityId)).get(),
     firestore.doc(activityDocPath(normalizedActivityId)).get(),
-    firestore
-      .collection(activityAttendanceCollectionPath(normalizedActivityId))
-      .get(),
+    firestore.collection(activityAttendanceCollectionPath(normalizedActivityId)).get(),
   ]);
 
   const hostData = activitySnap.exists ? activitySnap.data() : undefined;
-  const hostId =
-    typeof hostData?.hostId === 'string' ? hostData.hostId : null;
+  const hostId = typeof hostData?.hostId === 'string' ? hostData.hostId : null;
   const checkedInUids = new Set(attendanceSnap.docs.map((doc) => doc.id));
 
   const participants = participantsSnap.docs.map((doc) => {
@@ -173,14 +152,8 @@ export async function getParticipants(
       throw new Error('Invalid participant record: uid must be a string');
     }
 
-    if (
-      !data.joinedAt ||
-      typeof data.joinedAt !== 'object' ||
-      !('toDate' in data.joinedAt)
-    ) {
-      throw new Error(
-        'Invalid participant record: joinedAt must be a Firestore Timestamp',
-      );
+    if (!data.joinedAt || typeof data.joinedAt !== 'object' || !('toDate' in data.joinedAt)) {
+      throw new Error('Invalid participant record: joinedAt must be a Firestore Timestamp');
     }
 
     return {
@@ -206,10 +179,7 @@ async function enrichParticipantWithProfile(
   };
 }
 
-export async function canAccessActivityChat(
-  activityId: string,
-  uid: string,
-): Promise<boolean> {
+export async function canAccessActivityChat(activityId: string, uid: string): Promise<boolean> {
   const normalizedActivityId = activityId.trim();
   const normalizedUid = uid.trim();
 
@@ -244,9 +214,7 @@ export async function canAccessActivityChat(
   return activityData.hostId === normalizedUid || participantSnap.exists;
 }
 
-export async function leaveActivity(
-  input: LeaveActivityInput,
-): Promise<void> {
+export async function leaveActivity(input: LeaveActivityInput): Promise<void> {
   const normalizedActivityId = input.activityId.trim();
   const normalizedTargetUid = input.targetUid.trim();
   const normalizedActorUid = input.actorUid.trim();
@@ -268,15 +236,11 @@ export async function leaveActivity(
     activityParticipantDocPath(normalizedActivityId, normalizedTargetUid),
   );
 
-  // Withdrawing a *pending* request is not a membership change: the
-  // requester was never counted, so there is nothing to decrement and
-  // no status to recompute — just delete the request row.
+  // Withdrawing a *pending* request is not a membership change: the requester was never counted.
   if (normalizedActorUid === normalizedTargetUid) {
     const [memberSnap, pendingSnap] = await Promise.all([
       participantRef.get(),
-      firestore
-        .doc(activityJoinRequestDocPath(normalizedActivityId, normalizedTargetUid))
-        .get(),
+      firestore.doc(activityJoinRequestDocPath(normalizedActivityId, normalizedTargetUid)).get(),
     ]);
 
     if (!memberSnap.exists && pendingSnap.exists && pendingSnap.data()?.status === 'pending') {
@@ -313,29 +277,26 @@ export async function leaveActivity(
     }
 
     if (typeof activityData.participantCount !== 'number') {
-      throw new Error(
-        'Invalid activity record: participantCount must be a number',
-      );
+      throw new Error('Invalid activity record: participantCount must be a number');
     }
 
     if (typeof activityData.status !== 'string') {
       throw new Error('Invalid activity record: status must be a string');
     }
 
-    if(typeof activityData.hostId !== 'string'){
+    if (typeof activityData.hostId !== 'string') {
       throw new Error('Invalid activity record: hostId must be a string');
     }
 
     const isSelfRemoval = normalizedActorUid === normalizedTargetUid;
     const isHostRemoval = activityData.hostId === normalizedActorUid;
 
-    if(!isSelfRemoval && !isHostRemoval){
+    if (!isSelfRemoval && !isHostRemoval) {
       throw new Error('Only the participant or activity host can remove this participant');
     }
 
     const isHostSelfRemoval =
-      activityData.hostId === normalizedActorUid &&
-      normalizedActorUid === normalizedTargetUid;
+      activityData.hostId === normalizedActorUid && normalizedActorUid === normalizedTargetUid;
     const participantSnap = await transaction.get(participantRef);
 
     if (!participantSnap.exists && !isHostSelfRemoval) {
@@ -384,12 +345,7 @@ export type JoinRequestWithId = JoinRequestRecord & {
   profile: PublicUserProfile | null;
 };
 
-/**
- * Parks the user in a pending join request on approval-gated
- * activities. Open activities bypass requests entirely — callers must
- * route through [joinActivity] semantics instead, so this throws when
- * the policy is `open`.
- */
+/** Parks the user in a pending join request on approval-gated activities. */
 export async function requestToJoin(activityId: string, uid: string): Promise<void> {
   const normalizedActivityId = activityId.trim();
   const normalizedUid = uid.trim();
@@ -406,9 +362,7 @@ export async function requestToJoin(activityId: string, uid: string): Promise<vo
   const participantRef = firestore.doc(
     activityParticipantDocPath(normalizedActivityId, normalizedUid),
   );
-  const requestRef = firestore.doc(
-    activityJoinRequestDocPath(normalizedActivityId, normalizedUid),
-  );
+  const requestRef = firestore.doc(activityJoinRequestDocPath(normalizedActivityId, normalizedUid));
 
   await firestore.runTransaction(async (transaction) => {
     const now = Timestamp.now();
@@ -458,14 +412,14 @@ export async function requestToJoin(activityId: string, uid: string): Promise<vo
       uid: normalizedUid,
       activityId: normalizedActivityId,
       status: 'pending',
-      createdAt: requestSnap.exists && requestSnap.data()?.createdAt
-        ? (requestSnap.data() as { createdAt: FirebaseFirestore.Timestamp }).createdAt
-        : now,
+      createdAt:
+        requestSnap.exists && requestSnap.data()?.createdAt
+          ? (requestSnap.data() as { createdAt: FirebaseFirestore.Timestamp }).createdAt
+          : now,
       updatedAt: now,
     } satisfies JoinRequestRecord);
 
-    // Denormalized waiting-list counter for the public "N waiting"
-    // display. Missing on legacy rows → increment treats it as 0.
+    // Denormalized waiting-list counter for the public "N waiting" display.
     transaction.update(activityRef, {
       pendingRequestCount: FieldValue.increment(1),
       updatedAt: now,
@@ -502,9 +456,7 @@ export async function listJoinRequests(activityId: string): Promise<JoinRequestW
   return Promise.all(
     snap.docs.map(async (doc) => {
       const data = doc.data();
-      const profile = typeof data.uid === 'string'
-        ? await getPublicUserProfile(data.uid)
-        : null;
+      const profile = typeof data.uid === 'string' ? await getPublicUserProfile(data.uid) : null;
 
       return {
         requestId: doc.id,
@@ -594,9 +546,7 @@ async function decideJoinRequest(
     }
 
     if (typeof activityData.participantCount !== 'number') {
-      throw new Error(
-        'Invalid activity record: participantCount must be a number',
-      );
+      throw new Error('Invalid activity record: participantCount must be a number');
     }
 
     if (activityData.status !== 'open') {
@@ -636,9 +586,10 @@ async function decideJoinRequest(
     recipientUid: normalizedTargetUid,
     type: decision === 'approved' ? 'activity_joined' : 'system',
     title: decision === 'approved' ? 'Request approved' : 'Request declined',
-    body: decision === 'approved'
-      ? 'The host approved your request — see you there!'
-      : 'The host declined your join request for this activity.',
+    body:
+      decision === 'approved'
+        ? 'The host approved your request — see you there!'
+        : 'The host declined your join request for this activity.',
     activityId: normalizedActivityId,
     senderUid: normalizedActorUid,
   });
@@ -661,102 +612,89 @@ export async function declineJoinRequest(
 }
 
 export type MyJoinRequestView = {
-    activityId: string;
-    title: string;
-    sportType: string;
-    locationName: string;
-    startTime: string | null;
-    status: 'pending';
-    requestedAt: FirebaseFirestore.Timestamp | null;
-    /** Cover for the Pending tab thumbnail; absent when unset. */
-    coverImageUrl?: string;
-    /** Paid flag + fee, so rows render the correct chip without refetch. */
-    isPaid?: boolean;
-    fee?: number;
+  activityId: string;
+  title: string;
+  sportType: string;
+  locationName: string;
+  startTime: string | null;
+  status: 'pending';
+  requestedAt: FirebaseFirestore.Timestamp | null;
+  /** Cover for the Pending tab thumbnail; absent when unset. */
+  coverImageUrl?: string;
+  /** Paid flag + fee, so rows render the correct chip without refetch. */
+  isPaid?: boolean;
+  fee?: number;
 };
 
-/**
- * Outgoing join requests for the viewer — powers the "Pending" tab in
- * My Games. Single-field collection-group equality (`uid`) uses the
- * automatic index (no composite needed); the `pending` filter runs in
- * memory since a user has few requests. Each row carries the activity
- * snapshot the mobile card renders, so no second round trip is needed.
- */
-export async function listMyJoinRequests(
-    viewerUid: string,
-): Promise<MyJoinRequestView[]> {
-    const normalizedUid = viewerUid.trim();
-    if (!normalizedUid) {
-        throw new Error('uid is required');
+/** Outgoing join requests for the viewer — powers the "Pending" tab in My Games. */
+export async function listMyJoinRequests(viewerUid: string): Promise<MyJoinRequestView[]> {
+  const normalizedUid = viewerUid.trim();
+  if (!normalizedUid) {
+    throw new Error('uid is required');
+  }
+
+  const snap = await firestore
+    .collectionGroup('joinRequests')
+    .where('uid', '==', normalizedUid)
+    .get();
+
+  const views: MyJoinRequestView[] = [];
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    if (data.status !== 'pending') continue;
+    const activityId =
+      typeof data.activityId === 'string' && data.activityId
+        ? data.activityId
+        : doc.ref.parent.parent?.id;
+    if (!activityId) continue;
+
+    let title = '';
+    let sportType = '';
+    let locationName = '';
+    let startTime: string | null = null;
+    let coverImageUrl: string | undefined;
+    let isPaid: boolean | undefined;
+    let fee: number | undefined;
+    try {
+      const activitySnap = await firestore.doc(activityDocPath(activityId)).get();
+      const a = activitySnap.exists ? activitySnap.data() : undefined;
+      if (typeof a?.title === 'string') title = a.title;
+      if (typeof a?.sportType === 'string') sportType = a.sportType;
+      if (typeof a?.locationName === 'string') locationName = a.locationName;
+      if (typeof a?.startTime === 'string') startTime = a.startTime;
+      if (typeof a?.coverImageUrl === 'string' && a.coverImageUrl) {
+        coverImageUrl = a.coverImageUrl;
+      }
+      if (typeof a?.isPaid === 'boolean') isPaid = a.isPaid;
+      if (typeof a?.fee === 'number' && Number.isFinite(a.fee) && a.fee > 0) {
+        fee = a.fee;
+      }
+    } catch {
+      // Best-effort enrichment — the row still renders from ids.
     }
 
-    const snap = await firestore
-        .collectionGroup('joinRequests')
-        .where('uid', '==', normalizedUid)
-        .get();
-
-    const views: MyJoinRequestView[] = [];
-    for (const doc of snap.docs) {
-        const data = doc.data();
-        if (data.status !== 'pending') continue;
-        const activityId =
-            typeof data.activityId === 'string' && data.activityId
-                ? data.activityId
-                : doc.ref.parent.parent?.id;
-        if (!activityId) continue;
-
-        let title = '';
-        let sportType = '';
-        let locationName = '';
-        let startTime: string | null = null;
-        let coverImageUrl: string | undefined;
-        let isPaid: boolean | undefined;
-        let fee: number | undefined;
-        try {
-            const activitySnap = await firestore
-                .doc(activityDocPath(activityId))
-                .get();
-            const a = activitySnap.exists ? activitySnap.data() : undefined;
-            if (typeof a?.title === 'string') title = a.title;
-            if (typeof a?.sportType === 'string') sportType = a.sportType;
-            if (typeof a?.locationName === 'string') locationName = a.locationName;
-            if (typeof a?.startTime === 'string') startTime = a.startTime;
-            if (typeof a?.coverImageUrl === 'string' && a.coverImageUrl) {
-                coverImageUrl = a.coverImageUrl;
-            }
-            if (typeof a?.isPaid === 'boolean') isPaid = a.isPaid;
-            if (typeof a?.fee === 'number' && Number.isFinite(a.fee) && a.fee > 0) {
-                fee = a.fee;
-            }
-        } catch {
-            // Best-effort enrichment — the row still renders from ids.
-        }
-
-        views.push({
-            activityId,
-            title,
-            sportType,
-            locationName,
-            startTime,
-            status: 'pending',
-            requestedAt: (data.createdAt as FirebaseFirestore.Timestamp | undefined) ?? null,
-            ...(coverImageUrl !== undefined ? { coverImageUrl } : {}),
-            ...(isPaid !== undefined ? { isPaid } : {}),
-            ...(fee !== undefined ? { fee } : {}),
-        });
-    }
-
-    // Soonest event first (rows without a parseable start go last):
-    // on a waiting list the most urgent decision is the nearest game.
-    // Sorted in memory — a user has few pending requests, and a
-    // server-side orderBy would need a composite index.
-    views.sort((a, b) => {
-        const aMs = a.startTime !== null ? Date.parse(a.startTime) : Number.NaN;
-        const bMs = b.startTime !== null ? Date.parse(b.startTime) : Number.NaN;
-        if (Number.isNaN(aMs)) return Number.isNaN(bMs) ? 0 : 1;
-        if (Number.isNaN(bMs)) return -1;
-        return aMs - bMs;
+    views.push({
+      activityId,
+      title,
+      sportType,
+      locationName,
+      startTime,
+      status: 'pending',
+      requestedAt: (data.createdAt as FirebaseFirestore.Timestamp | undefined) ?? null,
+      ...(coverImageUrl !== undefined ? { coverImageUrl } : {}),
+      ...(isPaid !== undefined ? { isPaid } : {}),
+      ...(fee !== undefined ? { fee } : {}),
     });
+  }
 
-    return views;
+  // Soonest event first (rows without a parseable start go last).
+  views.sort((a, b) => {
+    const aMs = a.startTime !== null ? Date.parse(a.startTime) : Number.NaN;
+    const bMs = b.startTime !== null ? Date.parse(b.startTime) : Number.NaN;
+    if (Number.isNaN(aMs)) return Number.isNaN(bMs) ? 0 : 1;
+    if (Number.isNaN(bMs)) return -1;
+    return aMs - bMs;
+  });
+
+  return views;
 }

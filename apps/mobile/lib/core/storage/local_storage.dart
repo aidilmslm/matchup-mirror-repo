@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Thin wrapper around `shared_preferences`. Keeps the call sites
-/// testable by routing all access through a single class.
+/// Thin wrapper around `shared_preferences`.
 class LocalStorage {
   LocalStorage._(this._prefs);
 

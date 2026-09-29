@@ -25,7 +25,7 @@ describe('createApp', () => {
       },
     });
   });
-  
+
   it('returns 503 from GET /health when database is unavailable', async () => {
     const { checkFirestoreConnection } = await import('../database/firebase.js');
     vi.mocked(checkFirestoreConnection).mockRejectedValueOnce(new Error('DB down'));

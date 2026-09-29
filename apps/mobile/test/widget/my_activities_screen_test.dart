@@ -178,12 +178,16 @@ void main() {
       testWidgets('should list requests with the waiting badge', (
         tester,
       ) async {
-        when(() => activityRepo.joinedByUser(any())).thenAnswer((_) async => []);
-        when(() => activityRepo.hostedByUser(any())).thenAnswer((_) async => []);
+        when(
+          () => activityRepo.joinedByUser(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => activityRepo.hostedByUser(any()),
+        ).thenAnswer((_) async => []);
         when(() => activityRepo.pastByUser(any())).thenAnswer((_) async => []);
-        when(() => activityRepo.pendingRequests()).thenAnswer(
-          (_) async => [_fixture(id: '9', title: 'Evening Tennis')],
-        );
+        when(
+          () => activityRepo.pendingRequests(),
+        ).thenAnswer((_) async => [_fixture(id: '9', title: 'Evening Tennis')]);
 
         await pumpScreen(tester);
         await tester.tap(find.text('Pending'));
@@ -193,49 +197,55 @@ void main() {
         expect(find.text('WAITING APPROVAL'), findsOneWidget);
       });
 
-      testWidgets('should open the read-only pending detail', (
+      testWidgets('should open the read-only pending detail', (tester) async {
+        when(
+          () => activityRepo.joinedByUser(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => activityRepo.hostedByUser(any()),
+        ).thenAnswer((_) async => []);
+        when(() => activityRepo.pastByUser(any())).thenAnswer((_) async => []);
+        when(
+          () => activityRepo.pendingRequests(),
+        ).thenAnswer((_) async => [_fixture(id: '9', title: 'Evening Tennis')]);
+
+        await pumpScreen(tester);
+        await tester.tap(find.text('Pending'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Evening Tennis'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Pending Detail 9'), findsOneWidget);
+      });
+    });
+
+    group('Past tab', () {
+      testWidgets('should label a cancelled game instead of a normal one', (
         tester,
       ) async {
-        when(() => activityRepo.joinedByUser(any())).thenAnswer((_) async => []);
-        when(() => activityRepo.hostedByUser(any())).thenAnswer((_) async => []);
-        when(() => activityRepo.pastByUser(any())).thenAnswer((_) async => []);
-        when(() => activityRepo.pendingRequests()).thenAnswer(
-          (_) async => [_fixture(id: '9', title: 'Evening Tennis')],
+        when(
+          () => activityRepo.joinedByUser(any()),
+        ).thenAnswer((_) async => []);
+        when(
+          () => activityRepo.hostedByUser(any()),
+        ).thenAnswer((_) async => []);
+        when(() => activityRepo.pastByUser(any())).thenAnswer(
+          (_) async => [
+            _fixture(
+              id: '7',
+              title: 'Called-off Tennis',
+              lifecycleStatus: 'cancelled',
+            ),
+          ],
         );
 
-      await pumpScreen(tester);
-      await tester.tap(find.text('Pending'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Evening Tennis'));
-      await tester.pumpAndSettle();
+        await pumpScreen(tester);
+        await tester.tap(find.text('Past'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Pending Detail 9'), findsOneWidget);
+        expect(find.text('Called-off Tennis'), findsOneWidget);
+        expect(find.text('CANCELLED'), findsOneWidget);
+      });
     });
-  });
-
-  group('Past tab', () {
-    testWidgets('should label a cancelled game instead of a normal one', (
-      tester,
-    ) async {
-      when(() => activityRepo.joinedByUser(any())).thenAnswer((_) async => []);
-      when(() => activityRepo.hostedByUser(any())).thenAnswer((_) async => []);
-      when(() => activityRepo.pastByUser(any())).thenAnswer(
-        (_) async => [
-          _fixture(
-            id: '7',
-            title: 'Called-off Tennis',
-            lifecycleStatus: 'cancelled',
-          ),
-        ],
-      );
-
-      await pumpScreen(tester);
-      await tester.tap(find.text('Past'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Called-off Tennis'), findsOneWidget);
-      expect(find.text('CANCELLED'), findsOneWidget);
-    });
-  });
   });
 }

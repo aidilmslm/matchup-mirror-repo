@@ -1,3 +1,4 @@
+// templates.
 export type TemplateCategory = 'Activity' | 'Account' | 'Moderation' | 'Engagement';
 export type TemplateTrigger =
   | 'activity.joined'

@@ -31,17 +31,17 @@ vi.mock('../../middleware/auth.middleware.js', () => {
       next();
     }),
 
-  requireAuthAllowSuspended: vi.fn((req, _res, next) => {
+    requireAuthAllowSuspended: vi.fn((req, _res, next) => {
       req.auth = req.auth ?? {
-          uid: 'test-uid-1',
-          token: {} as never,
+        uid: 'test-uid-1',
+        token: {} as never,
       };
       next();
-  }),
+    }),
 
-  requireAdmin: vi.fn((_req, _res, next) => {
+    requireAdmin: vi.fn((_req, _res, next) => {
       next();
-  }),
+    }),
   };
 });
 
@@ -73,9 +73,7 @@ describe('swipes routes', () => {
           decision: 'join',
         },
       });
-      // A right-swipe is always followed by join/requestJoin, which notify
-      // the host themselves (`activity_joined` / `join_request`) — the
-      // swipe endpoint stays silent so one gesture never double-notifies.
+      // A right-swipe is always followed by join/requestJoin, which notify the host themselves (`activity_joined` /.
       expect(notificationsService.createNotification).not.toHaveBeenCalled();
     });
 
@@ -197,9 +195,7 @@ describe('swipes routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(swipesService.saveSwipeDecision).mockRejectedValueOnce(
-        new Error('Unknown error'),
-      );
+      vi.mocked(swipesService.saveSwipeDecision).mockRejectedValueOnce(new Error('Unknown error'));
 
       const app = createApp();
 
@@ -284,9 +280,7 @@ describe('swipes routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(swipesService.getSwipeDecision).mockRejectedValueOnce(
-        new Error('Unknown error'),
-      );
+      vi.mocked(swipesService.getSwipeDecision).mockRejectedValueOnce(new Error('Unknown error'));
 
       const app = createApp();
 
@@ -354,9 +348,7 @@ describe('swipes routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(swipesService.listSwipeDecisions).mockRejectedValueOnce(
-        new Error('Unknown error'),
-      );
+      vi.mocked(swipesService.listSwipeDecisions).mockRejectedValueOnce(new Error('Unknown error'));
 
       const app = createApp();
 
@@ -372,5 +364,4 @@ describe('swipes routes', () => {
       });
     });
   });
-
 });

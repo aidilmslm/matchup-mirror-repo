@@ -8,12 +8,14 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 function StatusBadge({ status }: { status: MemberStatus }) {
   const map: Record<MemberStatus, { cls: string; dot: string }> = {
-    Active:    { cls: 'bg-brand-50 text-brand-700 border-brand-200',        dot: 'bg-brand-500' },
-    Suspended: { cls: 'bg-danger-50 text-danger-700 border-danger-200',     dot: 'bg-danger-500' },
+    Active: { cls: 'bg-brand-50 text-brand-700 border-brand-200', dot: 'bg-brand-500' },
+    Suspended: { cls: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500' },
   };
   const { cls, dot } = map[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+    >
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       {status}
     </span>
@@ -119,13 +121,18 @@ export function MemberDetailPage() {
     const notFound = error && /not.?found|404/i.test(error);
     return (
       <div className="page-container flex flex-col items-center justify-center gap-3 py-24">
-        <p className="text-sm text-ink-500">{notFound ? 'Member not found.' : `Failed to load member${error ? `: ${error}` : '.'}`}</p>
+        <p className="text-sm text-ink-500">
+          {notFound ? 'Member not found.' : `Failed to load member${error ? `: ${error}` : '.'}`}
+        </p>
         {!notFound && (
           <button onClick={load} className="btn-primary rounded-lg px-4 py-2 text-sm">
             Retry
           </button>
         )}
-        <button onClick={() => navigate('/members')} className="btn-outline rounded-lg px-4 py-2 text-sm">
+        <button
+          onClick={() => navigate('/members')}
+          className="btn-outline rounded-lg px-4 py-2 text-sm"
+        >
           Back to Members
         </button>
       </div>
@@ -143,24 +150,49 @@ export function MemberDetailPage() {
 
   return (
     <div className="page-container space-y-4">
-
       {/* Back */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button onClick={() => navigate('/members')} className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 transition-colors">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 2.5L4 7l4.5 4.5" /></svg>
+        <button
+          onClick={() => navigate('/members')}
+          className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 transition-colors"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M8.5 2.5L4 7l4.5 4.5" />
+          </svg>
           Members
         </button>
         <div className="flex flex-wrap gap-2">
           {member.status === 'Active' ? (
-            <button onClick={() => setConfirm('suspend')} disabled={acting} className="btn-outline rounded-lg px-3 py-1.5 text-xs font-semibold text-warning-600 disabled:opacity-50">
+            <button
+              onClick={() => setConfirm('suspend')}
+              disabled={acting}
+              className="btn-outline rounded-lg px-3 py-1.5 text-xs font-semibold text-warning-600 disabled:opacity-50"
+            >
               Suspend
             </button>
           ) : (
-            <button onClick={() => setConfirm('activate')} disabled={acting} className="btn-primary rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
+            <button
+              onClick={() => setConfirm('activate')}
+              disabled={acting}
+              className="btn-primary rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+            >
               Activate
             </button>
           )}
-          <button onClick={() => setConfirm('remove')} disabled={acting} className="rounded-lg border border-danger-200 px-3 py-1.5 text-xs font-semibold text-danger-600 hover:bg-danger-50 disabled:opacity-50">
+          <button
+            onClick={() => setConfirm('remove')}
+            disabled={acting}
+            className="rounded-lg border border-danger-200 px-3 py-1.5 text-xs font-semibold text-danger-600 hover:bg-danger-50 disabled:opacity-50"
+          >
             Remove
           </button>
         </div>
@@ -169,16 +201,34 @@ export function MemberDetailPage() {
       {actionError && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger-200 bg-danger-50 px-4 py-2.5 text-xs text-danger-700">
           <span className="flex-1">{actionError}</span>
-          <button onClick={() => setActionError(null)} className="font-semibold underline">Dismiss</button>
-          <button onClick={load} className="font-semibold underline">Retry</button>
+          <button onClick={() => setActionError(null)} className="font-semibold underline">
+            Dismiss
+          </button>
+          <button onClick={load} className="font-semibold underline">
+            Retry
+          </button>
         </div>
       )}
 
       <ConfirmDialog
         open={confirm !== null}
-        title={confirm === 'suspend' ? `Suspend ${member.name}?` : confirm === 'activate' ? `Activate ${member.name}?` : `Remove ${member.name}?`}
-        description={confirm === 'suspend' ? 'This member will lose access until manually reactivated.' : confirm === 'activate' ? 'This member will regain access immediately.' : 'This action cannot be undone.'}
-        confirmLabel={confirm === 'suspend' ? 'Suspend' : confirm === 'activate' ? 'Activate' : 'Remove'}
+        title={
+          confirm === 'suspend'
+            ? `Suspend ${member.name}?`
+            : confirm === 'activate'
+              ? `Activate ${member.name}?`
+              : `Remove ${member.name}?`
+        }
+        description={
+          confirm === 'suspend'
+            ? 'This member will lose access until manually reactivated.'
+            : confirm === 'activate'
+              ? 'This member will regain access immediately.'
+              : 'This action cannot be undone.'
+        }
+        confirmLabel={
+          confirm === 'suspend' ? 'Suspend' : confirm === 'activate' ? 'Activate' : 'Remove'
+        }
         destructive={confirm !== 'activate'}
         onConfirm={() => {
           if (confirm === 'suspend') runStatus('Suspended');
@@ -190,10 +240,8 @@ export function MemberDetailPage() {
 
       {/* ── Main layout ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
-
         {/* LEFT — identity card */}
         <div className="space-y-4">
-
           {/* Profile card */}
           <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-card">
             {/* Banner */}
@@ -202,7 +250,12 @@ export function MemberDetailPage() {
             <div className="px-5 pb-5">
               <div className="relative -mt-8 mb-3 flex items-end justify-between">
                 <div className="h-[60px] w-[60px] overflow-hidden rounded-xl ring-4 ring-white shadow-sm">
-                  <Avatar name={member.name} photoUrl={member.photoUrl} seed={member.avatarSeed} className="h-full w-full text-lg rounded-2xl" />
+                  <Avatar
+                    name={member.name}
+                    photoUrl={member.photoUrl}
+                    seed={member.avatarSeed}
+                    className="h-full w-full text-lg rounded-2xl"
+                  />
                 </div>
                 <StatusBadge status={member.status} />
               </div>
@@ -210,7 +263,18 @@ export function MemberDetailPage() {
               <p className="text-sm font-medium text-brand-500">{member.username}</p>
               {member.location && (
                 <p className="mt-1 flex items-center gap-1 text-xs text-ink-400">
-                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><path d="M7 1C4.791 1 3 2.791 3 5c0 3.5 4 8 4 8s4-4.5 4-8c0-2.209-1.791-4-4-4z" /><circle cx="7" cy="5" r="1.5" /></svg>
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                  >
+                    <path d="M7 1C4.791 1 3 2.791 3 5c0 3.5 4 8 4 8s4-4.5 4-8c0-2.209-1.791-4-4-4z" />
+                    <circle cx="7" cy="5" r="1.5" />
+                  </svg>
                   {member.location}
                 </p>
               )}
@@ -219,13 +283,27 @@ export function MemberDetailPage() {
             {/* Stats inline */}
             <div className="grid grid-cols-3 divide-x divide-ink-100 border-t border-ink-100">
               {[
-                { label: 'Joined',  value: member.activitiesJoined.toString(), color: 'text-brand-600' },
-                { label: 'Hosted',  value: member.activitiesHosted.toString(), color: 'text-success-600' },
-                { label: 'Rating',  value: `★ ${member.rating.toFixed(1)}`,    color: 'text-warning-600' },
+                {
+                  label: 'Joined',
+                  value: member.activitiesJoined.toString(),
+                  color: 'text-brand-600',
+                },
+                {
+                  label: 'Hosted',
+                  value: member.activitiesHosted.toString(),
+                  color: 'text-success-600',
+                },
+                {
+                  label: 'Rating',
+                  value: `★ ${member.rating.toFixed(1)}`,
+                  color: 'text-warning-600',
+                },
               ].map((s) => (
                 <div key={s.label} className="py-3 text-center">
                   <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
-                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-400">{s.label}</p>
+                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-400">
+                    {s.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -233,11 +311,13 @@ export function MemberDetailPage() {
 
           {/* Contact */}
           <div className="rounded-2xl border border-ink-200 bg-white shadow-card px-5 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-1">Contact</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-1">
+              Contact
+            </p>
             <div>
-              <InfoRow label="Email"  value={member.email} />
-              <InfoRow label="Phone"  value={member.phone ?? '—'} />
-              <InfoRow label="Role"   value={member.role} />
+              <InfoRow label="Email" value={member.email} />
+              <InfoRow label="Phone" value={member.phone ?? '—'} />
+              <InfoRow label="Role" value={member.role} />
               <InfoRow label="Joined" value={member.joinedDate} />
             </div>
           </div>
@@ -245,12 +325,16 @@ export function MemberDetailPage() {
           {/* Physical profile */}
           {hasPhysical && (
             <div className="rounded-2xl border border-ink-200 bg-white shadow-card px-5 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-1">Physical Profile</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-1">
+                Physical Profile
+              </p>
               <div>
-                {member.dateOfBirth && <InfoRow label="Date of birth" value={formatDob(member.dateOfBirth) ?? '—'} />}
-                {member.heightCm    && <InfoRow label="Height"        value={`${member.heightCm} cm`} />}
-                {member.weightKg    && <InfoRow label="Weight"        value={`${member.weightKg} kg`} />}
-                {member.goal        && <InfoRow label="Goal"          value={member.goal} />}
+                {member.dateOfBirth && (
+                  <InfoRow label="Date of birth" value={formatDob(member.dateOfBirth) ?? '—'} />
+                )}
+                {member.heightCm && <InfoRow label="Height" value={`${member.heightCm} cm`} />}
+                {member.weightKg && <InfoRow label="Weight" value={`${member.weightKg} kg`} />}
+                {member.goal && <InfoRow label="Goal" value={member.goal} />}
               </div>
             </div>
           )}
@@ -258,7 +342,6 @@ export function MemberDetailPage() {
 
         {/* RIGHT — bio + sports */}
         <div className="space-y-4">
-
           {/* Bio */}
           {member.bio && (
             <div className="rounded-2xl border border-ink-200 bg-white shadow-card px-5 py-4">
@@ -270,19 +353,25 @@ export function MemberDetailPage() {
           {/* Sports */}
           {member.sports.length > 0 && (
             <div className="rounded-2xl border border-ink-200 bg-white shadow-card px-5 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-3">My Sports</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-3">
+                My Sports
+              </p>
               <div className="flex flex-wrap gap-2">
                 {member.sports.map((s, i) => (
                   <span
                     key={s.sport}
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
-                      i === 0 ? 'border-brand-200 bg-brand-50 text-brand-700' : 'border-ink-200 bg-white text-ink-600'
+                      i === 0
+                        ? 'border-brand-200 bg-brand-50 text-brand-700'
+                        : 'border-ink-200 bg-white text-ink-600'
                     }`}
                   >
                     {s.sport}
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      i === 0 ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-500'
-                    }`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        i === 0 ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-500'
+                      }`}
+                    >
                       {s.level}
                     </span>
                   </span>

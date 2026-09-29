@@ -10,30 +10,21 @@ import '../../../core/storage/secure_token_store.dart';
 import '../../../core/utils/stream_timeout.dart';
 import '../domain/chat_message.dart';
 
-/// Canonical 1-on-1 thread id — sorted uids joined with `_`, mirroring
-/// backend `dmThreadId` in `database/paths.ts`. Both directions map to
-/// the same conversation.
+/// Canonical 1-on-1 thread id — sorted uids joined with `_`, mirroring backend `dmThreadId` in `database/paths.ts`.
 String dmThreadId(String uidA, String uidB) {
   final pair = [uidA.trim(), uidB.trim()]..sort();
   return '${pair[0]}_${pair[1]}';
 }
 
 /// Read contract for 1-on-1 direct messages.
-///
-/// Text, photo, and location shares (same text-carrying wire format as
-/// the group chat repository so a future merge is mechanical), realtime
-/// via RTDB with HTTP polling fallback.
-///
-/// Inbox rows reuse [ChatConversation] (`id` = peer uid, `isGroup` =
-/// false) so the messages screen renders them with the same cards.
+/// Text, photo, and location shares (same text-carrying wire format as the group chat repository.
+/// Inbox rows reuse [ChatConversation] (`id` = peer uid, `isGroup` = false).
 abstract class DmRepository {
   Stream<List<ChatMessage>> watchMessages(String otherUid);
   Future<List<ChatMessage>> messages(String otherUid, {int limit = 50});
   Future<ChatMessage> send({required String otherUid, required String text});
 
-  /// Shares a photo: uploads to Storage, posts the download URL as the
-  /// message text. Returns the message with `imagePath`/`imageUrl` set
-  /// so the bubble renders inline immediately.
+  /// Shares a photo: uploads to Storage, posts the download URL as the message text.
   Future<ChatMessage> sendImage({
     required String otherUid,
     required String imagePath,
@@ -49,8 +40,7 @@ abstract class DmRepository {
   /// Inbox threads, newest first, with peer names + unread badges.
   Future<List<ChatConversation>> conversations();
 
-  /// [conversations] re-emitted on every RTDB inbox change (plus HTTP
-  /// polling fallback), so badges update while the inbox sits open.
+  /// [conversations] re-emitted on every RTDB inbox change (plus HTTP polling fallback).
   Stream<List<ChatConversation>> watchConversations();
 
   /// Clears the unread badge for one thread. Best-effort.
@@ -59,7 +49,8 @@ abstract class DmRepository {
 
 /// HTTP + RTDB implementation against `/api/dm/:uid/...`.
 class RemoteDmRepository implements DmRepository {
-  RemoteDmRepository({ApiClient? client}) : _client = client ?? ApiClient.instance;
+  RemoteDmRepository({ApiClient? client})
+    : _client = client ?? ApiClient.instance;
 
   final ApiClient _client;
 
@@ -75,20 +66,17 @@ class RemoteDmRepository implements DmRepository {
       final ref = FirebaseDatabase.instance.ref(
         'dmChats/${dmThreadId(myUid, otherUid)}/messages',
       );
-      // First-event watchdog (see RemoteChatRepository): a stalled socket
-      // must fall through to polling, not pin the thread on its skeleton.
+      // First-event watchdog (see RemoteChatRepository): a stalled socket must fall through to polling.
       await for (final event in withFirstEventTimeout(ref.onValue)) {
         yield _parseList(event.snapshot.value, myUid: myUid);
       }
       return;
     } catch (e, st) {
-      debugPrint('[RemoteDmRepository.watchMessages] RTDB failed, polling: $e\n$st');
+      debugPrint(
+        '[RemoteDmRepository.watchMessages] RTDB failed, polling: $e\n$st',
+      );
     }
-    // Polling fallback with error backoff: consecutive failures
-    // stretch the delay (2s × failures, capped at 5) instead of
-    // hammering a struggling backend at a fixed cadence. Resets on
-    // the first success. Cancelling the subscription drops the loop
-    // at the next suspension point (no further yields are delivered).
+    // Polling fallback with error backoff: consecutive failures stretch the delay.
     var failures = 0;
     while (true) {
       try {
@@ -141,8 +129,7 @@ class RemoteDmRepository implements DmRepository {
 
   @override
   Stream<List<ChatConversation>> watchConversations() async* {
-    // RTDB inbox node drives refetches; the HTTP list carries the
-    // enriched peer names the raw entries lack.
+    // RTDB inbox node drives refetches; the HTTP list carries the enriched peer names the raw entries lack.
     try {
       await RtdbAuthService.instance.ensureSignedIn();
       final myUid = await _myUid();
@@ -152,11 +139,11 @@ class RemoteDmRepository implements DmRepository {
       }
       return;
     } catch (e, st) {
-      debugPrint('[RemoteDmRepository.watchConversations] RTDB failed: $e\n$st');
+      debugPrint(
+        '[RemoteDmRepository.watchConversations] RTDB failed: $e\n$st',
+      );
     }
-    // Same error-backoff shape as [watchMessages]: healthy ticks stay
-    // at 10s; consecutive failures back off instead of holding the
-    // fixed cadence. Cancellable via the subscription (see above).
+    // Same error-backoff shape as [watchMessages]: healthy ticks stay at 10s.
     var failures = 0;
     while (true) {
       try {
@@ -223,7 +210,7 @@ class RemoteDmRepository implements DmRepository {
     );
     final messageId =
         apiDataMap(res.data)?['messageId']?.toString() ??
-            '${DateTime.now().millisecondsSinceEpoch}';
+        '${DateTime.now().millisecondsSinceEpoch}';
     final myUid = await _myUid();
     return ChatMessage(
       id: messageId,
@@ -240,13 +227,10 @@ class RemoteDmRepository implements DmRepository {
     required String otherUid,
     required String imagePath,
   }) async {
-    // Same text-only wire format as group chat: upload to Storage
-    // first, post the download URL as the text. Scoped per thread so
-    // one peer's attachments never mix with another's. Oversized picks
-    // throw before burning upload bandwidth (see StorageService).
+    // Same text-only wire format as group chat: upload to Storage first, post the download URL as the text.
     final myUid = await _myUid();
     await StorageService.checkImageSize(imagePath, kMaxChatImageBytes);
-    // M2 fix: owner-scoped path (see StorageService.uploadChatAttachment).
+    // Owner-scoped path (see StorageService.uploadChatAttachment).
     if (myUid.isEmpty) {
       throw Exception('Photo uploads are unavailable right now');
     }
@@ -256,9 +240,7 @@ class RemoteDmRepository implements DmRepository {
       uid: myUid,
     );
     if (uploadedUrl == null) {
-      // Same contract as the group chat path: the photo cannot leave
-      // the device, so surface the specific message the screens render
-      // verbatim instead of a generic failure.
+      // Same contract as the group chat path: the photo cannot leave the device.
       throw Exception('Photo uploads are unavailable right now');
     }
     final sent = await send(otherUid: otherUid, text: uploadedUrl);
@@ -322,13 +304,11 @@ class RemoteDmRepository implements DmRepository {
   }
 }
 
-/// Coordinates carried by a `'📍 Shared location: <maps link>'` message
-/// (see `RemoteChatRepository.sendLocation` for the wire format).
-/// Returns null for any other text — in particular plain URLs, which
-/// belong to [ChatMessage.imageUrlFromText].
+/// Coordinates carried by a `'📍 Shared location: <maps link>'` message.
 ({double latitude, double longitude})? parseSharedLocation(String text) {
   const prefix = '📍 Shared location: ';
-  if (!text.startsWith(prefix)) return null;  final link = text.substring(prefix.length).trim();
+  if (!text.startsWith(prefix)) return null;
+  final link = text.substring(prefix.length).trim();
   final uri = Uri.tryParse(link);
   if (uri == null) return null;
   // Group chat writes `https://maps.google.com/?q=<lat>,<lng>`.
@@ -342,14 +322,8 @@ class RemoteDmRepository implements DmRepository {
   return (latitude: lat, longitude: lng);
 }
 
-/// Parses an RTDB `dmChats/{pair}/messages` snapshot value into
-/// time-sorted messages.
-///
-/// Top-level (not a method) so unit tests can feed it realistic
-/// snapshot shapes. CRITICAL: RTDB decodes to `Map<dynamic, dynamic>`,
-/// so this must never narrow with `is Map<String, dynamic>` — generic
-/// invariance would silently drop every message (thread renders empty
-/// forever while the HTTP-fed inbox looks fine).
+/// Parses an RTDB `dmChats/{pair}/messages` snapshot value into time-sorted messages.
+/// Top-level (not a method) so unit tests can feed it realistic snapshot shapes.
 List<ChatMessage> parseRtdbDmMessages(Object? value, {required String myUid}) {
   if (value is! Map) return const [];
   final out = <ChatMessage>[];
@@ -367,7 +341,10 @@ List<ChatMessage> parseRtdbDmMessages(Object? value, {required String myUid}) {
   return out;
 }
 
-ChatMessage _parseDmMessage(Map<String, dynamic> json, {required String myUid}) {
+ChatMessage _parseDmMessage(
+  Map<String, dynamic> json, {
+  required String myUid,
+}) {
   final senderId = json['senderId']?.toString() ?? '';
   final ms = json['timestamp'];
   final text = json['text']?.toString() ?? '';

@@ -3,8 +3,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:matchup_mobile/features/activities/data/places_ranker.dart';
 import 'package:matchup_mobile/features/activities/domain/place_suggestion.dart';
 
-PlaceSuggestion _s(String label, String secondary,
-    {required double lat, required double lng}) {
+PlaceSuggestion _s(
+  String label,
+  String secondary, {
+  required double lat,
+  required double lng,
+}) {
   return PlaceSuggestion(
     placeId: 'pid:$label',
     label: label,
@@ -20,20 +24,43 @@ void main() {
 
   // Test fixtures — labels chosen to exercise the ranker tiers.
   final fixtures = <PlaceSuggestion>[
-    _s('Auckland Domain', 'Grafton, Auckland',
-        lat: -36.8558, lng: 174.7764), // exact / prefix tier, ~1km
-    _s('Domain Park', 'Auckland',
-        lat: -36.8600, lng: 174.7800), // token prefix, ~1.4km
-    _s('Auckland Museum', 'Auckland CBD',
-        lat: -36.8610, lng: 174.7780), // token match, ~1.5km
-    _s('Mount Eden', 'Auckland',
-        lat: -36.8780, lng: 174.7640), // secondary only hit, ~3.3km
-    _s('Cornwall Park', 'Auckland',
-        lat: -36.8888, lng: 174.7770), // substring, ~4.6km
-    _s('Riverside Court', 'Jakarta',
-        lat: -6.2088, lng: 106.8456), // far away, no match
-    _s('Takapuna Beach', 'Auckland',
-        lat: -36.7870, lng: 174.7750), // ~7km, far
+    _s(
+      'Auckland Domain',
+      'Grafton, Auckland',
+      lat: -36.8558,
+      lng: 174.7764,
+    ), // exact / prefix tier, ~1km
+    _s(
+      'Domain Park',
+      'Auckland',
+      lat: -36.8600,
+      lng: 174.7800,
+    ), // token prefix, ~1.4km
+    _s(
+      'Auckland Museum',
+      'Auckland CBD',
+      lat: -36.8610,
+      lng: 174.7780,
+    ), // token match, ~1.5km
+    _s(
+      'Mount Eden',
+      'Auckland',
+      lat: -36.8780,
+      lng: 174.7640,
+    ), // secondary only hit, ~3.3km
+    _s(
+      'Cornwall Park',
+      'Auckland',
+      lat: -36.8888,
+      lng: 174.7770,
+    ), // substring, ~4.6km
+    _s(
+      'Riverside Court',
+      'Jakarta',
+      lat: -6.2088,
+      lng: 106.8456,
+    ), // far away, no match
+    _s('Takapuna Beach', 'Auckland', lat: -36.7870, lng: 174.7750), // ~7km, far
   ];
 
   group('PlacesRanker', () {
@@ -67,12 +94,12 @@ void main() {
         'Aucklabd', // 1 transposition from "Auckland"
         origin: auckland,
       );
-      expect(ranked, isNotEmpty,
-          reason: 'typo "Aucklabd" should still find Auckland entries');
       expect(
-        ranked.first.suggestion.label.toLowerCase(),
-        contains('auckland'),
+        ranked,
+        isNotEmpty,
+        reason: 'typo "Aucklabd" should still find Auckland entries',
       );
+      expect(ranked.first.suggestion.label.toLowerCase(), contains('auckland'));
     });
 
     test('multi-word query matches venue with any token order', () {
@@ -87,8 +114,7 @@ void main() {
       expect(top.first, 'Auckland Domain');
     });
 
-    test('closer-but-irrelevant result ranks below farther-but-relevant',
-        () {
+    test('closer-but-irrelevant result ranks below farther-but-relevant', () {
       // Cornwall Park is far but contains the query string
       // ("auckland" matches the secondary text). Takapuna is closer
       // but has nothing to do with the query.
@@ -114,11 +140,7 @@ void main() {
     });
 
     test('empty query returns distance-sorted results', () {
-      final ranked = const PlacesRanker().rank(
-        fixtures,
-        '',
-        origin: auckland,
-      );
+      final ranked = const PlacesRanker().rank(fixtures, '', origin: auckland);
       expect(ranked.length, fixtures.length);
       expect(ranked.first.suggestion.label, 'Auckland Domain');
       // Jakarta venue is the farthest.

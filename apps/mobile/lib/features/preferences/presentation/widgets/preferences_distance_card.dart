@@ -5,8 +5,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dark_colors.dart';
 
-/// Uppercase group header used above each Preferences section, with an
-/// optional trailing value (e.g. "Within 5 km").
+/// Uppercase group header used above each Preferences section, with an optional trailing value.
 class PreferencesSectionLabel extends StatelessWidget {
   const PreferencesSectionLabel({
     super.key,

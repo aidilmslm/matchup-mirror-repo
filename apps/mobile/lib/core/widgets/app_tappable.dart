@@ -5,38 +5,17 @@ import '../theme/app_spacing.dart';
 
 /// Feedback style for [AppTappable].
 enum AppTapFeedback {
-  /// Material ripple via [InkWell]. Best for surfaces with a defined fill
-  /// (chips, list rows, cards that are not already an [AppCard]).
+  /// Material ripple via [InkWell].
   ripple,
 
-  /// Scale-down-on-press via [AnimatedScale]. Best for icon buttons and
-  /// controls with no fill of their own — a ripple would look like a stray
-  /// circle floating in empty space.
+  /// Scale-down-on-press via [AnimatedScale].
   scale,
 }
 
-/// Wraps any child with real press feedback and a guaranteed minimum hit
-/// area, without changing its visual size.
-///
-/// Before this widget, most tappable surfaces in the app were bare
-/// `GestureDetector`s — no ripple, no pressed state, nothing to confirm a tap
-/// landed (PRD Section 1.4). Every icon button, chip, and custom control
-/// should use [AppTappable] instead of `GestureDetector` directly.
-///
-/// The 44×44 minimum hit area (Apple HIG / Material accessibility guidance)
-/// is enforced via a [SizedBox] + [Center] so the *visual* size of [child]
-/// never changes — this is the same pattern already used for the hero
-/// back/share buttons and the create-screen stepper, generalised here so
-/// every new control gets it automatically instead of by convention.
-///
-/// ```dart
-/// AppTappable(
-///   onTap: _toggleFavorite,
-///   semanticLabel: 'Add to favorites',
-///   feedback: AppTapFeedback.scale,
-///   child: Icon(Icons.favorite_border, size: 20),
-/// )
-/// ```
+/// Wraps any child with real press feedback and a guaranteed minimum hit area, without changing its visual size.
+/// Before this widget, most tappable surfaces in the app were bare `GestureDetector`s.
+/// The 44x44 minimum hit area (Apple HIG / Material guidance) is enforced via SizedBox + Center.
+/// dart AppTappable( onTap: _toggleFavorite, semanticLabel: 'Add to favorites', feedback: AppTapFeedback.scale.
 class AppTappable extends StatefulWidget {
   const AppTappable({
     super.key,
@@ -52,19 +31,16 @@ class AppTappable extends StatefulWidget {
 
   final Widget child;
 
-  /// Required — every tappable surface must be identifiable to a screen
-  /// reader. See PRD Section 2.1 principle 6 and Appendix C.2.
+  /// Required — every tappable surface must be identifiable to a screen reader.
   final String semanticLabel;
 
   final VoidCallback? onTap;
   final AppTapFeedback feedback;
 
-  /// Minimum hit area edge length. Defaults to the 44pt accessibility floor;
-  /// only raise it, never lower it.
+  /// Minimum hit area edge length. Defaults to the 44pt accessibility floor; only raise it, never lower it.
   final double minSize;
 
-  /// [AppTapFeedback.ripple] only — clip/ripple radius. Defaults to
-  /// [AppRadius.md] if unset.
+  /// [AppTapFeedback.ripple] only — clip/ripple radius.
   final double? borderRadius;
 
   final bool enabled;
@@ -89,12 +65,7 @@ class _AppTappableState extends State<AppTappable> {
 
   @override
   Widget build(BuildContext context) {
-    // Stack (not SizedBox+Center): a SizedBox forces its child's layout box
-    // to exactly minSize, which *shrinks* a child larger than minSize instead
-    // of leaving it alone. Stack's default sizing takes the largest
-    // non-positioned child in each dimension, so the invisible spacer only
-    // grows the hit area when the real child is smaller than minSize, and
-    // never shrinks a child that's already bigger.
+    // Stack (not SizedBox+Center): a SizedBox forces its child's layout box to exactly minSize.
     final sized = Stack(
       alignment: Alignment.center,
       children: [

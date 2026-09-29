@@ -44,11 +44,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   void _shiftMonth(int delta) {
     setState(() {
       _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + delta);
-      // Keep the selected day when it exists in the newly viewed
-      // month; otherwise fall back to the 1st instead of null so the
-      // list below never silently switches back to whole-month mode.
-      final daysInMonth =
-          DateTime(_viewMonth.year, _viewMonth.month + 1, 0).day;
+      // Keep the selected day when it exists in the newly viewed month.
+      final daysInMonth = DateTime(
+        _viewMonth.year,
+        _viewMonth.month + 1,
+        0,
+      ).day;
       if (_selectedDay == null || _selectedDay! > daysInMonth) {
         _selectedDay = 1;
       }
@@ -73,7 +74,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       title: 'Calendar',
       showHomeIndicator: false,
       actions: [
-        NotificationIconButton(onTap: () => NavGuard.push(context, '/notifications')),
+        NotificationIconButton(
+          onTap: () => NavGuard.push(context, '/notifications'),
+        ),
       ],
       body: Column(
         children: [
@@ -165,10 +168,7 @@ class _CalendarBody extends ConsumerWidget {
     }
 
     final showingMonth = selectedDay == null;
-    // No day selected (tapping the selected day again toggles it off):
-    // list the whole viewed month, not today — the header shows the
-    // viewed month, so filtering to today would look broken whenever
-    // they differ.
+    // No day selected (tapping the selected day again toggles it off): list the whole viewed month, not today.
     final dayEvents = showingMonth
         ? events
               .where(
@@ -217,13 +217,11 @@ class _CalendarBody extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.x3),
                 if (dayEvents.isEmpty)
                   const Padding(
-                    padding:
-                        EdgeInsets.symmetric(vertical: AppSpacing.x8),
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.x8),
                     child: EmptyState(
                       icon: Icons.calendar_today_outlined,
                       title: 'No activities on this day',
-                      subtitle:
-                          'Games you join or host will appear here.',
+                      subtitle: 'Games you join or host will appear here.',
                     ),
                   )
                 else
@@ -416,11 +414,7 @@ class _DayCell extends StatelessWidget {
                       : textColor,
                 ),
               ),
-              // Event dot always renders when the day has events —
-              // including on highlighted days (today / selected),
-              // where it uses a contrasting tone so it still reads on
-              // the filled circle behind it. primaryOnSurface (not raw
-              // primary, which is 1.3:1 on dark surfaces) both themes.
+              // Event dot always renders when the day has events.
               if (hasActivity)
                 Positioned(
                   bottom: 4,
@@ -479,8 +473,7 @@ class _EventCard extends ConsumerWidget {
   const _EventCard({required this.event});
   final CalendarEvent event;
 
-  /// Hosted games manage from the host screen, past games from the
-  /// review screen, everything else from the joined detail screen.
+  /// Hosted games manage from the host screen, past games from the review screen, everything else from the joined.
   String get _destination {
     if (event.isHost) return '/manage-activity/${event.activityId}';
     if (event.isPast) return '/past-activity/${event.activityId}/review';
@@ -488,7 +481,6 @@ class _EventCard extends ConsumerWidget {
   }
 
   /// Writes this event to the OS calendar and reports the outcome.
-  /// The list refreshes afterwards so the synced checkmark appears.
   Future<void> _syncToDevice(BuildContext context, WidgetRef ref) async {
     final ok = await ref
         .read(calendarRepositoryProvider)
@@ -593,10 +585,7 @@ class _EventCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.x1),
-            // Device-calendar sync lives OUTSIDE the navigation tap
-            // target so syncing never also pushes the detail screen.
-            // Exposes the repository's addToDeviceCalendar (previously
-            // reachable only from the joined-detail screen).
+            // Device-calendar sync lives OUTSIDE the navigation tap target so syncing never also pushes the detail.
             Semantics(
               button: true,
               label: 'Sync ke kalender perangkat',

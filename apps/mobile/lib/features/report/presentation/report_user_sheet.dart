@@ -12,14 +12,13 @@ import 'report_evidence_picker.dart';
 import 'report_sheet_widgets.dart';
 
 /// Bottom sheet for reporting a user — companion to [ReportActivitySheet].
-/// Same modal-sheet design avoids the `Navigator` key-collision assertion
-/// that the old `/report/:type/:name` route form suffered under
-/// double-tap / push race.
-///
-/// User-specific reasons: harassment, impersonation, inappropriate profile,
-/// spam. "Other" routes through the optional details field below.
+/// User-specific reasons: harassment, impersonation, inappropriate profile, spam.
 class ReportUserSheet extends ConsumerStatefulWidget {
-  const ReportUserSheet({super.key, required this.userId, required this.userName});
+  const ReportUserSheet({
+    super.key,
+    required this.userId,
+    required this.userName,
+  });
 
   /// Backend auth uid — sent as the report target. Never the display name.
   final String userId;
@@ -84,21 +83,24 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
     }
     setState(() => _submitting = true);
     try {
-      await ref.read(reportRepositoryProvider).submit(
-        targetId: widget.userId,
-        targetType: ReportTargetType.user,
-        reason: _reason!,
-        details: _detailsController.text.trim().isEmpty
-            ? null
-            : _detailsController.text.trim(),
-        evidenceUrls: _evidenceUrls.isEmpty ? null : _evidenceUrls,
-      );
+      await ref
+          .read(reportRepositoryProvider)
+          .submit(
+            targetId: widget.userId,
+            targetType: ReportTargetType.user,
+            reason: _reason!,
+            details: _detailsController.text.trim().isEmpty
+                ? null
+                : _detailsController.text.trim(),
+            evidenceUrls: _evidenceUrls.isEmpty ? null : _evidenceUrls,
+          );
     } catch (_) {
       if (!mounted) return;
       setState(() => _submitting = false);
       AppSnackbar.show(
         context,
-        message: 'Could not submit report. Check your connection and try again.',
+        message:
+            'Could not submit report. Check your connection and try again.',
         variant: AppSnackbarVariant.error,
       );
       return;
@@ -152,9 +154,9 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
                     const SizedBox(height: AppSpacing.x5),
                     Text(
                       "What's the issue?",
-                      style: AppTypography.labelField(context).copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.labelField(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: AppSpacing.x3),
                     ReportReasonsCard(
@@ -166,8 +168,7 @@ class _ReportUserSheetState extends ConsumerState<ReportUserSheet> {
                     ReportDetailsField(controller: _detailsController),
                     const SizedBox(height: AppSpacing.x4),
                     ReportEvidencePicker(
-                      onChanged: (urls) =>
-                          setState(() => _evidenceUrls = urls),
+                      onChanged: (urls) => setState(() => _evidenceUrls = urls),
                       onBusyChanged: (busy) =>
                           setState(() => _evidenceBusy = busy),
                     ),

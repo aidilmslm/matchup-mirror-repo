@@ -78,7 +78,9 @@ describe('useMembers', () => {
 
     // Errors are rethrown so bulk callers can summarize failures (F9).
     await act(async () => {
-      await expect(result.current.handleStatusChange('mem1', 'Suspended')).rejects.toThrow('denied');
+      await expect(result.current.handleStatusChange('mem1', 'Suspended')).rejects.toThrow(
+        'denied',
+      );
     });
 
     await waitFor(() => expect(result.current.members[0].status).toBe('Active'));

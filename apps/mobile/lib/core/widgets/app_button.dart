@@ -8,15 +8,8 @@ import '../theme/dark_colors.dart';
 import 'pressable_scale.dart';
 
 /// Unified button for MatchUp.
-///
 /// Variants: [AppButtonVariant.primary], [.secondary], [.ghost], [.danger].
-/// Size: [AppButtonSize.md] (default), [.sm], [.lg].
-///
-/// ```dart
-/// AppButton(label: 'Join', onPressed: _join)
-/// AppButton.secondary(label: 'Cancel', onPressed: _cancel)
-/// AppButton.ghost(label: 'Skip', onPressed: _skip)
-/// ```
+/// dart AppButton(label: 'Join', onPressed: _join) AppButton.secondary(label: 'Cancel', onPressed: _cancel).
 enum AppButtonVariant { primary, secondary, ghost, danger }
 
 enum AppButtonSize { sm, md, lg }
@@ -95,7 +88,7 @@ class AppButton extends StatelessWidget {
 
   bool get _disabled => onPressed == null || loading;
 
-  // ── Style resolution ─────────────────────────────────────────────────────
+  // Style resolution.
 
   Color _bg(BuildContext context) => switch (variant) {
     AppButtonVariant.primary => AppColors.primary,

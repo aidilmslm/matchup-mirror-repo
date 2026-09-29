@@ -5,25 +5,12 @@ import '../theme/app_typography.dart';
 import '../theme/dark_colors.dart';
 
 /// Theme-aware confirmation dialog used across the app.
-///
-/// Always pass `context` from the widget that opens the dialog — the builder
-/// uses `InheritedTheme.captureAll` to propagate `AppColorTokens` into the
-/// dialog so `context.colors.*` resolves correctly in dark mode.
-///
-/// ```dart
-/// final yes = await AppDialog.confirm(
-///   context,
-///   title: 'Leave Activity?',
-///   body: 'You can re-join later if spots are available.',
-///   confirmLabel: 'Leave',
-///   destructive: true,
-/// );
-/// ```
+/// Always pass `context` from the widget that opens the dialog.
+/// Usage: see the constructors below.
 class AppDialog {
   AppDialog._();
 
-  /// Shows a two-button confirm/cancel dialog. Returns `true` if the user
-  /// taps the confirm button, `false` / `null` otherwise.
+  /// Shows a two-button confirm/cancel dialog.
   static Future<bool?> confirm(
     BuildContext context, {
     required String title,
@@ -42,10 +29,7 @@ class AppDialog {
         destructive: destructive,
       ),
     );
-    return showDialog<bool>(
-      context: context,
-      builder: (_) => captured,
-    );
+    return showDialog<bool>(context: context, builder: (_) => captured);
   }
 }
 
@@ -66,8 +50,9 @@ class _AppDialogContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final confirmColor =
-        destructive ? context.colors.errorText : context.colors.primaryOnSurface;
+    final confirmColor = destructive
+        ? context.colors.errorText
+        : context.colors.primaryOnSurface;
 
     return AlertDialog(
       backgroundColor: context.colors.card,
@@ -75,35 +60,30 @@ class _AppDialogContent extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
         side: BorderSide(color: context.colors.border),
       ),
-      title: Text(
-        title,
-        style: AppTypography.titleMedium(context),
-      ),
+      title: Text(title, style: AppTypography.titleMedium(context)),
       content: Text(
         body,
-        style: AppTypography.bodyMedium(context).copyWith(
-          color: context.colors.textSecondary,
-          fontSize: 14,
-        ),
+        style: AppTypography.bodyMedium(
+          context,
+        ).copyWith(color: context.colors.textSecondary, fontSize: 14),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(
             cancelLabel,
-            style: AppTypography.labelField(context).copyWith(
-              color: context.colors.textSecondary,
-            ),
+            style: AppTypography.labelField(
+              context,
+            ).copyWith(color: context.colors.textSecondary),
           ),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(
             confirmLabel,
-            style: AppTypography.labelField(context).copyWith(
-              color: confirmColor,
-              fontWeight: FontWeight.w700,
-            ),
+            style: AppTypography.labelField(
+              context,
+            ).copyWith(color: confirmColor, fontWeight: FontWeight.w700),
           ),
         ),
       ],

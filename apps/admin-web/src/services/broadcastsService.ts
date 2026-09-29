@@ -1,19 +1,6 @@
-/**
- * Broadcasts service — database-backed (Firestore `broadcasts` via api-server).
- *
- * Live endpoints (api-server, all admin-gated):
- *   GET  /api/admin/broadcasts        → BroadcastView[]
- *   POST /api/admin/broadcasts        → BroadcastView  (always draft/scheduled)
- *   PATCH /api/admin/broadcasts/:id   → BroadcastView
- *   DELETE /api/admin/broadcasts/:id  → void  (draft/scheduled only)
- *   POST /api/admin/broadcasts/:id/send → BroadcastView (one-way → sent)
- */
+/** Broadcasts service — database-backed (Firestore `broadcasts` via api-server). */
 import { apiFetch } from './api';
-import type {
-  Broadcast,
-  BroadcastAudience,
-  BroadcastStatus,
-} from '../types/broadcasts';
+import type { Broadcast, BroadcastAudience, BroadcastStatus } from '../types/broadcasts';
 
 export type { Broadcast, BroadcastAudience, BroadcastStatus };
 
@@ -51,11 +38,7 @@ function formatSentAt(iso: string | null): string | undefined {
 
 function toBroadcast(view: BroadcastView): Broadcast {
   const status: BroadcastStatus =
-    view.status === 'sent'
-      ? 'Sent'
-      : view.status === 'scheduled'
-        ? 'Scheduled'
-        : 'Draft';
+    view.status === 'sent' ? 'Sent' : view.status === 'scheduled' ? 'Scheduled' : 'Draft';
   return {
     id: view.id,
     title: view.title,
@@ -74,9 +57,7 @@ export async function fetchBroadcasts(): Promise<Broadcast[]> {
   return res.data.map(toBroadcast);
 }
 
-export async function createBroadcast(
-  payload: CreateBroadcastPayload,
-): Promise<Broadcast> {
+export async function createBroadcast(payload: CreateBroadcastPayload): Promise<Broadcast> {
   const created = await apiFetch<BroadcastView>('/api/admin/broadcasts', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -102,10 +83,9 @@ export async function sendBroadcast(id: string): Promise<Broadcast> {
 }
 
 export async function deleteBroadcast(id: string): Promise<void> {
-  const res = await apiFetch<void>(
-    `/api/admin/broadcasts/${encodeURIComponent(id)}`,
-    { method: 'DELETE' },
-  );
+  const res = await apiFetch<void>(`/api/admin/broadcasts/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
   if (!res.ok) throw new Error(res.error.message);
 }
 
@@ -120,10 +100,10 @@ export async function updateBroadcast(
   id: string,
   patch: UpdateBroadcastPayload,
 ): Promise<Broadcast> {
-  const res = await apiFetch<BroadcastView>(
-    `/api/admin/broadcasts/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body: JSON.stringify(patch) },
-  );
+  const res = await apiFetch<BroadcastView>(`/api/admin/broadcasts/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
   if (!res.ok) throw new Error(res.error.message);
   return toBroadcast(res.data);
 }

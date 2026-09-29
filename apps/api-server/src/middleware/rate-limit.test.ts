@@ -84,25 +84,21 @@ describe('createRateLimiter', () => {
   it('tracks limits independently per client IP', async () => {
     const app = buildApp({ max: 1, trustProxy: true });
 
-    expect(
-      (await request(app).get('/api/things').set('X-Forwarded-For', '1.2.3.4'))
-        .status,
-    ).toBe(200);
-    expect(
-      (await request(app).get('/api/things').set('X-Forwarded-For', '1.2.3.4'))
-        .status,
-    ).toBe(429);
+    expect((await request(app).get('/api/things').set('X-Forwarded-For', '1.2.3.4')).status).toBe(
+      200,
+    );
+    expect((await request(app).get('/api/things').set('X-Forwarded-For', '1.2.3.4')).status).toBe(
+      429,
+    );
 
     // A different IP still has its full quota.
-    expect(
-      (await request(app).get('/api/things').set('X-Forwarded-For', '5.6.7.8'))
-        .status,
-    ).toBe(200);
+    expect((await request(app).get('/api/things').set('X-Forwarded-For', '5.6.7.8')).status).toBe(
+      200,
+    );
   });
 
   it('shares one budget across limiter instances on a shared store', async () => {
-    // The seam a future Redis store plugs into: two middleware instances
-    // (e.g. two replicas) see the same counters.
+    // The seam a future Redis store plugs into: two middleware instances.
     const store = new MemoryRateLimitStore();
     const buildShared = () => {
       const app = express();

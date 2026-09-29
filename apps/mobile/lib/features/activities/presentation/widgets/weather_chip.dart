@@ -6,10 +6,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dark_colors.dart';
 
 /// Weather forecast chip for the create-activity Setup step.
-///
-/// - No venue (lat/lng null): "pick a venue first" hint.
-/// - Date > 16 days out: "not available" (Open-Meteo limit).
-/// - Loading / network failure: compact fallback, never blocks submit.
+/// No venue (lat/lng null): "pick a venue first" hint.
 class WeatherChip extends StatelessWidget {
   const WeatherChip({
     super.key,
@@ -72,9 +69,7 @@ class WeatherChip extends StatelessWidget {
             subtle: true,
           );
         }
-        final temp = w.temperatureC.isNaN
-            ? '—'
-            : '${w.temperatureC.round()}°C';
+        final temp = w.temperatureC.isNaN ? '—' : '${w.temperatureC.round()}°C';
         final rain = w.precipitationProbability;
         final warn = rain >= 60;
         return Container(
@@ -84,9 +79,7 @@ class WeatherChip extends StatelessWidget {
             vertical: AppSpacing.x3,
           ),
           decoration: BoxDecoration(
-            color: warn
-                ? context.colors.warningBg
-                : context.colors.primarySoft,
+            color: warn ? context.colors.warningBg : context.colors.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: context.colors.border),
           ),
@@ -100,9 +93,9 @@ class WeatherChip extends StatelessWidget {
                   children: [
                     Text(
                       '$temp · ${w.description}',
-                      style: AppTypography.bodyMedium(context).copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.bodyMedium(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 1),
                     Text(
@@ -155,12 +148,7 @@ class WeatherChip extends StatelessWidget {
           else
             Icon(icon, size: 18, color: context.colors.textTertiary),
           const SizedBox(width: AppSpacing.x2),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTypography.metaSub(context),
-            ),
-          ),
+          Expanded(child: Text(text, style: AppTypography.metaSub(context))),
         ],
       ),
     );

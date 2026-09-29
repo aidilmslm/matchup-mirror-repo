@@ -1,3 +1,4 @@
+// Tests for useActivities.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
@@ -96,7 +97,10 @@ describe('useActivities', () => {
   });
 
   it('optimistically removes an activity on delete', async () => {
-    fetchActivitiesMock.mockResolvedValue([makeActivity({ id: 'act1' }), makeActivity({ id: 'act2' })]);
+    fetchActivitiesMock.mockResolvedValue([
+      makeActivity({ id: 'act1' }),
+      makeActivity({ id: 'act2' }),
+    ]);
     deleteActivityMock.mockResolvedValue(undefined);
     const { result } = renderHook(() => useActivities());
     await waitFor(() => expect(result.current.loading).toBe(false));

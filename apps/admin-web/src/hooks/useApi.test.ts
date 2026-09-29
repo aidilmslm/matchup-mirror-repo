@@ -60,15 +60,17 @@ describe('useApi', () => {
 
   it('ignores a stale response after the component unmounts', async () => {
     let resolveFetch: (v: unknown) => void = () => {};
-    apiFetchMock.mockReturnValue(new Promise((resolve) => { resolveFetch = resolve; }));
+    apiFetchMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
 
     const { result, unmount } = renderHook(() => useApi('/api/things'));
     unmount();
     resolveFetch({ ok: true, data: 'late' });
 
-    // No assertion target after unmount besides "doesn't throw" — React
-    // would warn on a state update after unmount if the cancelled flag
-    // didn't guard it.
+    // No assertion target after unmount besides "doesn't throw".
     await Promise.resolve();
     expect(result.current.loading).toBe(true);
   });

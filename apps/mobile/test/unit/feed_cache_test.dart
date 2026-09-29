@@ -4,18 +4,18 @@ import 'package:matchup_mobile/features/discovery/domain/activity_model.dart';
 import 'package:matchup_mobile/features/discovery/domain/discovery_filter.dart';
 
 ActivityModel _activity(String id) => ActivityModel(
-      id: id,
-      title: 'Game $id',
-      sportType: 'Basketball',
-      description: '',
-      location: 'Court',
-      distanceKm: 1.0,
-      dateTime: DateTime.now().add(const Duration(days: 1)),
-      skillLevel: 'Beginner',
-      capacity: 10,
-      participantCount: 2,
-      hostName: 'Sam',
-    );
+  id: id,
+  title: 'Game $id',
+  sportType: 'Basketball',
+  description: '',
+  location: 'Court',
+  distanceKm: 1.0,
+  dateTime: DateTime.now().add(const Duration(days: 1)),
+  skillLevel: 'Beginner',
+  capacity: 10,
+  participantCount: 2,
+  hostName: 'Sam',
+);
 
 void main() {
   group('FeedCache', () {
@@ -44,20 +44,54 @@ void main() {
 
       // Same bucket (within rounding) → same key: hit rates stay sane.
       expect(
-        FeedCache.keyFor(filter: f, limit: 20, offset: 0, lat: -36.84, lng: 174.76),
-        FeedCache.keyFor(filter: f, limit: 20, offset: 0, lat: -36.849, lng: 174.764),
+        FeedCache.keyFor(
+          filter: f,
+          limit: 20,
+          offset: 0,
+          lat: -36.84,
+          lng: 174.76,
+        ),
+        FeedCache.keyFor(
+          filter: f,
+          limit: 20,
+          offset: 0,
+          lat: -36.849,
+          lng: 174.764,
+        ),
       );
 
       // Moved across town → different key so stale distances miss.
       expect(
-        FeedCache.keyFor(filter: f, limit: 20, offset: 0, lat: -36.8, lng: 174.7),
-        isNot(FeedCache.keyFor(filter: f, limit: 20, offset: 0, lat: -41.3, lng: 174.8)),
+        FeedCache.keyFor(
+          filter: f,
+          limit: 20,
+          offset: 0,
+          lat: -36.8,
+          lng: 174.7,
+        ),
+        isNot(
+          FeedCache.keyFor(
+            filter: f,
+            limit: 20,
+            offset: 0,
+            lat: -41.3,
+            lng: 174.8,
+          ),
+        ),
       );
 
       // Positioned vs unpositioned never collide.
       expect(
         noPos,
-        isNot(FeedCache.keyFor(filter: f, limit: 20, offset: 0, lat: -36.8, lng: 174.7)),
+        isNot(
+          FeedCache.keyFor(
+            filter: f,
+            limit: 20,
+            offset: 0,
+            lat: -36.8,
+            lng: 174.7,
+          ),
+        ),
       );
     });
 

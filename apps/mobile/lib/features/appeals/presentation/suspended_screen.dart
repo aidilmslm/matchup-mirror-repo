@@ -14,16 +14,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../domain/appeal_model.dart';
 
-/// Interstitial for suspended accounts — the ONLY screen a suspended user
-/// can reach (see the router's auth redirect).
-///
-/// Best-practice notes, enforced here:
-/// - The session stays alive: signing out would strand the user with no
-///   way back in, and the appeal endpoints need the tokens.
-/// - One pending appeal at a time (backend 409s dupes) — the UI shows the
-///   pending state instead of a second form.
-/// - Decisions surface here via `GET /appeals/me` plus the "Check again"
-///   probe (`GET /users/me` → 200 means reactivated).
+/// Interstitial for suspended accounts — the ONLY screen a suspended user can reach (see the router's auth redirect).
+/// Best-practice notes, enforced here: The session stays alive: signing out would strand the user with no way back.
 class SuspendedScreen extends ConsumerStatefulWidget {
   const SuspendedScreen({super.key});
 
@@ -99,8 +91,10 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
         .where((a) => a.status != AppealStatus.pending)
         .toList();
     if (decided.isEmpty) return null;
-    decided.sort((a, b) => (b.decidedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-        .compareTo(a.decidedAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    decided.sort(
+      (a, b) => (b.decidedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+          .compareTo(a.decidedAt ?? DateTime.fromMillisecondsSinceEpoch(0)),
+    );
     return decided.first;
   }
 
@@ -117,8 +111,7 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
           variant: AppSnackbarVariant.error,
         );
       }
-      // Suspended-token errors are expected here (this IS the suspended
-      // screen) — the interstitial itself is the content.
+      // Suspended-token errors are expected here (this IS the suspended screen).
     } catch (_) {
       if (mounted) {
         AppSnackbar.show(
@@ -245,15 +238,12 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
                     const SizedBox(height: AppSpacing.x4),
                     Text(
                       'Checking your account…',
-                      style: AppTypography.bodyMedium(context).copyWith(
-                        color: context.colors.textSecondary,
-                      ),
+                      style: AppTypography.bodyMedium(
+                        context,
+                      ).copyWith(color: context.colors.textSecondary),
                     ),
                     const SizedBox(height: AppSpacing.x3),
-                    TextButton(
-                      onPressed: _reload,
-                      child: const Text('Retry'),
-                    ),
+                    TextButton(onPressed: _reload, child: const Text('Retry')),
                   ],
                 ),
               )
@@ -277,9 +267,9 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
                     'You can\'t join or host activities right now. '
                     'If you believe this is a mistake, submit one appeal '
                     'below — our team reviews every appeal.',
-                    style: AppTypography.bodyMedium(context).copyWith(
-                      color: context.colors.textSecondary,
-                    ),
+                    style: AppTypography.bodyMedium(
+                      context,
+                    ).copyWith(color: context.colors.textSecondary),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.x5),
@@ -337,9 +327,7 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
           Expanded(
             child: Text(heading, style: AppTypography.labelField(context)),
           ),
-          // Live character count lives in the heading row: the default
-          // maxLength counter renders BELOW the field — outside the
-          // bordered box (UAT: "text appearing outside the border").
+          // Live character count lives in the heading row: the default maxLength counter renders BELOW the field.
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _statementController,
             builder: (context, value, _) => Text(
@@ -368,15 +356,14 @@ class _SuspendedScreenState extends ConsumerState<SuspendedScreen> {
           maxLines: 5,
           minLines: 4,
           maxLength: 2000,
-          // Hide the built-in counter (it renders outside the box);
-          // the count lives in the heading row above instead.
-          buildCounter: (
-            _, {
-            required int currentLength,
-            required bool isFocused,
-            required int? maxLength,
-          }) =>
-              null,
+          // Hide the built-in counter (it renders outside the box); the count lives in the heading row above instead.
+          buildCounter:
+              (
+                _, {
+                required int currentLength,
+                required bool isFocused,
+                required int? maxLength,
+              }) => null,
           decoration: InputDecoration.collapsed(
             hintText:
                 'Explain what happened and why you believe this was a mistake…',
@@ -431,7 +418,10 @@ class _GuidelinesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Make it count — you get one pending appeal', style: AppTypography.labelField(context)),
+          Text(
+            'Make it count — you get one pending appeal',
+            style: AppTypography.labelField(context),
+          ),
           const SizedBox(height: AppSpacing.x2),
           for (final tip in const [
             'Say what happened, factually and briefly.',
@@ -447,9 +437,9 @@ class _GuidelinesCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       tip,
-                      style: AppTypography.bodyMedium(context).copyWith(
-                        color: context.colors.textSecondary,
-                      ),
+                      style: AppTypography.bodyMedium(
+                        context,
+                      ).copyWith(color: context.colors.textSecondary),
                     ),
                   ),
                 ],
@@ -487,7 +477,10 @@ class _PendingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Appeal under review', style: AppTypography.labelField(context)),
+                Text(
+                  'Appeal under review',
+                  style: AppTypography.labelField(context),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'We\'ll notify you as soon as there\'s a decision. '
@@ -510,9 +503,7 @@ class _DecisionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final approved = appeal.status == AppealStatus.approved;
-    final fg = approved
-        ? context.colors.successText
-        : context.colors.errorText;
+    final fg = approved ? context.colors.successText : context.colors.errorText;
     final bg = approved
         ? context.colors.statusSuccessBg
         : context.colors.errorLight;
@@ -545,9 +536,9 @@ class _DecisionCard extends StatelessWidget {
                   approved
                       ? 'Tap "Check again" below to get back in.'
                       : (appeal.adminNote != null &&
-                              appeal.adminNote!.isNotEmpty)
-                          ? 'Note from our team: ${appeal.adminNote}'
-                          : 'Our decision is final for this appeal.',
+                            appeal.adminNote!.isNotEmpty)
+                      ? 'Note from our team: ${appeal.adminNote}'
+                      : 'Our decision is final for this appeal.',
                   style: AppTypography.metaSub(context),
                 ),
               ],

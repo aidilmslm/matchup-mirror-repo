@@ -3,21 +3,16 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Loads runtime configuration from `.env` (or `.env.example` during
-/// local development). Values are read once at startup.
+/// Loads runtime configuration from `.env` (or `.env.example` during local development).
 class Env {
   static String get apiBaseUrl {
-    final raw =
-        dotenv.maybeGet('API_BASE_URL') ?? 'http://localhost:4000';
+    final raw = dotenv.maybeGet('API_BASE_URL') ?? 'http://localhost:4000';
     final rewritten = _androidEmulatorHost(raw);
     assertHttpsOutsideLocal(rewritten, appEnv);
     return rewritten;
   }
 
-  /// OWASP M5 — fail fast when a non-local build points at cleartext
-  /// HTTP. Android's network security config and iOS ATS would block it
-  /// anyway, but a loud startup error beats a silent empty app. Pure
-  /// (no dotenv) so it is unit-testable.
+  /// OWASP M5 — fail fast when a non-local build points at cleartext HTTP.
   static void assertHttpsOutsideLocal(String baseUrl, String env) {
     if (env == 'local') return;
     final scheme = Uri.tryParse(baseUrl)?.scheme;
@@ -28,14 +23,8 @@ class Env {
     }
   }
 
-  /// On Android, `localhost` inside the app is the emulator/device
-  /// itself — not the dev machine. Rewrite a localhost base URL to the
-  /// emulator's host-loopback alias (`10.0.2.2`) so `flutter run` works
-  /// out of the box on an Android emulator with zero config.
-  ///
-  /// Physical devices still need the machine's LAN IP in `.env`
-  /// (e.g. `API_BASE_URL=http://192.168.1.5:4000`); iOS Simulator
-  /// shares the Mac network so plain `localhost` is fine there.
+  /// On Android, `localhost` inside the app is the emulator/device itself — not the dev machine.
+  /// Physical devices still need the machine's LAN IP in `.env`.
   static String _androidEmulatorHost(String url) {
     if (kIsWeb) return url;
     if (!Platform.isAndroid) return url;
@@ -50,14 +39,10 @@ class Env {
   static String get appEnv => dotenv.maybeGet('APP_ENV') ?? 'local';
 
   /// Firebase Web API Key — used by the Firebase REST Auth API.
-  /// Get this from Firebase Console → Project Settings → General → Web API Key.
   static String get firebaseWebApiKey =>
       dotenv.maybeGet('FIREBASE_WEB_API_KEY') ?? '';
 
-  /// Master switch for backend data. The app **always** talks to the
-  /// backend now — the local-only mode has been removed and the
-  /// in-memory dummy store was emptied. Toggling this off would
-  /// result in an empty UI, so leave it as `true`.
+  /// Master switch for backend data.
   static bool get useRemoteApi =>
       (dotenv.maybeGet('USE_REMOTE_API') ?? 'true').toLowerCase() == 'true';
 

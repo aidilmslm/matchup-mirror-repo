@@ -28,13 +28,25 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             style={{ color: isDark ? '#94a3b8' : '#475569' }}
             aria-label="Open menu"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            >
               <path d="M3 5h14M3 10h14M3 15h14" />
             </svg>
           </button>
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 shrink-0 overflow-hidden rounded">
-              <img src="/logo-badge.png" alt="MatchUp logo" className="h-full w-full object-cover" />
+              <img
+                src="/logo-badge.png"
+                alt="MatchUp logo"
+                className="h-full w-full object-cover"
+              />
             </div>
             <span
               className="text-sm font-bold transition-colors duration-200"

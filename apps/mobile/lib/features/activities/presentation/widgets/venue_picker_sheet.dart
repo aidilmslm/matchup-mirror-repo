@@ -70,13 +70,10 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
   // Cached recent searches (persisted to SharedPreferences).
   List<PlaceSuggestion> _recent = const [];
 
-  // Currently picked map location (from a tap on the map, not from
-  // the suggestions list). Shows the floating "Use this location"
-  // card.
+  // Currently picked map location (from a tap on the map, not from the suggestions list).
   LatLng? _pickedLatLng;
 
-  // Resolved device GPS, used as the origin for distance ranking
-  // and as the initial map center.
+  // Resolved device GPS, used as the origin for distance ranking and as the initial map center.
   LatLng? _userLocation;
 
   static const _kRecentKey = 'venue_picker.recent_searches';
@@ -87,22 +84,18 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // No autofocus: the sheet opens on the map + recent searches with
-      // the keyboard hidden. The user taps the search field when they
-      // want to type (requestFocus on open used to shove the map up
-      // behind the keyboard immediately).
+      // No autofocus: the sheet opens on the map + recent searches with the keyboard hidden.
       await _loadRecent();
-      // Resolve GPS in the background so the first search uses the
-      // user's actual location as the distance origin instead of
-      // the bundled Auckland fallback. Failures are silent — we
-      // just keep using the fallback.
+      // Resolve GPS in the background so the first search uses the user's actual location as the distance origin.
       try {
         final pos = await LocationService.instance.getCurrentLocation();
         if (!mounted || pos == null) return;
         setState(() {
           _userLocation = LatLng(pos.latitude, pos.longitude);
         });
-      } catch (_) {/* ignored */}
+      } catch (_) {
+        /* ignored */
+      }
     });
   }
 
@@ -147,13 +140,15 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
       await prefs.setStringList(
         _kRecentKey,
         _recent
-            .map((r) => jsonEncode({
-                  'placeId': r.placeId,
-                  'label': r.label,
-                  'secondary': r.secondary,
-                  'latitude': r.latitude,
-                  'longitude': r.longitude,
-                }))
+            .map(
+              (r) => jsonEncode({
+                'placeId': r.placeId,
+                'label': r.label,
+                'secondary': r.secondary,
+                'latitude': r.latitude,
+                'longitude': r.longitude,
+              }),
+            )
             .toList(),
       );
     } catch (_) {
@@ -193,28 +188,27 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
       _error = null;
     });
     try {
-      final origin = _pickedLatLng ??
+      final origin =
+          _pickedLatLng ??
           _selectedLatLng ??
           _userLocation ??
           const LatLng(-36.8485, 174.7633);
-      final results = await ref.read(placesRepositoryProvider).autocomplete(
+      final results = await ref
+          .read(placesRepositoryProvider)
+          .autocomplete(
             query,
             countryCodes: widget.countryCodes,
-            // Bias the geocoder to the user's area (~±35km) so nearby
-            // Auckland venues rank above same-named world matches.
+            // Bias the geocoder to the user's area (~±35km) so nearby Auckland venues rank above same-named world.
             viewbox: _viewboxAround(origin),
           );
       if (!mounted) return;
       // Discard stale responses (user kept typing past us).
       if (_searchCtrl.text.trim() != query) return;
-      // Rank results by combined relevance + distance score. See
-      // [PlacesRanker] for the tier-by-tier algorithm.
-      // Re-rank once and split: the ranked list feeds the row
-      // widget (for matched-range highlighting + precomputed
-      // distance); the bare suggestions feed `_results` (so the
-      // empty-state + count branches can use it).
+      // Rank results by combined relevance + distance score.
       final rankedAll = const PlacesRanker().rank(
-        results, query, origin: origin,
+        results,
+        query,
+        origin: origin,
       );
       setState(() {
         _ranked = rankedAll;
@@ -232,10 +226,7 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
     }
   }
 
-  /// Nominatim viewbox (`"left,top,right,bottom"`) around [origin],
-  /// roughly ±35 km, clamped to valid world degrees. Sent as a *bias*
-  /// (bounded=0 server-side): nearby venues rank first, world matches
-  /// still appear below.
+  /// Nominatim viewbox (`"left,top,right,bottom"`) around [origin], roughly ±35 km, clamped to valid world degrees.
   String _viewboxAround(LatLng origin) {
     final left = (origin.longitude - 0.35).clamp(-180.0, 180.0);
     final right = (origin.longitude + 0.35).clamp(-180.0, 180.0);
@@ -244,7 +235,8 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
     return '$left,$top,$right,$bottom';
   }
 
-  Future<void> _pick(PlaceSuggestion suggestion) async {    await _saveRecent(suggestion);
+  Future<void> _pick(PlaceSuggestion suggestion) async {
+    await _saveRecent(suggestion);
     if (!mounted) return;
     Navigator.of(context).pop(suggestion);
   }
@@ -260,10 +252,9 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
     final query = _searchCtrl.text.trim();
     final showInitialState =
         query.isEmpty && _results.isEmpty && _pickedLatLng == null;
-    // Reference point for the distance sort + per-row distance
-    // label. Defaults to central Auckland so seeded suggestions
-    // rank logically before the user pans the map.
-    final origin = _pickedLatLng ??
+    // Reference point for the distance sort + per-row distance label.
+    final origin =
+        _pickedLatLng ??
         _selectedLatLng ??
         _userLocation ??
         const LatLng(-36.8485, 174.7633);
@@ -361,7 +352,8 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
                       ),
                       child: _ResultsColumn(
                         items: const PlacesRanker().rank(
-                          _recent, '',
+                          _recent,
+                          '',
                           origin: origin,
                         ),
                         selected: _selected,
@@ -387,10 +379,7 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
                     bottom: 0,
                     child: _BottomSheet(
                       title: 'Search error',
-                      child: _ErrorState(
-                        message: _error!,
-                        onRetry: _search,
-                      ),
+                      child: _ErrorState(message: _error!, onRetry: _search),
                     ),
                   )
                 else if (_results.isNotEmpty)
@@ -399,7 +388,8 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
                     right: 0,
                     bottom: 0,
                     child: _BottomSheet(
-                      title: '${_results.length} '
+                      title:
+                          '${_results.length} '
                           'result${_results.length == 1 ? '' : 's'}',
                       child: _ResultsColumn(
                         items: _ranked,
@@ -418,7 +408,8 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
                       title: 'No matches',
                       child: _EmptyState(
                         headline: 'No matches for "$query"',
-                        subline: 'Try a different venue, neighbourhood, '
+                        subline:
+                            'Try a different venue, neighbourhood, '
                             'or tap the map to drop a pin.',
                       ),
                     ),
@@ -447,7 +438,7 @@ class _VenuePickerSheetState extends ConsumerState<VenuePickerSheet>
   }
 }
 
-// ─── chrome ─────────────────────────────────────────────────────────────────
+// chrome.
 
 class _GrabHandle extends StatelessWidget {
   @override
@@ -504,7 +495,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ─── search bar ─────────────────────────────────────────────────────────────
+// search bar.
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({
@@ -540,9 +531,7 @@ class _SearchBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(width: 16),
-          // Plain leading search glyph — no focus-driven colour
-          // or background change, so the field stays visually
-          // stable when the user taps into it.
+          // Plain leading search glyph — no focus-driven colour or background change.
           Icon(
             Icons.search_rounded,
             size: 20,
@@ -555,12 +544,10 @@ class _SearchBar extends StatelessWidget {
               textInputAction: TextInputAction.search,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
-              // Neutral cursor (not theme primary) so there is no
-              // blue accent left on the field when it gains focus.
+              // Neutral cursor (not theme primary) so there is no blue accent left on the field when it gains focus.
               cursorColor: theme.colorScheme.onSurfaceVariant,
               cursorWidth: 1.4,
-              // Explicitly disable every border variant so neither
-              // Android nor iOS draws the platform focus rectangle.
+              // Explicitly disable every border variant so neither Android nor iOS draws the platform focus rectangle.
               enableInteractiveSelection: true,
               style: theme.textTheme.bodyLarge?.copyWith(
                 fontSize: 16,
@@ -573,8 +560,9 @@ class _SearchBar extends StatelessWidget {
                 hintText: 'Search places',
                 hintStyle: theme.textTheme.bodyLarge?.copyWith(
                   fontSize: 16,
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.7),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.7,
+                  ),
                   fontWeight: FontWeight.w400,
                 ),
                 border: InputBorder.none,
@@ -608,21 +596,21 @@ class _SearchBar extends StatelessWidget {
                     ),
                   )
                 : hasText
-                    ? IconButton(
-                        splashRadius: 18,
-                        padding: EdgeInsets.zero,
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          onClear();
-                        },
-                        icon: Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                ? IconButton(
+                    splashRadius: 18,
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Clear',
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onClear();
+                    },
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -630,7 +618,7 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ─── map ────────────────────────────────────────────────────────────────────
+// map.
 
 class _Map extends StatefulWidget {
   const _Map({required this.selected, required this.onPickedLocation});
@@ -647,8 +635,7 @@ class _MapState extends State<_Map> {
   double _zoom = 13;
   LatLng? _userLocation;
   bool _locating = false;
-  // Fallback if we never get a GPS fix (matches the seed-data
-  // centre so distance ranking is still meaningful for the demo).
+  // Fallback if we never get a GPS fix (matches the seed-data centre.
   static const LatLng _defaultCenter = LatLng(-36.8485, 174.7633);
 
   static const _maxZoom = 19.0;
@@ -658,12 +645,7 @@ class _MapState extends State<_Map> {
   void initState() {
     super.initState();
     _zoom = widget.selected != null ? 15.0 : 13.0;
-    // Don't auto-resolve GPS here. The default map view is
-    // Auckland, the default search origin is Auckland, and the
-    // user has to explicitly opt in to "zoom to me" by tapping
-    // the recenter button. Auto-resolving on mount would silently
-    // change the search ranking origin to wherever the device
-    // happens to be (often surprising users who never asked).
+    // Don't auto-resolve GPS here.
   }
 
   Future<void> _resolveUserLocation() async {
@@ -692,11 +674,7 @@ class _MapState extends State<_Map> {
     HapticFeedback.selectionClick();
   }
 
-  /// Recenters the map. Priority:
-  ///   1. Currently selected venue (if any)
-  ///   2. Cached GPS fix
-  ///   3. Resolved GPS fix (one-shot async)
-  ///   4. Default centre (central Auckland)
+  /// Recenters the map.
   Future<void> _recenter() async {
     HapticFeedback.selectionClick();
     final selected = widget.selected;
@@ -725,9 +703,7 @@ class _MapState extends State<_Map> {
 
   @override
   Widget build(BuildContext context) {
-    // Default view is always the bundled Auckland centre — the
-    // user has to explicitly opt in to "zoom to me" via the
-    // recenter button.
+    // Default view is always the bundled Auckland centre.
     final initialCenter = widget.selected ?? _defaultCenter;
     return FlutterMap(
       mapController: _ctrl,
@@ -777,12 +753,7 @@ class _MapState extends State<_Map> {
               ),
             ],
           ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _OsmAttribution(),
-        ),
+        Positioned(left: 0, right: 0, bottom: 0, child: _OsmAttribution()),
         Positioned(
           right: 12,
           top: 12,
@@ -854,26 +825,17 @@ class _MapControls extends StatelessWidget {
             width: 28,
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
           ),
-          // Recenter (GPS) — has a spinner overlay while we wait
-          // for the platform location stream.
-          _RecenterButton(
-            locating: locating,
-            onTap: () => onRecenter(),
-          ),
+          // Recenter (GPS) — has a spinner overlay while we wait for the platform location stream.
+          _RecenterButton(locating: locating, onTap: () => onRecenter()),
         ],
       ),
     );
   }
 }
 
-/// Filled icon button used for the GPS recenter action. Shows a
-/// small spinner overlay while [locating] is true so the user
-/// has feedback that the request is in flight.
+/// Filled icon button used for the GPS recenter action.
 class _RecenterButton extends StatelessWidget {
-  const _RecenterButton({
-    required this.locating,
-    required this.onTap,
-  });
+  const _RecenterButton({required this.locating, required this.onTap});
 
   final bool locating;
   final VoidCallback onTap;
@@ -886,9 +848,7 @@ class _RecenterButton extends StatelessWidget {
       label: 'Recenter map on my location',
       child: InkWell(
         onTap: locating ? null : onTap,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(12),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
         child: SizedBox(
           width: 40,
           height: 40,
@@ -921,8 +881,6 @@ class _RecenterButton extends StatelessWidget {
 }
 
 /// Pulsing dot drawn at the device's resolved GPS location.
-/// Distinct from the venue pin (which is the larger drop-style
-/// marker) so the user can tell the two apart at a glance.
 class _UserLocationDot extends StatelessWidget {
   const _UserLocationDot();
 
@@ -1081,14 +1039,10 @@ class _Pin extends StatelessWidget {
   }
 }
 
-// ─── bottom sheet (over the map) ────────────────────────────────────────────
+// bottom sheet (over the map).
 
 class _BottomSheet extends StatelessWidget {
-  const _BottomSheet({
-    required this.title,
-    required this.child,
-    this.trailing,
-  });
+  const _BottomSheet({required this.title, required this.child, this.trailing});
 
   final String title;
   final Widget child;
@@ -1160,7 +1114,7 @@ class _BottomSheet extends StatelessWidget {
   }
 }
 
-// ─── result row + list ──────────────────────────────────────────────────────
+// result row list.
 
 class _ResultsColumn extends StatelessWidget {
   const _ResultsColumn({
@@ -1170,9 +1124,7 @@ class _ResultsColumn extends StatelessWidget {
     required this.onPick,
   });
 
-  /// Already-ranked suggestions. Distance + matched ranges are
-  /// pre-computed for us by [PlacesRanker]; the row just renders
-  /// them.
+  /// Already-ranked suggestions.
   final List<RankedPlace> items;
   final PlaceSuggestion? selected;
   final void Function(PlaceSuggestion) onHover;
@@ -1287,10 +1239,7 @@ class _ResultRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.x2),
-              _DistanceBadge(
-                km: ranked.distanceKm,
-                selected: selected,
-              ),
+              _DistanceBadge(km: ranked.distanceKm, selected: selected),
             ],
           ),
         ),
@@ -1299,15 +1248,9 @@ class _ResultRow extends StatelessWidget {
   }
 }
 
-/// Rounded-square avatar that picks a category-specific icon
-/// based on keywords in the venue label (parks, beaches,
-/// museums, etc.). Falls back to a generic place glyph when no
-/// keyword matches.
+/// Rounded-square avatar that picks a category-specific icon based on keywords in the venue label (parks, beaches.
 class _CategoryAvatar extends StatelessWidget {
-  const _CategoryAvatar({
-    required this.label,
-    required this.selected,
-  });
+  const _CategoryAvatar({required this.label, required this.selected});
 
   final String label;
   final bool selected;
@@ -1337,42 +1280,68 @@ class _CategoryAvatar extends StatelessWidget {
   }
 }
 
-/// Keyword → (icon, accent colour) table. Keep this small and
-/// ordered from most specific → least specific.
+/// Keyword → (icon, accent colour) table.
 final List<(RegExp, IconData, Color Function(ThemeData))> _kCategoryTable = [
   // Parks / gardens / domains.
-  (RegExp(r'\b(park|garden|domain|reserve|playground)\b', caseSensitive: false),
-      Icons.park_rounded,
-      (t) => t.colorScheme.tertiary),
+  (
+    RegExp(
+      r'\b(park|garden|domain|reserve|playground)\b',
+      caseSensitive: false,
+    ),
+    Icons.park_rounded,
+    (t) => t.colorScheme.tertiary,
+  ),
   // Beaches / bays / waterfront.
-  (RegExp(r'\b(beach|bay|cove|harbour|harbor|waterfront|marina)\b',
-      caseSensitive: false),
-      Icons.beach_access_rounded,
-      (t) => t.colorScheme.primary),
+  (
+    RegExp(
+      r'\b(beach|bay|cove|harbour|harbor|waterfront|marina)\b',
+      caseSensitive: false,
+    ),
+    Icons.beach_access_rounded,
+    (t) => t.colorScheme.primary,
+  ),
   // Creeks / rivers / lakes / falls.
-  (RegExp(r'\b(creek|river|lake|falls?|springs?|stream)\b',
-      caseSensitive: false),
-      Icons.water_rounded,
-      (t) => t.colorScheme.secondary),
+  (
+    RegExp(
+      r'\b(creek|river|lake|falls?|springs?|stream)\b',
+      caseSensitive: false,
+    ),
+    Icons.water_rounded,
+    (t) => t.colorScheme.secondary,
+  ),
   // Museums / galleries / libraries.
-  (RegExp(r'\b(museum|gallery|library|archive)\b', caseSensitive: false),
-      Icons.museum_rounded,
-      (t) => t.colorScheme.tertiary),
+  (
+    RegExp(r'\b(museum|gallery|library|archive)\b', caseSensitive: false),
+    Icons.museum_rounded,
+    (t) => t.colorScheme.tertiary,
+  ),
   // Sports / stadium / arena / court.
-  (RegExp(r'\b(stadium|arena|court|field|gym|pool|sports?)\b',
-      caseSensitive: false),
-      Icons.sports_soccer_rounded,
-      (t) => t.colorScheme.secondary),
+  (
+    RegExp(
+      r'\b(stadium|arena|court|field|gym|pool|sports?)\b',
+      caseSensitive: false,
+    ),
+    Icons.sports_soccer_rounded,
+    (t) => t.colorScheme.secondary,
+  ),
   // Mountains / hills / lookouts / tracks.
-  (RegExp(r'\b(mount|mt\.?|hill|peak|lookout|track|ridge|summit)\b',
-      caseSensitive: false),
-      Icons.landscape_rounded,
-      (t) => t.colorScheme.primary),
+  (
+    RegExp(
+      r'\b(mount|mt\.?|hill|peak|lookout|track|ridge|summit)\b',
+      caseSensitive: false,
+    ),
+    Icons.landscape_rounded,
+    (t) => t.colorScheme.primary,
+  ),
   // Cafe / restaurant / food.
-  (RegExp(r'\b(cafe|café|coffee|restaurant|food|kitchen|bar)\b',
-      caseSensitive: false),
-      Icons.restaurant_rounded,
-      (t) => t.colorScheme.tertiary),
+  (
+    RegExp(
+      r'\b(cafe|café|coffee|restaurant|food|kitchen|bar)\b',
+      caseSensitive: false,
+    ),
+    Icons.restaurant_rounded,
+    (t) => t.colorScheme.tertiary,
+  ),
 ];
 
 (IconData, Color) _categoryStyle(String label, ThemeData theme) {
@@ -1382,9 +1351,7 @@ final List<(RegExp, IconData, Color Function(ThemeData))> _kCategoryTable = [
   return (Icons.place_rounded, theme.colorScheme.primary);
 }
 
-/// Renders the distance label + selected-arrow as a single right-
-/// aligned column. Uses tabular figures so the distance text
-/// doesn't visually "jump" between rows.
+/// Renders the distance label + selected-arrow as a single right- aligned column.
 class _DistanceBadge extends StatelessWidget {
   const _DistanceBadge({required this.km, required this.selected});
   final double km;
@@ -1431,9 +1398,7 @@ class _DistanceBadge extends StatelessWidget {
   }
 }
 
-/// Builds a TextSpan tree for the venue label with the matched
-/// query ranges drawn in bold primary color. Falls back to a
-/// plain TextStyle when there are no ranges.
+/// Builds a TextSpan tree for the venue label with the matched query ranges drawn in bold primary color.
 TextSpan _highlightLabel({
   required String label,
   required List<(int, int)> ranges,
@@ -1456,35 +1421,33 @@ TextSpan _highlightLabel({
   final regular = selected ? FontWeight.w600 : FontWeight.w500;
   for (final r in ranges) {
     if (cursor < r.$1) {
-      children.add(TextSpan(
-        text: label.substring(cursor, r.$1),
+      children.add(
+        TextSpan(
+          text: label.substring(cursor, r.$1),
+          style: TextStyle(fontSize: 15, fontWeight: regular, color: color),
+        ),
+      );
+    }
+    children.add(
+      TextSpan(
+        text: label.substring(r.$1, r.$2),
         style: TextStyle(
           fontSize: 15,
-          fontWeight: regular,
-          color: color,
+          fontWeight: bold,
+          color: color, // keep color consistent — bolder weight alone
+          // does the highlighting, avoids a noisy look.
         ),
-      ));
-    }
-    children.add(TextSpan(
-      text: label.substring(r.$1, r.$2),
-      style: TextStyle(
-        fontSize: 15,
-        fontWeight: bold,
-        color: color, // keep color consistent — bolder weight alone
-                       // does the highlighting, avoids a noisy look.
       ),
-    ));
+    );
     cursor = r.$2;
   }
   if (cursor < label.length) {
-    children.add(TextSpan(
-      text: label.substring(cursor),
-      style: TextStyle(
-        fontSize: 15,
-        fontWeight: regular,
-        color: color,
+    children.add(
+      TextSpan(
+        text: label.substring(cursor),
+        style: TextStyle(fontSize: 15, fontWeight: regular, color: color),
       ),
-    ));
+    );
   }
   return TextSpan(children: children);
 }
@@ -1504,7 +1467,7 @@ class _HairlineDivider extends StatelessWidget {
   }
 }
 
-// ─── states ─────────────────────────────────────────────────────────────────
+// states.
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.headline, required this.subline});
@@ -1698,20 +1661,11 @@ class _ShimmerResultsState extends State<_ShimmerResults>
   }
 }
 
-// ─── floating "Use this location" ───────────────────────────────────────────
+// floating "Use this location".
 
-/// Card shown after a tap-on-map pick. Offers a small text field so the
-/// user can NAME the dropped pin instead of keeping raw coordinates —
-/// prefilled with the reverse-geocoded label when one is available
-/// (none exists today: [PlacesRepository] only exposes autocomplete,
-/// so it starts empty with the 'Name this place' hint). The entered
-/// value becomes the location name on confirm; blank falls back to
-/// the `lat, lng` coordinates as before.
+/// Card shown after a tap-on-map pick.
 class _PickedLocationCard extends StatefulWidget {
-  const _PickedLocationCard({
-    required this.latLng,
-    required this.onConfirm,
-  });
+  const _PickedLocationCard({required this.latLng, required this.onConfirm});
 
   final LatLng latLng;
   final ValueChanged<String> onConfirm;
@@ -1721,9 +1675,7 @@ class _PickedLocationCard extends StatefulWidget {
 }
 
 class _PickedLocationCardState extends State<_PickedLocationCard> {
-  // No reverse-geocode endpoint exists ([PlacesRepository] only exposes
-  // autocomplete), so the field starts empty with the hint below; when
-  // a reverse lookup is available, prefill the controller with it here.
+  // No reverse-geocode endpoint exists ([PlacesRepository] only exposes autocomplete).
   late final TextEditingController _nameCtrl = TextEditingController();
 
   @override
@@ -1816,7 +1768,9 @@ class _PickedLocationCardState extends State<_PickedLocationCard> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.outlineVariant,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1826,10 +1780,7 @@ class _PickedLocationCardState extends State<_PickedLocationCard> {
               onSubmitted: (_) => _confirm(),
             ),
             const SizedBox(height: AppSpacing.x2),
-            FilledButton(
-              onPressed: _confirm,
-              child: const Text('Use'),
-            ),
+            FilledButton(onPressed: _confirm, child: const Text('Use')),
           ],
         ),
       ),

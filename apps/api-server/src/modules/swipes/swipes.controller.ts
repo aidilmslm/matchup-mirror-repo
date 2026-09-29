@@ -1,9 +1,7 @@
 import type { Request, Response } from 'express';
-import {
-  getSwipeDecision,
-  listSwipeDecisions,
-  saveSwipeDecision,
-} from './swipes.service.js';
+import { getSwipeDecision, listSwipeDecisions, saveSwipeDecision } from './swipes.service.js';
+
+// Swipe deck API: records pass/join intent. Join runs separately so the host gets one notification per join.
 
 type GetMySwipeParams = {
   activityId: string;
@@ -63,11 +61,7 @@ export async function saveSwipeDecisionHandler(req: Request, res: Response) {
       decision,
     });
 
-    // No notification here by design: a right-swipe is always followed
-    // by `join` (open games → `activity_joined`) or `requestJoin`
-    // (approval games → `join_request`), so notifying `activity_interest`
-    // as well would double-notify the host for a single gesture. The
-    // swipe record itself is kept for deck filtering and analytics.
+    // No notification here by design: a right-swipe is always followed by join/request, which notify the host.
 
     return res.status(200).json({
       ok: true,
@@ -100,10 +94,7 @@ export async function saveSwipeDecisionHandler(req: Request, res: Response) {
   }
 }
 
-export async function getMySwipeDecisionHandler(
-  req: Request<GetMySwipeParams>,
-  res: Response,
-) {
+export async function getMySwipeDecisionHandler(req: Request<GetMySwipeParams>, res: Response) {
   try {
     const uid = req.auth?.uid;
     const { activityId } = req.params;
@@ -130,6 +121,7 @@ export async function getMySwipeDecisionHandler(
 
     const swipe = await getSwipeDecision(uid, activityId);
 
+    // Missing decision means unseen — the deck treats 404 as "still swipable".
     if (!swipe) {
       return res.status(404).json({
         ok: false,
@@ -172,6 +164,8 @@ export async function listMySwipeDecisionsHandler(req: Request, res: Response) {
     }
 
     const swipes = await listSwipeDecisions(uid);
+
+    // Lets the deck filter out decided cards locally without refetching the feed.
 
     return res.status(200).json({
       ok: true,

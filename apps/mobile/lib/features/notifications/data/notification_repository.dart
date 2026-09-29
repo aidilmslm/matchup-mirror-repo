@@ -4,12 +4,9 @@ abstract class NotificationRepository {
   Future<List<AppNotification>> all();
   Future<List<AppNotification>> unread();
 
-  /// Marks one notification read. Returns `true` on success, `false`
-  /// on transport failure (the screen shows an error and keeps the row
-  /// instead of a snap-back refetch surprise).
+  /// Marks one notification read.
   Future<bool> markRead(String id);
 
-  /// Marks everything read. Returns `false` when any part of the
-  /// fan-out failed so the screen can say so.
+  /// Marks everything read.
   Future<bool> markAllRead();
 }

@@ -53,10 +53,7 @@ void main() {
     test('true for local path or remote url, false for plain text', () {
       expect(_msg().isImage, isFalse);
       expect(_msg(imagePath: '/tmp/a.jpg').isImage, isTrue);
-      expect(
-        _msg(imageUrl: 'https://example.com/a.jpg').isImage,
-        isTrue,
-      );
+      expect(_msg(imageUrl: 'https://example.com/a.jpg').isImage, isTrue);
     });
   });
 

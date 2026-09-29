@@ -12,22 +12,18 @@ import '../../../../core/widgets/app_icon.dart';
 import '../../../../core/widgets/asset_image.dart';
 import '../../domain/activity_model.dart';
 
-/// Discovery swipe-deck card — a Tinder-style card that does NOT fill the
-/// screen: a large hero photo (with sport + distance pills) sitting above a
-/// clean info block (title, skill/time/location chips, description, and a
-/// social footer with participant avatars, a spots progress bar, and a status
-/// chip).
-///
-/// The card owns layout only; it takes its data straight from
-/// [ActivityModel]. The action buttons live OUTSIDE the card (in the
-/// discovery screen) so this widget is purely the swipeable surface.
+/// Discovery swipe-deck card — a Tinder-style card that does NOT fill the screen: a large hero photo (with sport +.
+/// The card owns layout only; it takes its data straight from [ActivityModel].
 class DiscoveryCard extends StatelessWidget {
-  const DiscoveryCard({super.key, required this.activity, this.coverImageBytes});
+  const DiscoveryCard({
+    super.key,
+    required this.activity,
+    this.coverImageBytes,
+  });
 
   final ActivityModel activity;
 
-  /// In-memory hero override (e.g. create-flow preview of a just-picked
-  /// photo that has no URL yet). Null everywhere else.
+  /// In-memory hero override.
   final Uint8List? coverImageBytes;
 
   @override
@@ -51,10 +47,7 @@ class DiscoveryCard extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      // Tinder-style fill layout: the hero image is the flex element that
-      // absorbs whatever vertical space is left after the info block takes
-      // its natural height. The card fills the deck area exactly (no bottom
-      // overflow) while the info block is never clipped mid-row.
+      // Tinder-style fill layout: the hero image is the flex element that absorbs whatever vertical space is left.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -71,7 +64,7 @@ class DiscoveryCard extends StatelessWidget {
   }
 }
 
-// ─── Hero image + overlays ────────────────────────────────────────────────
+// Hero image overlays.
 
 class _HeroImage extends StatelessWidget {
   const _HeroImage({required this.activity, this.coverImageBytes});
@@ -80,8 +73,7 @@ class _HeroImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fills the flex space handed down by the card's Expanded, with a tall
-    // floor so the hero photo stays prominent (cinematic).
+    // Fills the flex space handed down by the card's Expanded, with a tall floor so the hero photo stays prominent.
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 236),
       child: Stack(
@@ -97,8 +89,7 @@ class _HeroImage extends StatelessWidget {
             AssetImageWithFallback(
               imagePath: activity.coverImageUrl!,
               fit: BoxFit.cover,
-              // Hero fills the card width (~deck width): cap decode at
-              // that instead of the full-resolution photo.
+              // Hero fills the card width (~deck width): cap decode at that instead of the full-resolution photo.
               decodeWidth: 400,
             )
           else
@@ -118,8 +109,7 @@ class _HeroImage extends StatelessWidget {
             ),
           ),
 
-          // Sport badge — blue pill, top-left, with the join-policy
-          // pill beneath it (instant vs approval at a glance).
+          // Sport badge — blue pill, top-left, with the join-policy pill beneath it (instant vs approval at a glance).
           Positioned(
             top: AppSpacing.x3,
             left: AppSpacing.x3,
@@ -128,8 +118,10 @@ class _HeroImage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: AppRadius.pillR,
@@ -137,9 +129,7 @@ class _HeroImage extends StatelessWidget {
                   ),
                   child: Text(
                     activity.sportType.toUpperCase(),
-                    style: AppTypography.badgeSport(
-                      context,
-                    ).copyWith(
+                    style: AppTypography.badgeSport(context).copyWith(
                       color: AppColors.textOnPrimary,
                       letterSpacing: 0.8,
                       fontWeight: FontWeight.w800,
@@ -154,9 +144,7 @@ class _HeroImage extends StatelessWidget {
             ),
           ),
 
-          // Distance pill — dark translucent, top-right. The slot is
-          // always rendered (same padding, so same height) to avoid a
-          // layout shift; unknown distances show an em dash.
+          // Distance pill — dark translucent, top-right.
           Positioned(
             top: AppSpacing.x3,
             right: AppSpacing.x3,
@@ -191,7 +179,7 @@ class _HeroImage extends StatelessWidget {
   }
 }
 
-// ─── Info block ─────────────────────────────────────────────────────────────
+// Info block.
 
 class _CardInfo extends StatelessWidget {
   const _CardInfo({required this.activity});
@@ -243,9 +231,7 @@ class _CardInfo extends StatelessWidget {
               _InfoChip(
                 icon: AppIcons.dollarSign,
                 label: _priceLabel(activity),
-                iconColor: activity.isPaid
-                    ? c.warningText
-                    : c.successText,
+                iconColor: activity.isPaid ? c.warningText : c.successText,
               ),
             ],
           ),
@@ -302,7 +288,7 @@ class _CardInfo extends StatelessWidget {
   }
 }
 
-// ─── Small pieces ─────────────────────────────────────────────────────────
+// Small pieces.
 
 /// Rounded pill with an icon + label — the skill / time / location chips.
 class _InfoChip extends StatelessWidget {
@@ -388,16 +374,11 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // Joined/hosted games never reach the deck (filtered upstream), so
-    // they share the "Open" treatment — no dedicated dead branches.
+    // Joined/hosted games never reach the deck (filtered upstream), so they share the "Open" treatment.
     final (Color bg, Color fg, String label) = switch (status) {
       ActivityStatus.available ||
       ActivityStatus.joined ||
-      ActivityStatus.hosted => (
-        c.successBg,
-        c.successText,
-        'Open',
-      ),
+      ActivityStatus.hosted => (c.successBg, c.successText, 'Open'),
       ActivityStatus.almostFull => (c.warningBg, c.warningText, 'Few left'),
       ActivityStatus.full => (c.errorLight, c.errorText, 'Full'),
       ActivityStatus.past => (c.surfaceMuted, c.textSecondary, 'Past'),
@@ -416,8 +397,6 @@ class _StatusChip extends StatelessWidget {
 }
 
 /// Honest participant count: a single group icon plus "N joined".
-/// No stacked face placeholders — the card has no roster data, and
-/// fake faces imply real people.
 class _ParticipantAvatars extends StatelessWidget {
   const _ParticipantAvatars({required this.count});
   final int count;
@@ -438,19 +417,14 @@ class _ParticipantAvatars extends StatelessWidget {
             border: Border.all(color: c.surface, width: 2),
           ),
           alignment: Alignment.center,
-          child: Icon(
-            Icons.group_rounded,
-            size: 17,
-            color: c.primaryOnSurface,
-          ),
+          child: Icon(Icons.group_rounded, size: 17, color: c.primaryOnSurface),
         ),
         const SizedBox(width: 6),
         Text(
           '$count joined',
-          style: AppTypography.chipLabel(context).copyWith(
-            fontSize: 13,
-            color: c.textSecondary,
-          ),
+          style: AppTypography.chipLabel(
+            context,
+          ).copyWith(fontSize: 13, color: c.textSecondary),
         ),
       ],
     );
@@ -480,10 +454,7 @@ class _CoverPlaceholder extends StatelessWidget {
   }
 }
 
-/// Price chip label: "FREE", fixed fee ("$8", "$12.50"), or split
-/// ("≈$12 SPLIT"). Split games store the worst-case per-person price
-/// in `fee`, so old readers stay correct — the `≈` + SPLIT suffix is
-/// the split signal on the card.
+/// Price chip label: "FREE", fixed fee ("$8", "$12.50"), or split ("≈$12 SPLIT").
 String _priceLabel(ActivityModel activity) {
   final amount = activity.displayFee;
   if (!activity.isPaid || amount == null || amount <= 0) return 'FREE';
@@ -506,9 +477,7 @@ String _formatDateTime(DateTime dt) {
   return '${DateFormat('MMM d').format(dt)}, $time';
 }
 
-/// Small join-policy pill under the sport badge: green "INSTANT JOIN"
-/// for open activities, amber "NEEDS APPROVAL" otherwise. Text-only
-/// (no icon) to stay legible at small size over photos.
+/// Small join-policy pill under the sport badge: green "INSTANT JOIN" for open activities, amber "NEEDS APPROVAL".
 class _JoinPolicyPill extends StatelessWidget {
   const _JoinPolicyPill({required this.needsApproval});
   final bool needsApproval;
@@ -525,9 +494,7 @@ class _JoinPolicyPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            needsApproval
-                ? Icons.how_to_reg_rounded
-                : Icons.flash_on_rounded,
+            needsApproval ? Icons.how_to_reg_rounded : Icons.flash_on_rounded,
             size: 11,
             color: needsApproval
                 ? context.colors.warningText

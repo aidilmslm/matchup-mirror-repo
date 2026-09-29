@@ -5,18 +5,15 @@ import '../domain/rating_models.dart';
 import 'ratings_repository.dart';
 import 'ratings_repository_impl.dart';
 
-/// HTTP-backed [RatingsRepository]. Posts the submission to the
-/// `POST /api/activities/{activityId}/ratings` endpoint using the
-/// backend's camelCase wire shape (`sportType`, `comment`,
-/// `participantRatings: [{rateeUid, stars}]`). Submissions are upserts
-/// server-side, so re-rating within the edit window just overwrites.
+/// HTTP-backed [RatingsRepository].
 class RemoteRatingsRepository implements RatingsRepository {
   RemoteRatingsRepository({
     ApiClient? client,
     RatingsRepository? fallback,
     String currentUserId = 'me',
   }) : _client = client ?? ApiClient.instance,
-       _fallback = fallback ?? LocalRatingsRepository(currentUserId: currentUserId);
+       _fallback =
+           fallback ?? LocalRatingsRepository(currentUserId: currentUserId);
 
   final ApiClient _client;
   final RatingsRepository _fallback;
@@ -34,14 +31,15 @@ class RemoteRatingsRepository implements RatingsRepository {
           if (submission.activityStars != null)
             'activityStars': submission.activityStars,
           'participantRatings': submission.participants
-              .map(
-                (p) => {'rateeUid': p.rateeUserId, 'stars': p.stars},
-              )
+              .map((p) => {'rateeUid': p.rateeUserId, 'stars': p.stars})
               .toList(),
         },
       );
 
-      final accepted = res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300;
+      final accepted =
+          res.statusCode != null &&
+          res.statusCode! >= 200 &&
+          res.statusCode! < 300;
       return RatingSubmissionResult(
         accepted: accepted,
         submittedAt: DateTime.now(),

@@ -1,7 +1,14 @@
+// Tests for useBroadcastsUpdate.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-const { fetchBroadcastsMock, createBroadcastMock, sendBroadcastMock, deleteBroadcastMock, updateBroadcastMock } = vi.hoisted(() => ({
+const {
+  fetchBroadcastsMock,
+  createBroadcastMock,
+  sendBroadcastMock,
+  deleteBroadcastMock,
+  updateBroadcastMock,
+} = vi.hoisted(() => ({
   fetchBroadcastsMock: vi.fn(),
   createBroadcastMock: vi.fn(),
   sendBroadcastMock: vi.fn(),
@@ -24,8 +31,24 @@ describe('useBroadcasts.handleUpdate (F3)', () => {
   });
 
   it('updates a broadcast in place after editing', async () => {
-    fetchBroadcastsMock.mockResolvedValue([{ id: 'b1', title: 'Old', message: 'm', audience: 'All Users', status: 'Draft', recipients: 0 }]);
-    updateBroadcastMock.mockResolvedValue({ id: 'b1', title: 'New', message: 'm', audience: 'All Users', status: 'Draft', recipients: 0 });
+    fetchBroadcastsMock.mockResolvedValue([
+      {
+        id: 'b1',
+        title: 'Old',
+        message: 'm',
+        audience: 'All Users',
+        status: 'Draft',
+        recipients: 0,
+      },
+    ]);
+    updateBroadcastMock.mockResolvedValue({
+      id: 'b1',
+      title: 'New',
+      message: 'm',
+      audience: 'All Users',
+      status: 'Draft',
+      recipients: 0,
+    });
     const { result } = renderHook(() => useBroadcasts());
     await waitFor(() => expect(result.current.loading).toBe(false));
     let out: unknown;
