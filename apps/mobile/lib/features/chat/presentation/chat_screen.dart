@@ -602,4 +602,3 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 /// Navy lift at the top edge of the chat header gradient.
 const _chatHeaderNavyTop = Color(0xFF1B2BA3);
-
