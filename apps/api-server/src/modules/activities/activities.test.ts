@@ -883,6 +883,8 @@ describe('activities routes', () => {
         body: 'Someone joined your activity',
         activityId: 'activity-1',
         senderUid: 'test-uid-1',
+        // Host audience: the tap opens the management view.
+        audience: 'host',
       });
     });
 

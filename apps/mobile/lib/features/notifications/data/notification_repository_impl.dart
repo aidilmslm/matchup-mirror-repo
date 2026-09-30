@@ -104,6 +104,7 @@ class RemoteNotificationRepository implements NotificationRepository {
       unread: !(json['isRead'] as bool? ?? true),
       activityId: clean(json['activityId']),
       senderUid: clean(json['senderUid']),
+      audience: clean(json['audience']),
       backendType: (json['type'] as String? ?? 'system').trim(),
     );
   }

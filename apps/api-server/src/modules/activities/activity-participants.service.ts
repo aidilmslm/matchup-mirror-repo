@@ -592,6 +592,8 @@ async function decideJoinRequest(
         : 'The host declined your join request for this activity.',
     activityId: normalizedActivityId,
     senderUid: normalizedActorUid,
+    // The approved joiner opens their joined view, not the discover detail.
+    ...(decision === 'approved' ? { audience: 'member' as const } : {}),
   });
 }
 

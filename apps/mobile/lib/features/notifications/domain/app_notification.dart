@@ -13,6 +13,9 @@ class AppNotification {
   /// Sender of a 1-on-1 message — the DM thread peer.
   final String? senderUid;
 
+  /// Who the notification is for (`host`/`member` on `activity_joined`) — picks the tap target screen.
+  final String? audience;
+
   /// Raw backend type string.
   final String backendType;
 
@@ -25,6 +28,7 @@ class AppNotification {
     this.unread = false,
     this.activityId,
     this.senderUid,
+    this.audience,
     this.backendType = 'system',
   });
 }

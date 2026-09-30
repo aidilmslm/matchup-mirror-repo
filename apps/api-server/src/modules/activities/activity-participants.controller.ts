@@ -69,6 +69,8 @@ export async function joinActivityHandler(req: Request<ActivityParams>, res: Res
         body: template?.body ?? 'Someone joined your activity',
         activityId,
         senderUid: uid,
+        // The host opens their management view, not the discover detail.
+        audience: 'host',
       });
     }
 
