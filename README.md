@@ -148,6 +148,13 @@ matchup/
 | Firebase CLI| optional  | Storage/rules deploy, emulator  |
 
 Install Flutter from the [official guide](https://docs.flutter.dev/get-started/install).
+Then verify the mobile toolchain (Android SDK + emulator, or Xcode + simulator) is complete:
+
+```bash
+flutter doctor
+```
+
+`flutter run` needs a connected emulator/device — every other check must be green first.
 
 #### macOS
 
