@@ -1,5 +1,6 @@
 import { firestore } from '../../database/firebase.js';
-import { activityAttendanceDocPath } from '../../database/paths.js';
+import { activityAttendanceDocPath, activityDocPath } from '../../database/paths.js';
+import { resolveEndMs } from './activity-lifecycle.service.js';
 
 export type CheckInInput = {
   activityId: string;
@@ -24,6 +25,25 @@ export async function checkIn(input: CheckInInput): Promise<number> {
 
   if (!normalizedUid) {
     throw new Error('uid is required');
+  }
+
+  // Server-side openness gate (mirrors the client time/proximity gates):
+  // no check-ins on cancelled/removed/completed games or after the end.
+  const activitySnap = await firestore.doc(activityDocPath(normalizedActivityId)).get();
+  if (!activitySnap.exists) {
+    throw new Error('Activity not found');
+  }
+  const activityData = activitySnap.data();
+  if (!activityData) {
+    throw new Error('Activity not found');
+  }
+  const status = typeof activityData.status === 'string' ? activityData.status : undefined;
+  if (status === 'cancelled' || status === 'removed' || status === 'completed') {
+    throw new Error('Activity is not open for check-in');
+  }
+  const endMs = resolveEndMs(activityData);
+  if (endMs !== null && endMs <= Date.now()) {
+    throw new Error('Activity is not open for check-in');
   }
 
   if (
