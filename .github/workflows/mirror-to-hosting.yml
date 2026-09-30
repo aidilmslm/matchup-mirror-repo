@@ -16,6 +16,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Jangan simpan GITHUB_TOKEN sebagai credential helper:
+          # extraheader itu menimpa token di URL dan push selalu
+          # jalan sebagai github-actions[bot] -> 403.
+          persist-credentials: false
 
       - name: Push main to matchup-hosting
         env:
@@ -25,6 +29,8 @@ jobs:
             echo "::error::HOSTING_MIRROR_TOKEN secret is missing/empty. Add a PAT with write access to imamnurhidayat77/matchup-hosting in repo Settings > Secrets > Actions."
             exit 1
           fi
+          # Sabuk pengaman kalau ada extraheader sisa:
+          git config --unset http.https://github.com/.extraheader 2>/dev/null || true
           git remote remove hosting 2>/dev/null || true
           git remote add hosting "https://x-access-token:${HOSTING_MIRROR_TOKEN}@github.com/imamnurhidayat77/matchup-hosting.git"
           git push hosting HEAD:main
