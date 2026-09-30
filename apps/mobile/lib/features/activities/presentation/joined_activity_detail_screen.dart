@@ -114,10 +114,30 @@ class JoinedActivityDetailScreen extends ConsumerWidget {
           message: 'Could not load this activity.',
           onRetry: () => ref.invalidate(_detailProvider(activityId)),
         ),
-        data: (data) => _DetailBody(
-          activity: data.activity,
-          recentMessages: data.recentMessages,
-          onLeave: () => _confirmLeave(context, ref),
+        data: (data) => RefreshIndicator(
+          // Pull-to-refresh bypasses the detail/roster caches so edits land immediately.
+          onRefresh: () async {
+            try {
+              await ref
+                  .read(activityRepositoryProvider)
+                  .refreshActivityDetails(activityId);
+            } catch (_) {
+              if (context.mounted) {
+                AppSnackbar.show(
+                  context,
+                  message: 'Could not refresh. Check your connection.',
+                  variant: AppSnackbarVariant.error,
+                );
+              }
+            }
+            ref.invalidate(_detailProvider(activityId));
+            ref.invalidate(_rosterProvider(activityId));
+          },
+          child: _DetailBody(
+            activity: data.activity,
+            recentMessages: data.recentMessages,
+            onLeave: () => _confirmLeave(context, ref),
+          ),
         ),
       ),
     );

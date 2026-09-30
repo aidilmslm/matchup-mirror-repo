@@ -29,6 +29,9 @@ class LocalActivityRepository implements ActivityRepository {
   }
 
   @override
+  Future<ActivityModel?> refreshActivityDetails(String id) => byId(id);
+
+  @override
   Future<List<ActivityModel>> joinedByUser(
     String userId, {
     int limit = 20,

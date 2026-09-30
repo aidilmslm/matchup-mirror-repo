@@ -87,6 +87,22 @@ describe('activity check-in routes', () => {
       });
     });
 
+    it('when activity is not open for check-in => expected 409 w/ CONFLICT', async () => {
+      vi.mocked(checkInService.checkIn).mockRejectedValueOnce(
+        new Error('Activity is not open for check-in'),
+      );
+
+      const app = createApp();
+
+      const response = await request(app).post('/api/activities/activity-1/check-in').send({});
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        ok: false,
+        error: { code: 'CONFLICT', message: 'Activity is not open for check-in' },
+      });
+    });
+
     it('when coordinates are not numbers => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 

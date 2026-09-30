@@ -17,6 +17,10 @@ abstract class ActivityRepository {
 
   Future<ActivityModel?> byId(String id);
 
+  /// Re-reads one activity bypassing the detail/roster caches (pull-to-refresh
+  /// after a remote edit — the short-TTL cache would otherwise serve stale rows).
+  Future<ActivityModel?> refreshActivityDetails(String id);
+
   /// Roster for a single activity, used by the Activity Participants screen.
   Future<List<ActivityParticipant>> participants(String activityId);
 

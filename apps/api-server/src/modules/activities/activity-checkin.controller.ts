@@ -92,6 +92,13 @@ export async function checkInHandler(req: Request<ActivityParams>, res: Response
       });
     }
 
+    if (message === 'Activity is not open for check-in') {
+      return res.status(409).json({
+        ok: false,
+        error: { code: 'CONFLICT', message },
+      });
+    }
+
     if (
       message === 'latitude must be a number between -90 and 90' ||
       message === 'longitude must be a number between -180 and 180'

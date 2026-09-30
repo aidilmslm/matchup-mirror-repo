@@ -253,6 +253,14 @@ class RemoteActivityRepository implements ActivityRepository {
   }
 
   @override
+  Future<ActivityModel?> refreshActivityDetails(String id) {
+    // Bust first: byId() below would serve the cached row otherwise.
+    _byIdCache.remove(id);
+    _participantsCache.remove(id);
+    return byId(id);
+  }
+
+  @override
   Future<ActivityModel?> byId(String id) async {
     final hit = _byIdCache.get(id);
     if (hit != null) return hit;
