@@ -68,6 +68,30 @@ describe('deliverPush', () => {
     expect(mocks.deleteDevice).not.toHaveBeenCalled();
   });
 
+  it('forwards the audience hint into the FCM data payload', async () => {
+    mocks.listDevices.mockResolvedValue([device('d-1', 'tok-1')]);
+    mocks.sendEachForMulticast.mockResolvedValue({
+      successCount: 1,
+      failureCount: 0,
+      responses: [okResponse],
+    });
+
+    await deliverPush({
+      recipientUid: 'host-1',
+      title: 'New participant',
+      body: 'Someone joined your activity',
+      type: 'activity_joined',
+      activityId: 'a-1',
+      audience: 'host',
+    });
+
+    expect(mocks.sendEachForMulticast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { type: 'activity_joined', activityId: 'a-1', audience: 'host' },
+      }),
+    );
+  });
+
   it('dedupes the same token registered on two devices', async () => {
     mocks.listDevices.mockResolvedValue([device('d-1', 'tok-x'), device('d-2', 'tok-x')]);
     mocks.sendEachForMulticast.mockResolvedValue({

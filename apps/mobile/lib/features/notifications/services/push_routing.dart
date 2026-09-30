@@ -7,6 +7,7 @@ class PushPayload {
     this.activityId,
     this.senderUid,
     this.title,
+    this.audience,
   });
 
   /// Backend notification type, e.g. `chat_message`, `activity_completed`.
@@ -21,17 +22,23 @@ class PushPayload {
   /// Human-readable title for foreground snackbars.
   final String? title;
 
+  /// Who the notification is for when one type reaches different roles
+  /// (`activity_joined`: `host` on instant join, `member` on approval).
+  final String? audience;
+
   /// Parses an FCM `RemoteMessage.data` map (values arrive as `Map<String, dynamic>` from the plugin).
   static PushPayload? parse(Map<String, dynamic> data, {String? title}) {
     final type = data['type']?.toString().trim() ?? '';
     if (type.isEmpty) return null;
     final activityId = data['activityId']?.toString().trim();
     final senderUid = data['senderUid']?.toString().trim();
+    final audience = data['audience']?.toString().trim();
     return PushPayload(
       type: type,
       activityId: activityId == null || activityId.isEmpty ? null : activityId,
       senderUid: senderUid == null || senderUid.isEmpty ? null : senderUid,
       title: title,
+      audience: audience == null || audience.isEmpty ? null : audience,
     );
   }
 }
@@ -70,6 +77,15 @@ String? routeForPush(PushPayload payload) {
       if (id != null) return '/manage-activity/$id';
       return '/notifications';
     case 'activity_joined':
+      // Same type, two recipients: the host opens management, the approved
+      // joiner opens their joined view. Legacy rows lack audience — keep
+      // the old discover detail rather than guessing wrong.
+      if (id != null) {
+        if (payload.audience == 'host') return '/manage-activity/$id';
+        if (payload.audience == 'member') return '/joined-activity/$id';
+        return '/activity/$id';
+      }
+      return '/notifications';
     case 'activity_cancelled':
     case 'activity_reminder':
     case 'activity_interest':
@@ -90,6 +106,7 @@ String? routeForNotification(AppNotification notif) {
       type: notif.backendType,
       activityId: notif.activityId,
       senderUid: notif.senderUid,
+      audience: notif.audience,
     ),
   );
 }

@@ -23,7 +23,13 @@ export type CreateNotificationInput = {
   body: string;
   activityId?: string;
   senderUid?: string;
+  // Who the notification is for when the same type reaches different roles
+  // (e.g. `activity_joined` goes to the host on instant join and to the
+  // joiner on approval) so clients can route the tap to the right screen.
+  audience?: NotificationAudience;
 };
+
+export type NotificationAudience = 'host' | 'member';
 
 export type NotificationRecord = {
   recipientUid: string;
@@ -35,6 +41,7 @@ export type NotificationRecord = {
   readAt?: FirebaseFirestore.Timestamp;
   activityId?: string;
   senderUid?: string;
+  audience?: NotificationAudience;
 };
 
 export type NotificationWithId = NotificationRecord & {
@@ -133,6 +140,10 @@ function mapNotificationDoc(doc: FirebaseFirestore.QueryDocumentSnapshot): Notif
     throw new Error('Invalid notification record: senderUid must be a string');
   }
 
+  if (data.audience !== undefined && data.audience !== 'host' && data.audience !== 'member') {
+    throw new Error("Invalid notification record: audience must be 'host' or 'member'");
+  }
+
   return {
     notificationId: doc.id,
     recipientUid: data.recipientUid,
@@ -144,6 +155,7 @@ function mapNotificationDoc(doc: FirebaseFirestore.QueryDocumentSnapshot): Notif
     ...(data.readAt !== undefined ? { readAt: data.readAt as FirebaseFirestore.Timestamp } : {}),
     ...(typeof data.activityId === 'string' ? { activityId: data.activityId } : {}),
     ...(typeof data.senderUid === 'string' ? { senderUid: data.senderUid } : {}),
+    ...(data.audience === 'host' || data.audience === 'member' ? { audience: data.audience } : {}),
   };
 }
 
@@ -184,6 +196,9 @@ export async function createNotification(
     ...(typeof input.senderUid === 'string' && input.senderUid.trim()
       ? { senderUid: input.senderUid.trim() }
       : {}),
+    ...(input.audience === 'host' || input.audience === 'member'
+      ? { audience: input.audience }
+      : {}),
   };
 
   await notificationRef.set(record);
@@ -200,6 +215,9 @@ export async function createNotification(
     ...(typeof input.senderUid === 'string' && input.senderUid.trim()
       ? { senderUid: input.senderUid.trim() }
       : {}),
+    ...(input.audience === 'host' || input.audience === 'member'
+      ? { audience: input.audience }
+      : {}),
   }).catch(() => undefined);
 
   return {
@@ -215,6 +233,7 @@ export async function deliverPush(input: {
   type: NotificationType;
   activityId?: string;
   senderUid?: string;
+  audience?: NotificationAudience;
 }): Promise<{ delivered: number }> {
   try {
     const devices = await listDevices(input.recipientUid);
@@ -229,6 +248,7 @@ export async function deliverPush(input: {
     const data: Record<string, string> = { type: input.type };
     if (input.activityId) data.activityId = input.activityId;
     if (input.senderUid) data.senderUid = input.senderUid;
+    if (input.audience) data.audience = input.audience;
 
     const batch = await messaging.sendEachForMulticast({
       tokens,

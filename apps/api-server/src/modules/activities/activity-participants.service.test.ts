@@ -23,6 +23,7 @@ vi.mock('../notifications/notifications.service.js', () => ({
 
 import {
   approveJoinRequest,
+  declineJoinRequest,
   joinActivity,
   leaveActivity,
   requestToJoin,
@@ -115,6 +116,42 @@ describe('join cutoff', () => {
     mockTransaction(mockDocs(openActivity()));
 
     await expect(joinActivity('a-1', 'u-1')).resolves.toBeUndefined();
+  });
+});
+
+describe('join audience', () => {
+  it('approve notifies the joiner as member so the tap opens the joined view', async () => {
+    mockTransaction(
+      mockDocs(openActivity({ joinPolicy: 'approval', participantCount: 9 }), {
+        request: { status: 'pending' },
+      }),
+    );
+
+    await approveJoinRequest('a-1', 'u-1', 'host-1');
+
+    expect(mocks.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientUid: 'u-1',
+        type: 'activity_joined',
+        audience: 'member',
+      }),
+    );
+  });
+
+  it('decline sends a plain system notice with no audience', async () => {
+    mockTransaction(
+      mockDocs(openActivity({ joinPolicy: 'approval' }), {
+        request: { status: 'pending' },
+      }),
+    );
+
+    await declineJoinRequest('a-1', 'u-1', 'host-1');
+
+    expect(mocks.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'system' }),
+    );
+    const arg = mocks.createNotification.mock.calls[0][0] as Record<string, unknown>;
+    expect(arg).not.toHaveProperty('audience');
   });
 });
 

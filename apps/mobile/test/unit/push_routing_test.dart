@@ -6,6 +6,7 @@ AppNotification _notif({
   String backendType = 'system',
   String? activityId,
   String? senderUid,
+  String? audience,
 }) {
   return AppNotification(
     id: 'n-1',
@@ -15,6 +16,7 @@ AppNotification _notif({
     backendType: backendType,
     activityId: activityId,
     senderUid: senderUid,
+    audience: audience,
   );
 }
 
@@ -81,6 +83,31 @@ void main() {
       );
     });
 
+    test('activity_joined routes by audience', () {
+      // Host (instant join) opens management, not the discover detail.
+      expect(
+        routeForPush(
+          const PushPayload(
+            type: 'activity_joined',
+            activityId: 'a-4',
+            audience: 'host',
+          ),
+        ),
+        '/manage-activity/a-4',
+      );
+      // Approved joiner opens their joined view.
+      expect(
+        routeForPush(
+          const PushPayload(
+            type: 'activity_joined',
+            activityId: 'a-4',
+            audience: 'member',
+          ),
+        ),
+        '/joined-activity/a-4',
+      );
+    });
+
     test('missing activityId falls back to notifications feed', () {
       expect(
         routeForPush(const PushPayload(type: 'chat_message')),
@@ -144,13 +171,33 @@ void main() {
         ),
         '/manage-activity/a-3',
       );
-      // Same display type, different screens: activity_joined goes to
-      // detail while join_request goes to manage.
+      // Same display type, different screens: activity_joined routes by
+      // audience (host → manage, member → joined, legacy → detail).
       expect(
         routeForNotification(
           _notif(backendType: 'activity_joined', activityId: 'a-4'),
         ),
         '/activity/a-4',
+      );
+      expect(
+        routeForNotification(
+          _notif(
+            backendType: 'activity_joined',
+            activityId: 'a-4',
+            audience: 'host',
+          ),
+        ),
+        '/manage-activity/a-4',
+      );
+      expect(
+        routeForNotification(
+          _notif(
+            backendType: 'activity_joined',
+            activityId: 'a-4',
+            audience: 'member',
+          ),
+        ),
+        '/joined-activity/a-4',
       );
     });
 
