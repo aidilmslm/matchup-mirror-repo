@@ -18,6 +18,13 @@ jobs:
           fetch-depth: 0
 
       - name: Push main to matchup-hosting
+        env:
+          HOSTING_MIRROR_TOKEN: ${{ secrets.HOSTING_MIRROR_TOKEN }}
         run: |
-          git remote add hosting "https://x-access-token:${{ secrets.HOSTING_MIRROR_TOKEN }}@github.com/imamnurhidayat77/matchup-hosting.git"
+          if [ -z "$HOSTING_MIRROR_TOKEN" ]; then
+            echo "::error::HOSTING_MIRROR_TOKEN secret is missing/empty. Add a PAT with write access to imamnurhidayat77/matchup-hosting in repo Settings > Secrets > Actions."
+            exit 1
+          fi
+          git remote remove hosting 2>/dev/null || true
+          git remote add hosting "https://x-access-token:${HOSTING_MIRROR_TOKEN}@github.com/imamnurhidayat77/matchup-hosting.git"
           git push hosting HEAD:main
