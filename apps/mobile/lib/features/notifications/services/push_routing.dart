@@ -46,12 +46,13 @@ class PushPayload {
 /// SharedPreferences key for the locally muted group-chat ids (string list of activity ids).
 const mutedChatsKey = 'muted_chats';
 
-/// True when a push of this type can change My Games membership.
+/// True when a push of this type can change My Games membership or row content.
 bool invalidatesMyGames(PushPayload payload) {
   return switch (payload.type) {
     'activity_cancelled' ||
     'activity_completed' ||
     'activity_joined' ||
+    'activity_updated' ||
     'activity_left' ||
     'participant_removed' ||
     'join_request' => true,
@@ -92,6 +93,13 @@ String? routeForPush(PushPayload payload) {
     case 'activity_left':
     case 'participant_removed':
       if (id != null) return '/activity/$id';
+      return '/notifications';
+    case 'activity_updated':
+      // Members open their joined view; legacy rows without audience fall back to detail.
+      if (id != null) {
+        if (payload.audience == 'member') return '/joined-activity/$id';
+        return '/activity/$id';
+      }
       return '/notifications';
     default:
       // Unknown type — no honest target. The caller no-ops.
