@@ -1,4 +1,4 @@
-import type { SportConfig } from '../../types/sports';
+import type { SportConfig } from '../../../types/sports';
 
 // Catalogue summary widgets: stat cards + mobile preview.
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { SportConfig } from '../../types/sports';
+import type { SportConfig } from '../../../types/sports';
 import { EmojiPicker } from './SportEmoji';
 
 // Dialog for adding a sport to the catalogue.

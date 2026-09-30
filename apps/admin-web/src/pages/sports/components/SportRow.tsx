@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { SportConfig } from '../../types/sports';
+import type { SportConfig } from '../../../types/sports';
+import { Toggle, SurfaceChip } from './SportControls';
 
 // Draggable sport row with flag toggles.
 
