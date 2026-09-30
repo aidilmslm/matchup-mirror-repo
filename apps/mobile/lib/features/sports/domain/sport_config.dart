@@ -1,5 +1,8 @@
 /// Admin-managed master sports entry (`GET /api/public/sports`).
-/// Drives which sports appear on each surface: onboarding.
+///
+/// Drives which sports appear on each surface: onboarding
+/// ([showInOnboarding]), the discovery filter ([showInFilter]), and the
+/// create/edit forms ([canHost]). Disabled sports never reach clients.
 class SportConfig {
   const SportConfig({
     required this.id,
@@ -32,7 +35,9 @@ class SportConfig {
   );
 }
 
-/// Picks display names for a surface, falling back to the bundled list when offline.
+/// Picks display names for a surface, falling back to the screen's
+/// bundled list when the server config is empty or selects nothing.
+/// A failed fetch must never empty a picker.
 List<String> pickSportNames(
   List<SportConfig> configs,
   bool Function(SportConfig) select,

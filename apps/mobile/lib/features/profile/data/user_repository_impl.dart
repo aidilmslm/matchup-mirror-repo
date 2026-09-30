@@ -10,7 +10,10 @@ import '../../ratings/domain/rating_models.dart';
 import '../domain/user_model.dart';
 import 'user_repository.dart';
 
-/// Offline-only user store.
+
+/// Offline-only user store. Same contract as
+/// [LocalActivityRepository]: every read returns empty data, every
+/// write throws. The app **always** talks to the live backend.
 class LocalUserRepository implements UserRepository {
   @override
   Future<UserModel> me() async {
@@ -55,12 +58,15 @@ class LocalUserRepository implements UserRepository {
 }
 
 /// Null when [value] is null/blank, otherwise the trimmed value.
+/// Keeps blank photo URLs from masquerading as real avatars.
 String? _nonEmpty(String? value) {
   final v = value?.trim();
   return v == null || v.isEmpty ? null : v;
 }
 
-/// Normalises a UI skill label ('Beginner') to the backend wire value ('beginner').
+/// Normalises a UI skill label ('Beginner') to the backend wire value
+/// ('beginner'). Returns null when there is no usable level, so the
+/// caller can omit it instead of persisting a bogus value.
 String? wireSkillLevel(String level) {
   final v = level.trim().toLowerCase();
   return switch (v) {
@@ -69,7 +75,8 @@ String? wireSkillLevel(String level) {
   };
 }
 
-/// Most frequent wire level across [sports]; ties resolve to the first-seen level.
+/// Most frequent wire level across [sports]; ties resolve to the
+/// first-seen level. Null when no sport carries a usable level.
 String? dominantSkillLevel(List<({String sport, String level})> sports) {
   final counts = <String, int>{};
   final order = <String>[];
@@ -90,7 +97,8 @@ String? dominantSkillLevel(List<({String sport, String level})> sports) {
   return best;
 }
 
-/// Maps a backend wire level ('beginner') back to the UI label ('Beginner') used by the sport preference providers.
+/// Maps a backend wire level ('beginner') back to the UI label
+/// ('Beginner') used by the sport preference providers.
 String labelSkillLevel(String? wire) {
   return switch (wire?.trim().toLowerCase()) {
     'beginner' => 'Beginner',
@@ -108,12 +116,17 @@ class RemoteUserRepository implements UserRepository {
   final ApiClient _client;
   final UserRepository _fallback;
 
-  /// Short-TTL cache for the current-user profile.
+  /// Short-TTL cache for the current-user profile. Profile + Discover
+  /// mount together on cold start and both call `me()` (see
+  /// `myProfileProvider` + `DiscoveryScreen._seedDefaultFilter`), and tab
+  /// switches dispose/recreate those states — without this every return
+  /// trip costs a `GET /users/me` against the shared per-IP rate budget.
   UserModel? _meCache;
   DateTime? _meCachedAt;
   static const _meTtl = Duration(seconds: 30);
 
-  /// Coalesces concurrent `me()` calls into one network request so a cold start with N listeners costs 1 GET instead.
+  /// Coalesces concurrent `me()` calls into one network request so a
+  /// cold start with N listeners costs 1 GET instead of N.
   Future<UserModel>? _meInFlight;
 
   @override
@@ -131,6 +144,9 @@ class RemoteUserRepository implements UserRepository {
   Future<UserModel> _fetchMe() async {
     try {
       // `/users/me` is the canonical "current authenticated user" endpoint.
+      // The auth middleware resolves the uid from the Bearer token, so we
+      // don't need to pass an id — passing the auth uid would have hit the
+      // public-profile route instead and returned a smaller payload.
       final res = await _client.dio.get('/users/me');
       final parsed = _parse(apiDataMap(res.data));
       if (parsed != null) {
@@ -140,7 +156,10 @@ class RemoteUserRepository implements UserRepository {
       }
       return await _fallback.me();
     } on DioException catch (e) {
-      // A 401 means the session is dead — rethrow so session-expiry flows.
+      // A 401 means the session is dead — rethrow so session-expiry
+      // flows (interceptor → SessionEvents → router) handle it instead
+      // of masking it behind a stale fallback user. Transport errors
+      // and other statuses keep the offline fallback below.
       final status = e.response?.statusCode;
       final wrapped = e.error;
       final wrappedStatus = wrapped is ApiException ? wrapped.statusCode : null;
@@ -186,7 +205,21 @@ class RemoteUserRepository implements UserRepository {
     String? joinReason,
   }) async {
     try {
-      // The backend's `editableProfileFields` is strict — any other key returns INVALID_INPUT.
+      // The backend's `editableProfileFields` is strict — any other key
+      // returns INVALID_INPUT. `email` and `phone` have no backend fields
+      // (email lives in Firebase Auth), so they stay omitted and local
+      // only. Everything else below rides along when set. The local
+      // fallback still records everything in memory so the Edit Profile
+      // screen keeps working offline.
+      //
+      // Mapping:
+      //   - `location`  → `preferredLocations[0]` (backend stores an array)
+      //   - `sports`    → `preferredSports` (sport names) +
+      //                  `sportSkillLevels` (per-sport wire levels) +
+      //                  `skillLevel` (dominant level — feeds the
+      //                  profile-completed check and the public profile)
+      //   - `joinReason`→ `joinReason` (onboarding answer, private)
+      //   - `weightKg`/`goal` → same names (private, own profile only)
       final dominant = sports != null && sports.isNotEmpty
           ? dominantSkillLevel(sports)
           : null;
@@ -230,10 +263,15 @@ class RemoteUserRepository implements UserRepository {
       _invalidateMeCache();
       return await _fallback.me();
     } on DioException catch (e) {
-      // A 4xx means the backend explicitly rejected the payload.
+      // A 4xx means the backend explicitly rejected the payload (e.g.
+      // an uneditable field slipped through) — surface the server's
+      // message via ProfileUpdateException instead of silently falling
+      // back and pretending the save worked.
       final status = e.response?.statusCode;
       if (status != null && status >= 400 && status < 500) {
-        throw ProfileUpdateException(ApiException.fromDio(e).userMessage);
+        throw ProfileUpdateException(
+          ApiException.fromDio(e).userMessage,
+        );
       }
       return _fallback.updateProfile(
         displayName: displayName,
@@ -267,7 +305,11 @@ class RemoteUserRepository implements UserRepository {
 
   @override
   Future<UserModel> uploadAvatar({required String localPath}) async {
-    // Client-side size gate (mirrors `isAllowedProfileImage` in storage.rules): reject oversized files here.
+    // Client-side size gate (mirrors `isAllowedProfileImage` in
+    // storage.rules): reject oversized files here so the UI can name
+    // the reason instead of surfacing a generic upload failure.
+    // A missing/unreadable file falls through to the upload attempt,
+    // which fails generically as before.
     try {
       final size = await File(localPath).length();
       if (size > kMaxAvatarBytes) throw AvatarTooLargeException();
@@ -276,7 +318,8 @@ class RemoteUserRepository implements UserRepository {
     } catch (_) {
       // Ignore stat errors — handled by the upload below.
     }
-    // The backend (`PATCH /users/me/photo`) requires the Storage path to be `users/{uid}/profile/…` and stores both.
+    // The backend (`PATCH /users/me/photo`) requires the Storage path
+    // to be `users/{uid}/profile/…` and stores both path and URL.
     final uid = await SecureTokenStore.instance.readUserId();
     if (uid == null || uid.isEmpty) {
       throw StateError('No signed-in user for profile photo upload.');
@@ -305,10 +348,12 @@ class RemoteUserRepository implements UserRepository {
   }
 
   UserModel? _parse(Map<String, dynamic>? json) {
-    if (json == null) {
-      return null;
-    }
-    // Backend sends sport names plus a skill map; merge into (sport, level) records.
+    if (json == null) return null;    // Backend returns `preferredSports` as a list of sport-name strings
+    // plus `sportSkillLevels` (`{ Tennis: 'intermediate' }`) with the
+    // per-sport wire levels. The mobile model expects a list of
+    // `(sport, level)` records where level is used to render the
+    // per-sport badge on the profile screen — levels map back to UI
+    // labels, falling back to '' (renders the bare chip) when unknown.
     final preferredSports = json['preferredSports'] as List<dynamic>?;
     final skillMap = json['sportSkillLevels'] as Map?;
     final mappedSports = preferredSports != null
@@ -333,12 +378,15 @@ class RemoteUserRepository implements UserRepository {
 
     return UserModel(
       id: json['id']?.toString() ?? json['authUid']?.toString() ?? '',
-      displayName:
-          json['displayName'] as String? ??
+      displayName: json['displayName'] as String? ??
           json['display_name'] as String? ??
           '',
       avatarAsset: json['avatar_asset'] as String?,
-      // Backend user docs carry the photo under `photoUrl` (`UserRecord.photoUrl`).
+      // Backend user docs carry the photo under `photoUrl`
+      // (`UserRecord.photoUrl`); `avatarUrl` variants are kept for
+      // older payloads so cached/offline shapes keep working. Empty
+      // strings normalise to null so the UI falls back to initials
+      // instead of attempting a broken image load.
       avatarUrl: _nonEmpty(
         json['avatarUrl'] as String? ??
             json['avatar_url'] as String? ??
@@ -359,8 +407,8 @@ class RemoteUserRepository implements UserRepository {
           (json['hosted_count'] as num?)?.toInt() ??
           0,
       sports: mappedSports ?? const [],
-      skillLevel:
-          json['skillLevel'] as String? ?? json['skill_level'] as String?,
+      skillLevel: json['skillLevel'] as String? ??
+          json['skill_level'] as String?,
       ratingBySport: _parseRatingBySport(
         json['ratingBySport'] ?? json['rating_by_sport'],
       ),
@@ -382,17 +430,16 @@ class RemoteUserRepository implements UserRepository {
           : json['date_of_birth'] != null
           ? DateTime.tryParse(json['date_of_birth'] as String)
           : null,
-      heightCm:
-          (json['heightCm'] as num?)?.toInt() ??
+      heightCm: (json['heightCm'] as num?)?.toInt() ??
           (json['height_cm'] as num?)?.toInt(),
-      weightKg:
-          (json['weightKg'] as num?)?.toInt() ??
+      weightKg: (json['weightKg'] as num?)?.toInt() ??
           (json['weight_kg'] as num?)?.toInt(),
       goal: json['goal'] as String?,
     );
   }
 
-  /// Decodes the API's per-sport rating map.
+  /// Decodes the API's per-sport rating map. The shape is
+  /// `{ "Basketball": { "average": 4.7, "count": 12 } }`.
   Map<String, SportRatingSummary> _parseRatingBySport(dynamic raw) {
     if (raw is! Map) return const {};
     return raw.entries

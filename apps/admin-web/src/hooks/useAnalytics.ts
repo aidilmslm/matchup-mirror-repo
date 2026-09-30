@@ -1,4 +1,3 @@
-// useAnalytics (hooks).
 import { useCallback, useEffect, useReducer, useState } from 'react';
 import { fetchAnalytics } from '../services/analyticsService';
 import type { AnalyticsData, AnalyticsRange } from '../services/analyticsService';
@@ -15,14 +14,10 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'FETCH_START':
-      return { status: 'loading' };
-    case 'FETCH_SUCCESS':
-      return { status: 'success', data: action.data };
-    case 'FETCH_ERROR':
-      return { status: 'error', message: action.message };
-    default:
-      return state;
+    case 'FETCH_START':   return { status: 'loading' };
+    case 'FETCH_SUCCESS': return { status: 'success', data: action.data };
+    case 'FETCH_ERROR':   return { status: 'error', message: action.message };
+    default: return state;
   }
 }
 
@@ -36,25 +31,18 @@ export function useAnalytics() {
       const data = await fetchAnalytics(r);
       dispatch({ type: 'FETCH_SUCCESS', data });
     } catch (err) {
-      dispatch({
-        type: 'FETCH_ERROR',
-        message: err instanceof Error ? err.message : 'Failed to load analytics',
-      });
+      dispatch({ type: 'FETCH_ERROR', message: err instanceof Error ? err.message : 'Failed to load analytics' });
     }
   }, []);
 
-  useEffect(() => {
-    load(range);
-  }, [load, range]);
+  useEffect(() => { load(range); }, [load, range]);
 
   return {
     loading: state.status === 'idle' || state.status === 'loading',
     error: state.status === 'error' ? state.message : null,
     data: state.status === 'success' ? state.data : null,
     range,
-    setRange: (r: AnalyticsRange) => {
-      setRange(r);
-    },
+    setRange: (r: AnalyticsRange) => { setRange(r); },
     reload: () => load(range),
   };
 }

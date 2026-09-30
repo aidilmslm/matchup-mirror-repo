@@ -32,17 +32,18 @@ class WelcomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Collage.
+            // ── Collage ────────────────────────────────────────
             _Collage(height: collageHeight),
             const SizedBox(height: AppSpacing.x5),
 
-            // Title subtitle.
+            // ── Title + subtitle ───────────────────────────────
             Text(
               'Welcome to MatchUp',
               textAlign: TextAlign.center,
-              style: AppTypography.headingDisplay(
-                context,
-              ).copyWith(fontSize: 28, fontWeight: FontWeight.w800),
+              style: AppTypography.headingDisplay(context).copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: AppSpacing.x2),
             Text(
@@ -51,10 +52,11 @@ class WelcomeScreen extends StatelessWidget {
               style: AppTypography.bodyFormSecondary(context),
             ),
 
-            // Remaining space is split evenly above the button stack and below the sign-in link, matching the mock's.
+            // Remaining space is split evenly above the button stack and
+            // below the sign-in link, matching the mock's balance.
             const Spacer(),
 
-            // Sign up with email.
+            // ── Sign up with email ─────────────────────────────
             _PillButton(
               label: 'Sign up with email',
               onTap: () => context.go('/register'),
@@ -93,7 +95,7 @@ class WelcomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.x5),
 
-            // Already have an account?.
+            // ── Already have an account? ───────────────────────
             Center(
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -130,8 +132,12 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-// Collage.
-// Fixed pixel heights matching design proportions: Left col: top=192 bottom=130 total=328.
+// ─── Collage ──────────────────────────────────────────────────────────────────
+//
+// Fixed pixel heights matching design proportions:
+//   Left col:  top=192  bottom=130  total=328 (gap=6 → 192+6+130=328)
+//   Right col: top=130  bottom=192  total=328
+//   Green dot at exact center of 4-tile gap intersection
 
 class _Collage extends StatelessWidget {
   const _Collage({required this.height});
@@ -139,7 +145,10 @@ class _Collage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fractions measured directly from the design mock.
+    // Fractions measured directly from the design mock (total = right col):
+    //   left  top 51.5% · gap · left  bottom 38.5%  → left total  94%
+    //   right top 40.0% · gap · right bottom 56.5%  → right total 100%
+    // The two columns deliberately end at different Y — left stops higher.
     const gap = 14.0;
     final totalWidth = MediaQuery.of(context).size.width - AppSpacing.x4 * 2;
     final colWidth = (totalWidth - gap) / 2;
@@ -152,7 +161,8 @@ class _Collage extends StatelessWidget {
     final rightTopH = height * 0.375;
     final rightBotH = height - rightOffsetTop - rightTopH - gap;
 
-    // Dot sits in the left column's horizontal gap, centred on the vertical gap between the two columns.
+    // Dot sits in the left column's horizontal gap, centred on the
+    // vertical gap between the two columns.
     const dotSize = 18.0;
     final dotY = leftTopH + gap / 2 - dotSize / 2;
     final dotX = colWidth + gap / 2 - dotSize / 2;
@@ -202,7 +212,10 @@ class _Collage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.success,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.textOnPrimary, width: 2),
+                border: Border.all(
+                  color: AppColors.textOnPrimary,
+                  width: 2,
+                ),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x4022C55E),
@@ -250,7 +263,7 @@ class _Tile extends StatelessWidget {
   }
 }
 
-// Pill button.
+// ─── Pill button ──────────────────────────────────────────────────────────────
 
 class _PillButton extends StatelessWidget {
   const _PillButton({
@@ -274,7 +287,10 @@ class _PillButton extends StatelessWidget {
   final Widget? leading;
   final bool outlined;
 
-  /// True while the action is unavailable.
+  /// True while the action is unavailable (e.g. social sign-in) — the
+  /// button renders with an inline "SOON" badge but stays tappable so
+  /// the tap can honestly explain the state (see
+  /// [showSocialSignInUnavailable]) instead of silently doing nothing.
   final bool comingSoon;
 
   @override
@@ -305,7 +321,9 @@ class _PillButton extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                style: AppTypography.buttonPrimary.copyWith(color: textColor),
+                style: AppTypography.buttonPrimary.copyWith(
+                  color: textColor,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -319,9 +337,14 @@ class _PillButton extends StatelessWidget {
       ),
     );
     if (!comingSoon) {
-      return Semantics(button: true, label: label, child: button);
+      return Semantics(
+        button: true,
+        label: label,
+        child: button,
+      );
     }
-    // Coming-soon buttons stay enabled: the SOON badge says the feature is not here yet, and the tap shows the "use.
+    // Coming-soon buttons stay enabled: the SOON badge says the feature
+    // is not here yet, and the tap shows the "use email instead" notice.
     return Semantics(
       button: true,
       label: '$label (coming soon)',
@@ -331,7 +354,10 @@ class _PillButton extends StatelessWidget {
   }
 }
 
-/// Inline "SOON" pill that lives inside a disabled button.
+/// Inline "SOON" pill that lives inside a disabled button. Tinted from
+/// the button's own foreground color so it reads correctly on both the
+/// solid-black Apple button and the outlined Google button, in light
+/// and dark mode alike.
 class _SoonBadge extends StatelessWidget {
   const _SoonBadge({required this.textColor});
   final Color textColor;

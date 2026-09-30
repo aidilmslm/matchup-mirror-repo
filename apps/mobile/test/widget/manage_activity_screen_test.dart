@@ -106,9 +106,8 @@ void main() {
         ),
         GoRoute(
           path: '/player-profile/uid/:uid',
-          builder: (_, state) => Scaffold(
-            body: Text('Profile uid:${state.pathParameters['uid']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Profile uid:${state.pathParameters['uid']}')),
         ),
       ],
     );
@@ -188,9 +187,9 @@ void main() {
     testWidgets(
       'should list pending join requests with approve/decline actions',
       (tester) async {
-        when(
-          () => repo.byId('5'),
-        ).thenAnswer((_) async => activity(joinPolicy: 'approval'));
+        when(() => repo.byId('5')).thenAnswer(
+          (_) async => activity(joinPolicy: 'approval'),
+        );
         when(() => repo.participants('5')).thenAnswer((_) async => []);
         when(() => repo.joinRequests('5')).thenAnswer(
           (_) async => [
@@ -251,7 +250,7 @@ void main() {
 
       expect(find.text('Participants'), findsOneWidget);
     });
-
+  
     testWidgets('should open the edit screen when Edit is tapped', (
       tester,
     ) async {
@@ -270,9 +269,9 @@ void main() {
     testWidgets('should open the requester profile from the waiting list', (
       tester,
     ) async {
-      when(
-        () => repo.byId('5'),
-      ).thenAnswer((_) async => activity(joinPolicy: 'approval'));
+      when(() => repo.byId('5')).thenAnswer(
+        (_) async => activity(joinPolicy: 'approval'),
+      );
       when(() => repo.participants('5')).thenAnswer((_) async => []);
       when(() => repo.joinRequests('5')).thenAnswer(
         (_) async => [
@@ -347,10 +346,7 @@ void main() {
       verify(
         () => repo.removeParticipant(activityId: '5', uid: 'u2'),
       ).called(1);
-      expect(
-        find.text('Tavita Faleolo removed from the activity.'),
-        findsOneWidget,
-      );
+      expect(find.text('Tavita Faleolo removed from the activity.'), findsOneWidget);
     });
 
     testWidgets('Edit should open the full-screen editor and refresh on save', (
@@ -402,7 +398,9 @@ void main() {
       expect(find.text('Activity updated.'), findsOneWidget);
     });
 
-    testWidgets('quick-action Chat should push the group chat', (tester) async {
+    testWidgets('quick-action Chat should push the group chat', (
+      tester,
+    ) async {
       when(() => repo.byId('5')).thenAnswer((_) async => activity());
       when(() => repo.participants('5')).thenAnswer((_) async => []);
       when(() => repo.joinRequests('5')).thenAnswer((_) async => []);

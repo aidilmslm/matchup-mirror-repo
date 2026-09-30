@@ -1,4 +1,3 @@
-// Tests for presence.
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,17 +18,17 @@ vi.mock('../../middleware/auth.middleware.js', () => {
       next();
     }),
 
-    requireAuthAllowSuspended: vi.fn((req, _res, next) => {
+  requireAuthAllowSuspended: vi.fn((req, _res, next) => {
       req.auth = req.auth ?? {
-        uid: 'test-uid-1',
-        token: {} as never,
+          uid: 'test-uid-1',
+          token: {} as never,
       };
       next();
-    }),
+  }),
 
-    requireAdmin: vi.fn((_req, _res, next) => {
+  requireAdmin: vi.fn((_req, _res, next) => {
       next();
-    }),
+  }),
   };
 });
 
@@ -45,9 +44,11 @@ describe('presence routes', () => {
     it('when request body is valid => expected 200', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/presence').send({
-        state: 'online',
-      });
+      const response = await request(app)
+        .post('/api/presence')
+        .send({
+          state: 'online',
+        });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -57,15 +58,20 @@ describe('presence routes', () => {
           state: 'online',
         },
       });
-      expect(presenceService.setPresence).toHaveBeenCalledWith('test-uid-1', 'online');
+      expect(presenceService.setPresence).toHaveBeenCalledWith(
+        'test-uid-1',
+        'online',
+      );
     });
 
     it('when state is invalid => expected 400 w/ INVALID_STATE', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/presence').send({
-        state: 'busy',
-      });
+      const response = await request(app)
+        .post('/api/presence')
+        .send({
+          state: 'busy',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -78,13 +84,17 @@ describe('presence routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(presenceService.setPresence).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(presenceService.setPresence).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).post('/api/presence').send({
-        state: 'online',
-      });
+      const response = await request(app)
+        .post('/api/presence')
+        .send({
+          state: 'online',
+        });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -151,7 +161,9 @@ describe('presence routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(presenceService.getPresence).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(presenceService.getPresence).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 

@@ -17,7 +17,8 @@ import '../features/notifications/services/push_notification_service.dart';
 import '../features/notifications/services/push_routing.dart';
 import 'router.dart';
 
-/// Cached GoRouter instance. Using a provider ensures the router is constructed once and the refreshListenable can.
+/// Cached GoRouter instance. Using a provider ensures the router is
+/// constructed once and the refreshListenable can reference a stable [Ref].
 final _routerProvider = Provider<GoRouter>(buildRouter);
 
 class MatchUpApp extends ConsumerWidget {
@@ -26,7 +27,8 @@ class MatchUpApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
-    // GoRouter is instantiated once and cached in a provider so it isn't recreated on every rebuild of MatchUpApp.
+    // GoRouter is instantiated once and cached in a provider so it isn't
+    // recreated on every rebuild of MatchUpApp.
     final router = ref.watch(_routerProvider);
     return MaterialApp.router(
       title: AppConstants.appName,
@@ -36,11 +38,17 @@ class MatchUpApp extends ConsumerWidget {
       themeMode: mode,
       routerConfig: router,
       builder: (context, child) {
-        // Routes notification taps / foreground banners (see PushNotificationService streams) into the navigator.
-        final routedChild = _PushRouter(
-          child: child ?? const SizedBox.shrink(),
-        );
-        // Match Figma / CSS line-height semantics: leadingDistribution.even splits the extra leading equally above.
+        // Routes notification taps / foreground banners (see
+        // PushNotificationService streams) into the navigator.
+        final routedChild = _PushRouter(child: child ?? const SizedBox.shrink());
+        // Match Figma / CSS line-height semantics:
+        //  - leadingDistribution.even splits the extra leading equally
+        //    above and below each line (Flutter default is proportional to
+        //    the font's ascent/descent, which makes Plus Jakarta Sans "sit
+        //    high" inside its line box compared to how it renders on the web).
+        //  - applyHeightToFirstAscent/LastDescent = false makes single-line
+        //    UI text (buttons, badges, headers) hug the top/bottom of its
+        //    container instead of floating inside inflated whitespace.
         return DefaultTextHeightBehavior(
           textHeightBehavior: const TextHeightBehavior(
             applyHeightToFirstAscent: false,
@@ -96,7 +104,11 @@ class MatchUpApp extends ConsumerWidget {
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
         selectedItemColor: AppColors.primary,
-        // textSecondary (4.76:1), not textTertiary (2.54:1).
+        // textSecondary (4.76:1), not textTertiary (2.54:1) — this colours
+        // real always-visible tab labels, which must clear WCAG AA (PRD
+        // Appendix E.3). AppShell's own tab bar (the one actually on
+        // screen) already gets this right; this theme config exists for
+        // any Material BottomNavigationBar that might be added later.
         unselectedItemColor: AppColors.textSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
@@ -206,8 +218,15 @@ class MatchUpApp extends ConsumerWidget {
     );
   }
 
-  // Context free style helpers.
-  // `AppTypography`'s styles are theme-aware and require a `BuildContext` (see its doc comment).
+  // ── Context-free style helpers ──────────────────────────────────────────
+  // `AppTypography`'s styles are theme-aware and require a `BuildContext`
+  // (see its doc comment) — but these `ThemeData` builder methods run
+  // *before* there's a `BuildContext` to read a `Theme` from (they build
+  // the `Theme` itself). These mirror the base shape of the relevant
+  // `AppTypography` styles with an explicit colour supplied by the caller
+  // instead, since baking a fixed colour in here is correct: each builder
+  // (`_buildLightTheme` / `_buildDarkTheme`) already knows which palette
+  // it's building for.
   static const TextStyle _captionStyle = TextStyle(
     fontFamily: AppTypography.fontFamily,
     fontSize: 12,
@@ -271,7 +290,8 @@ class MatchUpApp extends ConsumerWidget {
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: DarkPalette.surface,
-        // primaryOnDark, not brand primary: #0B1F8A on a dark surface is 1.3:1 (invisible).
+        // primaryOnDark, not brand primary: #0B1F8A on a dark surface is
+        // 1.3:1 (invisible). #7BAEF7 clears AA on surface/muted.
         selectedItemColor: DarkPalette.primaryOnDark,
         unselectedItemColor: DarkPalette.textSecondary,
         type: BottomNavigationBarType.fixed,
@@ -357,7 +377,8 @@ class MatchUpApp extends ConsumerWidget {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          // Lightened brand blue: raw primary (#0B1F8A) as text on a dark background is 1.4:1.
+          // Lightened brand blue: raw primary (#0B1F8A) as text on a
+          // dark background is 1.4:1.
           foregroundColor: DarkPalette.primaryOnDark,
           textStyle: AppTypography.button.copyWith(fontSize: 14),
         ),
@@ -383,11 +404,18 @@ class MatchUpApp extends ConsumerWidget {
   }
 }
 
-// Push routing.
+// ─── Push routing ─────────────────────────────────────────────────────────────
 
-/// Subscribes to [PushNotificationService] streams and turns them into navigation + foreground snackbars:
-/// System-tray taps (background/killed) → deep-link via [routeForPush].
-/// Context comes from [rootNavigatorKey] so this works without being under any particular screen.
+/// Subscribes to [PushNotificationService] streams and turns them into
+/// navigation + foreground snackbars:
+///
+/// * System-tray taps (background/killed) → deep-link via [routeForPush].
+/// * Foreground messages → snackbar with a View action (the OS does not
+///   banner these itself).
+///
+/// Context comes from [rootNavigatorKey] so this works without being
+/// under any particular screen. Taps landing on auth-gated routes while
+/// logged out simply hit the router's existing redirect to /welcome.
 class _PushRouter extends ConsumerStatefulWidget {
   const _PushRouter({required this.child});
   final Widget child;
@@ -403,10 +431,10 @@ class _PushRouterState extends ConsumerState<_PushRouter> {
   @override
   void initState() {
     super.initState();
-    _openedSub = PushNotificationService.onNotificationOpened.listen(_open);
-    _foregroundSub = PushNotificationService.onForegroundMessage.listen(
-      _banner,
-    );
+    _openedSub =
+        PushNotificationService.onNotificationOpened.listen(_open);
+    _foregroundSub =
+        PushNotificationService.onForegroundMessage.listen(_banner);
   }
 
   @override
@@ -419,21 +447,27 @@ class _PushRouterState extends ConsumerState<_PushRouter> {
   void _open(PushPayload payload) {
     final route = routeForPush(payload);
     if (route == null || !mounted) return;
-    // Membership may have changed underneath the cached tabs.
+    // Membership may have changed underneath the cached tabs (e.g. a
+    // cancelled game must leave Upcoming) — refetch now so the lists
+    // are fresh when the user returns to them.
     _refreshMyGames(payload);
-    // Defer a frame so taps arriving mid-transition don't race the navigator.
+    // Defer a frame so taps arriving mid-transition don't race the
+    // navigator.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final ctx = rootNavigatorKey.currentContext;
       if (ctx == null) return;
-      // push (not go): the tap lands on top of the current stack so back returns to where the user was.
+      // push (not go): the tap lands on top of the current stack so
+      // back returns to where the user was (e.g. the notifications
+      // feed), instead of replacing it.
       GoRouter.of(ctx).push(route);
     });
   }
 
   void _banner(PushPayload payload) async {
     if (!mounted) return;
-    // Same membership refresh as the tray-tap path: the user may be sitting on Upcoming right now watching the stale.
+    // Same membership refresh as the tray-tap path: the user may be
+    // sitting on Upcoming right now watching the stale row.
     _refreshMyGames(payload);
     // Locally muted group chats never banner while foregrounded.
     final muted = await _isMutedChat(payload);
@@ -455,7 +489,9 @@ class _PushRouterState extends ConsumerState<_PushRouter> {
     );
   }
 
-  /// Invalidates the My Games tab providers when [payload] can have changed membership.
+  /// Invalidates the My Games tab providers when [payload] can have
+  /// changed membership. No-op for chat/system pushes. Safe to call
+  /// redundantly — providers refetch stale-while-revalidate.
   void _refreshMyGames(PushPayload payload) {
     if (!invalidatesMyGames(payload)) return;
     ref.invalidate(joinedGamesProvider);
@@ -464,7 +500,8 @@ class _PushRouterState extends ConsumerState<_PushRouter> {
     ref.invalidate(pendingGamesProvider);
   }
 
-  /// True when [payload] targets a locally muted group chat. Mute is keyed by activity id.
+  /// True when [payload] targets a locally muted group chat. Mute is
+  /// keyed by activity id — DMs and unknown payloads are never muted.
   Future<bool> _isMutedChat(PushPayload payload) async {
     final id = payload.activityId;
     if (id == null || payload.type != 'chat_message') return false;

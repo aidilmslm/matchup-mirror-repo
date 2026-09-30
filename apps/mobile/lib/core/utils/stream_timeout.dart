@@ -1,9 +1,23 @@
 import 'dart:async';
 
-/// Forwards every event of [source], but throws [TimeoutException] if the first event takes longer than [timeout].
-/// RTDB `onValue` listeners are the motivating case: when the socket stalls (blackholed route.
-/// Only the FIRST event is timed: a quiet chat legitimately emits nothing for hours, and timing out idle gaps would.
-/// Implementation uses a manual [StreamSubscription].
+/// Forwards every event of [source], but throws [TimeoutException] if the
+/// first event takes longer than [timeout] instead of hanging forever.
+///
+/// RTDB `onValue` listeners are the motivating case: when the socket
+/// stalls (blackholed route, wedged connection) the stream emits neither
+/// data nor error, so a chat screen would sit on its skeleton with no
+/// error and no retry. Callers catch the timeout and fall back to HTTP
+/// polling.
+///
+/// Only the FIRST event is timed: a quiet chat legitimately emits
+/// nothing for hours, and timing out idle gaps would flap between
+/// realtime and polling. A stalled first event, however, proves the
+/// listener never attached.
+///
+/// Implementation uses a manual [StreamSubscription] (not
+/// [StreamIterator]): cancelling an iterator while its `moveNext` is
+/// pending hangs forever, which would leak every disposed chat
+/// subscription. A raw subscription cancels promptly at any point.
 Stream<T> withFirstEventTimeout<T>(
   Stream<T> source, {
   Duration timeout = const Duration(seconds: 10),

@@ -27,10 +27,7 @@ void main() {
           status: 403,
           errorBody: {
             'ok': false,
-            'error': {
-              'code': 'ACCOUNT_SUSPENDED',
-              'message': 'Account suspended',
-            },
+            'error': {'code': 'ACCOUNT_SUSPENDED', 'message': 'Account suspended'},
           },
         ),
       );

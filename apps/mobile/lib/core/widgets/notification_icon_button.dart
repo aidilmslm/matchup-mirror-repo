@@ -5,6 +5,9 @@ import '../theme/dark_colors.dart';
 import 'pressable_scale.dart';
 
 /// Standardized notification icon button used in top headers across the app.
+/// 44×44 tap target (Material a11y minimum), 24×24 icon centered, optional red
+/// unread badge in the top-right corner. Caller must supply [onTap] because
+/// GoRouter does not support `Navigator.pushNamed` for static routes.
 class NotificationIconButton extends StatelessWidget {
   const NotificationIconButton({
     super.key,

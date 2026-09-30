@@ -53,19 +53,20 @@ void main() {
     return router;
   }
 
-  testWidgets('rapid double-tap pushes only one page (no duplicate key)', (
-    tester,
-  ) async {
-    await pumpShell(tester);
+  testWidgets(
+    'rapid double-tap pushes only one page (no duplicate key)',
+    (tester) async {
+      await pumpShell(tester);
 
-    await tester.tap(find.text('Open Notifications'));
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.text('Open Notifications'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Notifications'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Open Notifications'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Notifications open'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('Notifications open'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'NavGuard.push self-heals after context.go() abandons the pushed route',

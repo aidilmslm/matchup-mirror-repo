@@ -40,8 +40,18 @@ import 'widgets/weather_chip.dart';
 import 'create/providers/image_upload_provider.dart';
 
 /// Two-step create-activity wizard with a live preview.
-/// Step 1 (Setup) — the basic game details (title, sport, date, duration, location, capacity), shown as tappable.
-/// Every field is driven straight through [formDataProvider] (single source of truth).
+///
+/// Step 1 (Setup)   — the basic game details (title, sport, date, duration,
+///                    location, capacity), shown as tappable setting cards.
+/// Step 2 (Rules)   — who can join (skill, entry fee, visibility, description,
+///                    photos).
+/// Preview          — renders the real [DiscoveryCard] from the form data so
+///                    the host sees exactly what others will see before they
+///                    commit.
+///
+/// Every field is driven straight through [formDataProvider] (single source
+/// of truth); the widget only holds ephemeral UI state (which step is shown
+/// and whether a submit is in flight).
 class CreateActivityScreen extends ConsumerStatefulWidget {
   const CreateActivityScreen({super.key});
 
@@ -65,9 +75,14 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   bool _submitting = false;
 
   /// Set when the activity was created but its cover upload failed.
+  /// The game already exists server-side, so the form must NOT submit
+  /// again (that would create a duplicate) — [_submit] degrades to a
+  /// cover-only retry while this is non-null. Cleared on retry success
+  /// or when the user continues without a cover.
   String? _coverFailedActivityId;
 
-  /// True after a blocked Continue attempt — reveals inline field errors on the setup step.
+  /// True after a blocked Continue attempt — reveals inline field
+  /// errors on the setup step. Reset once the step validates.
   bool _setupAttempted = false;
 
   // Custom duration: stepped in 15-minute increments, 30m … 8h.
@@ -93,7 +108,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     'Swimming',
   ];
 
-  /// Modern, consistent metadata for every "tipe" picker so Sport, Skill, Entry, and Join Policy all speak the same.
+  /// Modern, consistent metadata for every "tipe" picker so Sport, Skill,
+  /// Entry, and Join Policy all speak the same visual language
+  /// (icon + title + subtitle).
   static const _sportIcons = <String, IconData>{
     'Basketball': Icons.sports_basketball_outlined,
     'Tennis': Icons.sports_tennis_outlined,
@@ -112,24 +129,23 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     'Beginner': (icon: Icons.eco_outlined, subtitle: 'Just starting out'),
     'Intermediate': (
       icon: Icons.trending_up_outlined,
-      subtitle: 'Knows the basics',
+      subtitle: 'Knows the basics'
     ),
     'Advanced': (icon: Icons.bolt_outlined, subtitle: 'Competitive play'),
   };
 
-  static final _joinPolicyMeta =
-      <String, ({IconData icon, String title, String subtitle})>{
-        'open': (
-          icon: Icons.lock_open_outlined,
-          title: 'Open',
-          subtitle: 'Anyone can join instantly',
-        ),
-        'approval': (
-          icon: Icons.verified_outlined,
-          title: 'Approval',
-          subtitle: 'You approve each request',
-        ),
-      };
+  static final _joinPolicyMeta = <String, ({IconData icon, String title, String subtitle})>{
+    'open': (
+      icon: Icons.lock_open_outlined,
+      title: 'Open',
+      subtitle: 'Anyone can join instantly'
+    ),
+    'approval': (
+      icon: Icons.verified_outlined,
+      title: 'Approval',
+      subtitle: 'You approve each request'
+    ),
+  };
 
   @override
   void initState() {
@@ -137,7 +153,14 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _restoreOrReset());
   }
 
-  /// Draft persistence (spec Phase 5, MVP scope): the form is JSON- serialisable via [ActivityFormData.toJson].
+  /// Draft persistence (spec Phase 5, MVP scope): the form is JSON-
+  /// serialisable via [ActivityFormData.toJson], so a draft survives app
+  /// restarts and is restored on reopen. Cleared on successful submit.
+  /// Cover image bytes are NOT persisted (too large for prefs); the
+  /// picked venue (label, address, lat/lng) IS persisted and rebuilt
+  /// into `_venue` on restore.
+  /// Crop tool intentionally skipped: `image_picker` maxWidth/maxHeight/
+  /// imageQuality already constrains uploads (see audit A-plan §3).
   static const _draftKey = 'create_activity_draft_v1';
 
   Future<void> _restoreOrReset() async {
@@ -175,12 +198,14 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
           _titleController.text = data.title;
           _descriptionController.text = data.description;
           _priceController.text = data.price ?? '';
-          // Rebuild the picked venue so the address + accurate pin survive the restore.
+          // Rebuild the picked venue so the address + accurate pin
+          // survive the restore (previously only the label text came
+          // back and submit fell back to default coords).
           setState(() {
             final lat = data.venueLatitude;
             final lng = data.venueLongitude;
-            _venue =
-                (lat != null && lng != null && data.location.trim().isNotEmpty)
+            _venue = (lat != null && lng != null &&
+                    data.location.trim().isNotEmpty)
                 ? PlaceSuggestion(
                     placeId: '',
                     label: data.location,
@@ -194,7 +219,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         }
       }
     } catch (_) {
-      // No usable draft (fresh install, test harness without prefs plugin, or corrupt JSON).
+      // No usable draft (fresh install, test harness without prefs plugin,
+      // or corrupt JSON) — fall through to a clean form.
     }
     if (!mounted) return;
     ref.read(imageUploadProvider.notifier).reset();
@@ -236,7 +262,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
 
   FormDataNotifier get _form => ref.read(formDataProvider.notifier);
 
-  // Formatting.
+  // ── Formatting ─────────────────────────────────────────────────────────────
 
   String _formatDate(DateTime dt) {
     const months = [
@@ -268,7 +294,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     return '${h}h ${m}m';
   }
 
-  // Pickers.
+  // ── Pickers ──────────────────────────────────────────────────────────────
 
   Future<void> _pickImage() async {
     final choice = await showModalBottomSheet<ImageSourceChoice>(
@@ -305,7 +331,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       final b64 = base64.encode(bytes);
       ref.read(imageUploadProvider.notifier).setCompleted(b64);
       _form.setCoverImage(b64);
-      // Cover-only retry state: a fresh pick should immediately retry the upload for the already-created game.
+      // Cover-only retry state: a fresh pick should immediately retry
+      // the upload for the already-created game (no second tap needed).
       if (_coverFailedActivityId != null) {
         await _retryCover();
       }
@@ -391,9 +418,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: AppTypography.bodyMedium(
-                      context,
-                    ).copyWith(color: context.colors.textSecondary),
+                    style: AppTypography.bodyMedium(context).copyWith(
+                      color: context.colors.textSecondary,
+                    ),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.x4),
@@ -423,7 +450,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: selected ? c.primarySoft : c.surface,
-                            borderRadius: BorderRadius.circular(AppRadius.card),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.card,
+                            ),
                             border: Border.all(
                               color: selected ? c.primaryOnSurface : c.border,
                               width: selected ? 1.5 : 1,
@@ -456,7 +485,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                               ],
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       _joinPolicyMeta[opt]?.title ?? opt,
@@ -522,7 +552,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     );
   }
 
-  // Navigation.
+  // ── Navigation ─────────────────────────────────────────────────────────────
 
   void _onBack() {
     if (_step > _stepSetup) {
@@ -536,7 +566,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     final data = ref.read(formDataProvider);
     final err = _setupError(data);
     if (err != null) {
-      // Reveal inline field errors in addition to the snackbar, so a missing venue can't be mistaken for "lanjut".
+      // Reveal inline field errors in addition to the snackbar, so a
+      // missing venue can't be mistaken for "lanjut".
       setState(() => _setupAttempted = true);
       AppSnackbar.show(
         context,
@@ -556,7 +587,10 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   void _goToPreview() {
     final data = ref.read(formDataProvider);
     if (data.feeType == 1) {
-      // Same shared gate as [_submit]: the strict format rule first, then the positivity check.
+      // Same shared gate as [_submit]: the strict format rule first,
+      // then the positivity check — so preview and submit agree on
+      // every input (including zero/negative, which parses fine but
+      // must not pass).
       final priceErr = validateField(
         'price',
         _priceController.text.trim(),
@@ -590,7 +624,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
   /// First blocking issue on the setup step, or null when it's good to go.
   String? _setupError(ActivityFormData data) {
     if (data.title.trim().isEmpty) return 'Please enter an activity title.';
-    // A venue pick carries coordinates — a bare location string without them.
+    // A venue pick carries coordinates — a bare location string without
+    // them (stale draft) must re-pick instead of silently submitting
+    // with fallback coordinates.
     if (data.location.trim().isEmpty ||
         (data.venueLatitude == null && _venue == null)) {
       return 'Please pick a venue on the map.';
@@ -603,8 +639,17 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     return null;
   }
 
-  /// Uploads the selected cover image and points the activity at it via `PATCH cover`.
-  /// The draft stores the picked bytes as base64 via `setCoverImage` (see [_pickImage]).
+  /// Uploads the selected cover image and points the activity at it via
+  /// `PATCH cover`. Returns `null` on success, otherwise a user-facing
+  /// reason the caller must surface (so the user can pick another photo).
+  ///
+  /// The draft stores the picked bytes as base64 via `setCoverImage`
+  /// (see [_pickImage]); uploads need a local file path, so base64
+  /// payloads are decoded into a temp file first. A value that already
+  /// points at an existing file is uploaded directly.
+  /// Phase two of the cover flow: writes [bytes] to a temp file,
+  /// uploads it to the host-only `activities/{id}/cover/` Storage path,
+  /// and points the activity at the download URL via `PATCH cover`.
   Future<String?> _attachCover(String activityId, Uint8List bytes) async {
     try {
       final dir = await Directory.systemTemp.createTemp('cover_');
@@ -620,9 +665,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       if (uploaded == null) {
         return 'Cover photo upload failed. Check your connection.';
       }
-      await ref
-          .read(activityRepositoryProvider)
-          .updateCover(
+      await ref.read(activityRepositoryProvider).updateCover(
             activityId: activityId,
             coverImagePath: uploaded.path,
             coverImageUrl: uploaded.downloadUrl,
@@ -630,7 +673,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       return null;
     } catch (e) {
       debugPrint('[CreateActivity] cover attach failed: $e');
-      // Prefer a specific, actionable reason so the user can pick another photo instead of seeing a generic failure.
+      // Prefer a specific, actionable reason so the user can pick
+      // another photo instead of seeing a generic failure.
       if (e is DioException && e.error is ApiException) {
         return (e.error as ApiException).userMessage;
       }
@@ -643,13 +687,13 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     }
   }
 
-  /// Retries only the cover upload for an already-created activity (see.
+  /// Retries only the cover upload for an already-created activity
+  /// (see [_coverFailedActivityId]). Never recreates the game.
+  /// A removed photo (null bytes) means "continue without a cover".
   Future<void> _retryCover() async {
     final activityId = _coverFailedActivityId;
     if (activityId == null || _submitting) return;
-    final coverBytes = _decodeCoverBytes(
-      ref.read(formDataProvider).coverImagePath,
-    );
+    final coverBytes = _decodeCoverBytes(ref.read(formDataProvider).coverImagePath);
     if (coverBytes == null) {
       // User removed the photo: keep the created game, without a cover.
       final id = _coverFailedActivityId;
@@ -684,7 +728,10 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     }
   }
 
-  /// Shows why the cover failed and keeps the user on the form so they can pick another photo.
+  /// Shows why the cover failed and keeps the user on the form so they
+  /// can pick another photo (or remove it and retry to go coverless).
+  /// [alreadyCreated] prefixes the activity-created context, since the
+  /// game exists server-side at that point.
   void _showCoverFailure(String reason, {bool alreadyCreated = false}) {
     if (!mounted) return;
     final head = alreadyCreated && reason.isNotEmpty
@@ -701,7 +748,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     );
   }
 
-  /// Shared success tail: reset the wizard, refresh Hosting, and leave for the activities list.
+  /// Shared success tail: reset the wizard, refresh Hosting, and leave
+  /// for the activities list.
   Future<void> _finishCreateSuccess({
     required String activityId,
     required bool withCover,
@@ -710,7 +758,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     ref.read(imageUploadProvider.notifier).reset();
     await _clearDraft();
     if (!mounted) return;
-    // The new game lives under Hosting — refresh that tab now so it appears without a manual pull-to-refresh.
+    // The new game lives under Hosting — refresh that tab now so it
+    // appears without a manual pull-to-refresh.
     ref.invalidate(hostedGamesProvider);
     HapticFeedback.heavyImpact();
     AppSnackbar.show(
@@ -725,13 +774,15 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
 
   Future<void> _submit() async {
     if (_submitting) return;
-    // The game already exists — a second full submit would duplicate it. Retry only the cover instead.
+    // The game already exists — a second full submit would duplicate
+    // it. Retry only the cover instead.
     if (_coverFailedActivityId != null) {
       await _retryCover();
       return;
     }
     final data = ref.read(formDataProvider);
-    // Never silently substitute a fallback date.
+    // Never silently substitute a fallback date: re-validate the setup
+    // step and abort with the reason when it's not good to go.
     final setupErr = _setupError(data);
     if (setupErr != null) {
       if (!mounted) return;
@@ -742,7 +793,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       );
       return;
     }
-    // Shared rules (same messages as the wizard validators): capacity cap and price format.
+    // Shared rules (same messages as the wizard validators): capacity
+    // cap and price format.
     final capErr = validateField(
       'maxParticipants',
       '${data.maxParticipants}',
@@ -786,12 +838,12 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       );
       return;
     }
-    // Split: clamp min into 2..capacity (null = full house).
+    // Split: clamp min into 2..capacity (null = full house). The stored
+    // `fee` is the worst-case per-person price so old clients still
+    // render a number.
     final minPlayers = split
-        ? (data.minPlayers ?? data.maxParticipants).clamp(
-            2,
-            data.maxParticipants,
-          )
+        ? (data.minPlayers ?? data.maxParticipants)
+            .clamp(2, data.maxParticipants)
         : null;
     final perPerson = split && minPlayers != null
         ? (amount! / minPlayers * 100).round() / 100
@@ -799,7 +851,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
 
     setState(() => _submitting = true);
     final pickedVenue = _venue;
-    // Venue coords: the form's persisted pick wins (survives draft restore).
+    // Venue coords: the form's persisted pick wins (survives draft
+    // restore); the in-memory `_venue` covers picks made this session.
+    // Falls back to central Auckland (the seed-data centre).
     final double pickedLat =
         data.venueLatitude ?? pickedVenue?.latitude ?? -36.8485;
     final double pickedLng =
@@ -808,12 +862,20 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     final String? pickedAddress = data.venueAddress.trim().isNotEmpty
         ? data.venueAddress.trim()
         : pickedVenue?.secondary.trim().isNotEmpty == true
-        ? pickedVenue!.secondary.trim()
-        : null;
-    // Cover photo is optional and uploaded AFTER the create, because Storage rules only allow.
+            ? pickedVenue!.secondary.trim()
+            : null;
+    // Cover photo is optional and uploaded AFTER the create, because
+    // Storage rules only allow `activities/{id}/cover/…` — the id
+    // doesn't exist until the activity is created. Uploading anywhere
+    // else (e.g. `uploads/activity-covers/…`) is denied. A post-create
+    // cover failure parks the id in [_coverFailedActivityId] and stays
+    // on the form with the reason — never a silent photoless game.
     final coverBytes = _decodeCoverBytes(data.coverImagePath);
-    // Fail fast on oversized covers (8 MB server cap): stay on the form with the reason.
-    if (coverBytes != null && coverBytes.lengthInBytes > kMaxCoverImageBytes) {
+    // Fail fast on oversized covers (8 MB server cap): stay on the
+    // form with the reason so the user can pick a smaller photo —
+    // never create the game first and silently drop the cover.
+    if (coverBytes != null &&
+        coverBytes.lengthInBytes > kMaxCoverImageBytes) {
       if (!mounted) return;
       setState(() => _submitting = false);
       AppSnackbar.show(
@@ -826,7 +888,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       );
       return;
     }
-    // Weather snapshot (best-effort): captured now so the detail screen can show it without another lookup.
+    // Weather snapshot (best-effort): captured now so the detail screen
+    // can show it without another lookup. Null when unavailable — the
+    // detail falls back to a live Open-Meteo fetch instead.
     WeatherInfo? snapshot;
     try {
       snapshot = await WeatherService.instance.fetchForDateTime(
@@ -846,7 +910,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             sportType: data.sportType,
             location: data.location.trim(),
             address: pickedAddress,
-            // Validated at the top of [_submit] — never a silent now()+2h substitution.
+            // Validated at the top of [_submit] — never a silent
+            // now()+2h substitution.
             dateTime: data.selectedDate!,
             maxParticipants: data.maxParticipants,
             skillLevel: data.skillLevel,
@@ -859,8 +924,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             fee: paid ? perPerson : null,
             feeMode: split ? 'split' : 'fixed',
             totalCost: split ? amount : null,
-            minPlayers:
-                split && minPlayers != null && minPlayers < data.maxParticipants
+            minPlayers: split && minPlayers != null && minPlayers < data.maxParticipants
                 ? minPlayers
                 : null,
             weatherTemp: snapshot?.temperatureC.isNaN == false
@@ -870,7 +934,11 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             weatherDesc: snapshot?.description,
             weatherRain: snapshot?.precipitationProbability,
           );
-      // Phase two: store the bytes, upload to the host-only cover path, and point the activity at the URL.
+      // Phase two: store the bytes, upload to the host-only cover
+      // path, and point the activity at the URL. The game already
+      // exists here, so a cover failure must NOT silently drop the
+      // photo: park the id in [_coverFailedActivityId], stay on the
+      // form, and show the reason so the user can pick another photo.
       if (coverBytes == null) {
         await _finishCreateSuccess(activityId: created.id, withCover: true);
       } else {
@@ -883,7 +951,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             _submitting = false;
             _coverFailedActivityId = created.id;
           });
-          // Refresh Hosting anyway so the created game is visible underneath while the user fixes the photo.
+          // Refresh Hosting anyway so the created game is visible
+          // underneath while the user fixes the photo.
           ref.invalidate(hostedGamesProvider);
           HapticFeedback.heavyImpact();
           _showCoverFailure(reason, alreadyCreated: true);
@@ -892,11 +961,13 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('[CreateActivity] submit failed: $e');
-      // Prefer the backend's own message (validation, conflicts, …) over the generic fallback so failures explain.
+      // Prefer the backend's own message (validation, conflicts, …)
+      // over the generic fallback so failures explain themselves.
       final message = e is DioException && e.error is ApiException
           ? (e.error as ApiException).userMessage
           : 'Could not create activity. Please try again.';
-      // Retry path (spec Phase 4): the form is NOT reset on failure.
+      // Retry path (spec Phase 4): the form is NOT reset on failure, so
+      // tapping Retry reuses every field exactly as the user left it.
       AppSnackbar.show(
         context,
         message: message,
@@ -910,7 +981,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     }
   }
 
-  // Build.
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -957,7 +1028,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
           Expanded(
             flex: 2,
             child: AppButton(
-              // After a cover-only failure the game exists.
+              // After a cover-only failure the game exists — the button
+              // retries the upload instead of recreating (see [_submit]).
               label: _coverFailedActivityId != null
                   ? 'Retry Cover Upload'
                   : 'Create Activity',
@@ -985,21 +1057,19 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     );
   }
 
-  // Step 1 · Setup.
+  // ── Step 1 · Setup ──────────────────────────────────────────────────────────
 
   Widget _buildSetupStep(ActivityFormData data) {
-    // Inline errors appear only after a blocked Continue attempt — pristine fields stay clean.
-    final titleErr = _setupAttempted && data.title.trim().isEmpty
-        ? 'Please enter an activity title.'
-        : null;
-    final venueErr =
-        _setupAttempted &&
+    // Inline errors appear only after a blocked Continue attempt —
+    // pristine fields stay clean.
+    final titleErr =
+        _setupAttempted && data.title.trim().isEmpty ? 'Please enter an activity title.' : null;
+    final venueErr = _setupAttempted &&
             (data.location.trim().isEmpty ||
                 (data.venueLatitude == null && _venue == null))
         ? 'Please pick a venue on the map.'
         : null;
-    final dateErr =
-        _setupAttempted &&
+    final dateErr = _setupAttempted &&
             (data.selectedDate == null ||
                 data.selectedDate!.isBefore(DateTime.now()))
         ? 'Please pick a future date and time.'
@@ -1052,13 +1122,19 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             ),
             current: data.sportType,
             onSelect: _form.setSportType,
-            iconFor: (o) => _sportIcons[o] ?? Icons.sports_basketball_outlined,
+            iconFor: (o) =>
+                _sportIcons[o] ?? Icons.sports_basketball_outlined,
           ),
           value: Text(data.sportType, style: _valueStyle(context)),
           trailing: _chevron(context),
         ),
 
-        // Location first — venue coords drive the weather forecast below, so pick this before the date.
+        // Location first — venue coords drive the weather forecast
+        // below, so pick this before the date. Picking a venue
+        // populates both the local `_venue` state (so we get
+        // accurate lat/lng on submit) AND the form's location
+        // string (so the `_setupError` validator treats the
+        // setup step as complete).
         VenueField(
           value: _venue,
           errorText: venueErr,
@@ -1088,7 +1164,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
           trailing: _chevron(context),
         ),
 
-        // Weather forecast for the picked venue + date. Best-effort via Open-Meteo — never blocks submit.
+        // Weather forecast for the picked venue + date.
+        // Best-effort via Open-Meteo — never blocks submit.
         WeatherChip(
           latitude: data.venueLatitude ?? _venue?.latitude,
           longitude: data.venueLongitude ?? _venue?.longitude,
@@ -1163,7 +1240,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     );
   }
 
-  // Step 2 · Rules.
+  // ── Step 2 · Rules ────────────────────────────────────────────────────────
 
   Widget _buildRulesStep(ActivityFormData data, ImageUploadInfo uploadInfo) {
     return ListView(
@@ -1180,10 +1257,14 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         ),
         const SizedBox(height: AppSpacing.x4),
 
-        // Skill level — consistent 2-col choice grid, same language as Entry / Join Policy below.
+        // Skill level — consistent 2-col choice grid, same language as
+        // Entry / Join Policy below (no more bare dropdown).
         _FieldLabel('Skill Level'),
         const SizedBox(height: 2),
-        Text('Who is this game for?', style: AppTypography.metaSub(context)),
+        Text(
+          'Who is this game for?',
+          style: AppTypography.metaSub(context),
+        ),
         const SizedBox(height: _kLabelGap + 2),
         GridView.builder(
           shrinkWrap: true,
@@ -1212,7 +1293,10 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         // Entry — two selectable choice cards.
         _FieldLabel('Entry Fee'),
         const SizedBox(height: 2),
-        Text('Is there a cost to join?', style: AppTypography.metaSub(context)),
+        Text(
+          'Is there a cost to join?',
+          style: AppTypography.metaSub(context),
+        ),
         const SizedBox(height: _kLabelGap + 2),
         Row(
           children: [
@@ -1237,7 +1321,10 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
             ),
           ],
         ),
-        // Paid block: segmented mode + price card.
+        // Paid block: segmented mode + price card. Wrapped in
+        // AnimatedSize so Free↔Paid toggles and Fixed↔Split switches
+        // grow/collapse smoothly instead of pushing "Who Can Join"
+        // down in one jump.
         ClipRect(
           child: AnimatedSize(
             duration: AppDurations.base,
@@ -1248,9 +1335,13 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(height: AppSpacing.x3),
-                      // Pricing mode: Fixed = flat per person, Split = shared total.
+                      // Pricing mode: Fixed = flat per person,
+                      // Split = shared total.
                       AppSegmentedControl(
-                        labels: const ['Fixed · per person', 'Split · total'],
+                        labels: const [
+                          'Fixed · per person',
+                          'Split · total',
+                        ],
                         selectedIndex: data.priceMode,
                         onChanged: (i) => _form.setPriceMode(i),
                       ),
@@ -1265,7 +1356,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
                         onMinChanged: (v) => _form.setMinPlayers(
                           v >= data.maxParticipants ? null : v,
                         ),
-                        total: double.tryParse(_priceController.text.trim()),
+                        total: double.tryParse(
+                          _priceController.text.trim(),
+                        ),
                       ),
                     ],
                   )
@@ -1359,7 +1452,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
         const SizedBox(height: _kLabelGap),
         _CoverPhoto(
           uploadInfo: uploadInfo,
-          // Draft-restored cover survives process death while the in-memory upload provider does not.
+          // Draft-restored cover survives process death while the
+          // in-memory upload provider does not.
           fallbackBytes: _decodeCoverBytes(data.coverImagePath),
           onTap: _pickImage,
           onRemove: () {
@@ -1372,9 +1466,11 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     );
   }
 
-  // Preview.
+  // ── Preview ─────────────────────────────────────────────────────────────
 
-  /// Decodes the draft's stored cover (base64 from [_pickImage]) for immediate display.
+  /// Decodes the draft's stored cover (base64 from [_pickImage]) for
+  /// immediate display. Null when absent or corrupt — callers fall back
+  /// to the placeholder.
   Uint8List? _decodeCoverBytes(String? stored) {
     if (stored == null || stored.isEmpty) return null;
     try {
@@ -1384,15 +1480,12 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     }
   }
 
-  Widget _buildPreviewStep(ActivityFormData data) {
-    final paid = data.feeType == 1;
+  Widget _buildPreviewStep(ActivityFormData data) {    final paid = data.feeType == 1;
     final split = paid && data.priceMode == 1;
     final amount = double.tryParse(_priceController.text.trim());
     final min = split
-        ? (data.minPlayers ?? data.maxParticipants).clamp(
-            2,
-            data.maxParticipants,
-          )
+        ? (data.minPlayers ?? data.maxParticipants)
+            .clamp(2, data.maxParticipants)
         : null;
     final preview = ActivityModel(
       id: 'preview',
@@ -1413,8 +1506,8 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       isPaid: paid,
       fee: paid
           ? (split && min != null && amount != null && amount > 0
-                ? (amount / min * 100).round() / 100
-                : amount)
+              ? (amount / min * 100).round() / 100
+              : amount)
           : null,
       feeMode: split ? 'split' : 'fixed',
       totalCost: split ? amount : null,
@@ -1436,12 +1529,14 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
           subtitle: 'This is how others will see your activity',
         ),
         const SizedBox(height: AppSpacing.x4),
-        // Card height follows the screen (62%) within sane bounds so the preview fills small phones without.
+        // Card height follows the screen (62%) within sane bounds so
+        // the preview fills small phones without overflowing tablets.
         SizedBox(
           height: (MediaQuery.of(context).size.height * 0.62)
               .clamp(420.0, 640.0)
               .toDouble(),
-          // The picked photo has no URL yet (upload happens on submit), so hand the raw bytes to the hero directly.
+          // The picked photo has no URL yet (upload happens on submit),
+          // so hand the raw bytes to the hero directly.
           child: DiscoveryCard(
             activity: preview,
             coverImageBytes: _decodeCoverBytes(data.coverImagePath),
@@ -1455,7 +1550,7 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
     );
   }
 
-  // Small inline helpers.
+  // ── Small inline helpers ─────────────────────────────────────────────────
 
   Widget _chevron(BuildContext context) => Icon(
     Icons.chevron_right_rounded,
@@ -1471,7 +1566,9 @@ class _CreateActivityScreenState extends ConsumerState<CreateActivityScreen> {
       );
 }
 
-// ───────────────────────────────────────────────────────────────────────────── Step chrome.
+// ─────────────────────────────────────────────────────────────────────────────
+// Step chrome
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Thin progress bar under the header showing wizard advancement.
 class _StepProgressBar extends StatelessWidget {
@@ -1616,7 +1713,9 @@ class _CheckRow extends StatelessWidget {
   }
 }
 
-// ───────────────────────────────────────────────────────────────────────────── Setting card (step 1 rows).
+// ─────────────────────────────────────────────────────────────────────────────
+// Setting card (step 1 rows)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SettingCard extends StatelessWidget {
   const _SettingCard({
@@ -1634,7 +1733,9 @@ class _SettingCard extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
-  /// Inline validation message.
+  /// Inline validation message. Renders a red border + message row so a
+  /// blocked Continue is visible on the field itself, not just a
+  /// transient snackbar.
   final String? error;
 
   @override
@@ -1649,9 +1750,7 @@ class _SettingCard extends StatelessWidget {
         color: context.colors.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: error != null
-              ? context.colors.errorText
-              : context.colors.border,
+          color: error != null ? context.colors.errorText : context.colors.border,
           width: error != null ? 1.5 : 1,
         ),
       ),
@@ -1715,7 +1814,9 @@ class _IconBox extends StatelessWidget {
   }
 }
 
-// ───────────────────────────────────────────────────────────────────────────── Cover photo uploader.
+// ─────────────────────────────────────────────────────────────────────────────
+// Cover photo uploader
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CoverPhoto extends StatelessWidget {
   const _CoverPhoto({
@@ -1731,7 +1832,9 @@ class _CoverPhoto extends StatelessWidget {
   final VoidCallback onRemove;
   final VoidCallback onReplace;
 
-  /// Draft-restored photo (decoded from the persisted draft) shown when the in-memory upload provider has no image.
+  /// Draft-restored photo (decoded from the persisted draft) shown when
+  /// the in-memory upload provider has no image — e.g. the screen was
+  /// reopened after the process died. The provider wins when present.
   final Uint8List? fallbackBytes;
 
   @override
@@ -1879,9 +1982,8 @@ class _PhotoBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger
-        ? context.colors.errorText
-        : context.colors.primaryOnSurface;
+    final color =
+        danger ? context.colors.errorText : context.colors.primaryOnSurface;
     return AppTappable(
       onTap: onTap,
       semanticLabel: semanticLabel,
@@ -1902,7 +2004,9 @@ class _PhotoBtn extends StatelessWidget {
   }
 }
 
-// ───────────────────────────────────────────────────────────────────────────── Shared form primitives.
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared form primitives
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
@@ -1924,7 +2028,8 @@ InputDecoration _dec(BuildContext context, String hint) => InputDecoration(
   hintStyle: AppTypography.bodyFormSecondary(
     context,
   ).copyWith(color: context.colors.textTertiary),
-  // No fill — the field blends into its white setting card.
+  // No fill — the field blends into its white setting card. The themed
+  // grey fill made the input read as a separate boxed control (not modern).
   filled: false,
   border: InputBorder.none,
   enabledBorder: InputBorder.none,
@@ -1933,7 +2038,8 @@ InputDecoration _dec(BuildContext context, String hint) => InputDecoration(
   contentPadding: EdgeInsets.zero,
 );
 
-/// Stepper button — decrement is a neutral outlined circle, increment is a filled `primarySoft` circle.
+/// Stepper button — decrement is a neutral outlined circle, increment is a
+/// filled `primarySoft` circle. Visual size 32; touch target padded to 44.
 class _CounterBtn extends StatelessWidget {
   const _CounterBtn({
     required this.icon,
@@ -1997,8 +2103,16 @@ class _CounterBtn extends StatelessWidget {
   }
 }
 
-/// Whole price block in one clean card: amount field on top, min stepper below the divider.
-/// The amount reads like a payment app (32 px ExtraBold, primary `$`) instead of a plain small text row.
+/// Whole price block in one clean card: amount field on top, min
+/// stepper below the divider (split mode only), and a tinted live
+/// estimate footer. Replaces the old three-stacked-boxes layout.
+/// Price block: big payment-style amount + min stepper + live estimate.
+///
+/// The amount reads like a payment app (32 px ExtraBold, primary `$`)
+/// instead of a plain small text row; the mode suffix is an uppercase
+/// pill chip in the same language as the join-policy pills, and the
+/// card border lights up primary while the field is focused — same
+/// interaction as the date-of-birth field on get-to-know-3.
 class _PriceCard extends StatefulWidget {
   const _PriceCard({
     required this.priceController,
@@ -2085,7 +2199,9 @@ class _PriceCardState extends State<_PriceCard> {
                     style: amountStyle,
                     decoration: InputDecoration(
                       hintText: '0.00',
-                      hintStyle: amountStyle.copyWith(color: c.textTertiary),
+                      hintStyle: amountStyle.copyWith(
+                        color: c.textTertiary,
+                      ),
                       filled: false,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
@@ -2110,7 +2226,8 @@ class _PriceCardState extends State<_PriceCard> {
                     duration: AppDurations.fast,
                     child: Text(
                       widget.isSplit ? 'TOTAL' : 'PER PERSON',
-                      // Keyed so mode switches cross-fade the pill text instead of swapping it in one frame.
+                      // Keyed so mode switches cross-fade the pill text
+                      // instead of swapping it in one frame.
                       key: ValueKey(widget.isSplit),
                       style: AppTypography.badgeSport(context).copyWith(
                         color: c.primaryOnSurface,
@@ -2191,7 +2308,9 @@ class _PriceCardState extends State<_PriceCard> {
   }
 }
 
-/// Tinted live-estimate footer inside [_PriceCard]: total ÷ min. Division is guarded.
+/// Tinted live-estimate footer inside [_PriceCard]: total ÷ min.
+/// Hidden until a valid total is typed. Division is guarded —
+/// a zero min would render Infinity instead of a price.
 class _SplitEstimateFooter extends StatelessWidget {
   const _SplitEstimateFooter({
     required this.total,
@@ -2211,7 +2330,8 @@ class _SplitEstimateFooter extends StatelessWidget {
     }
     final worst = total! / min;
     final full = total! / capacity;
-    // Full house splits exact — no "≈".
+    // Full house splits exact — no "≈". Otherwise the worst case is
+    // approximate (only gets cheaper as more join).
     final text = min >= capacity
         ? '\$${full.toStringAsFixed(2)} each — split evenly'
         : '≈\$${worst.toStringAsFixed(2)} each worst case · \$${full.toStringAsFixed(2)} when full';
@@ -2223,7 +2343,9 @@ class _SplitEstimateFooter extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: c.statusSuccessBg,
-        // Inset bottom radius: the footer sits flush against the card's bottom edge.
+        // Inset bottom radius: the footer sits flush against the card's
+        // bottom edge, so square corners would paint over the card's
+        // own bottom border (the "cut line" bug).
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(AppRadius.input - 1),
           bottomRight: Radius.circular(AppRadius.input - 1),
@@ -2240,9 +2362,10 @@ class _SplitEstimateFooter extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: AppTypography.metaSub(
-                context,
-              ).copyWith(color: c.successText, fontWeight: FontWeight.w600),
+              style: AppTypography.metaSub(context).copyWith(
+                color: c.successText,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -2251,7 +2374,8 @@ class _SplitEstimateFooter extends StatelessWidget {
   }
 }
 
-/// Selectable choice card — icon + title + subtitle, with a highlighted selected state.
+/// Selectable choice card — icon + title + subtitle, with a highlighted
+/// selected state. Used for the Free / Paid entry choice.
 class _ChoiceCard extends StatelessWidget {
   const _ChoiceCard({
     required this.icon,

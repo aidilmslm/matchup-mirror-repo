@@ -160,7 +160,9 @@ void main() {
         // image_picker_platform_interface: channel
         // 'plugins.flutter.io/image_picker', method 'pickImage'
         // returning the picked file path).
-        const pickerChannel = MethodChannel('plugins.flutter.io/image_picker');
+        const pickerChannel = MethodChannel(
+          'plugins.flutter.io/image_picker',
+        );
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(pickerChannel, (call) async {
               return '/tmp/picked-avatar.jpg';

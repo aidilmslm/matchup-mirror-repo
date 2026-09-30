@@ -1,4 +1,3 @@
-// Tests for activity checkin.
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -61,10 +60,9 @@ describe('activity check-in routes', () => {
         ok: true,
         data: { checkedInAt: 1787000000000 },
       });
-      expect(activityParticipantsService.canAccessActivityChat).toHaveBeenCalledWith(
-        'activity-1',
-        'test-uid-1',
-      );
+      expect(
+        activityParticipantsService.canAccessActivityChat,
+      ).toHaveBeenCalledWith('activity-1', 'test-uid-1');
       expect(checkInService.checkIn).toHaveBeenCalledWith({
         activityId: 'activity-1',
         uid: 'test-uid-1',
@@ -76,7 +74,9 @@ describe('activity check-in routes', () => {
     it('when body is empty => expected 201 without coordinates', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/activities/activity-1/check-in').send({});
+      const response = await request(app)
+        .post('/api/activities/activity-1/check-in')
+        .send({});
 
       expect(response.status).toBe(201);
       expect(checkInService.checkIn).toHaveBeenCalledWith({
@@ -108,7 +108,9 @@ describe('activity check-in routes', () => {
     it('when activityId is blank => expected 400 w/ EMPTY_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/activities/%20%20/check-in').send({});
+      const response = await request(app)
+        .post('/api/activities/%20%20/check-in')
+        .send({});
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -118,11 +120,15 @@ describe('activity check-in routes', () => {
     });
 
     it('when authenticated user is not host or participant => expected 403 w/ FORBIDDEN', async () => {
-      vi.mocked(activityParticipantsService.canAccessActivityChat).mockResolvedValueOnce(false);
+      vi.mocked(
+        activityParticipantsService.canAccessActivityChat,
+      ).mockResolvedValueOnce(false);
 
       const app = createApp();
 
-      const response = await request(app).post('/api/activities/activity-1/check-in').send({});
+      const response = await request(app)
+        .post('/api/activities/activity-1/check-in')
+        .send({});
 
       expect(response.status).toBe(403);
       expect(response.body).toEqual({
@@ -136,9 +142,9 @@ describe('activity check-in routes', () => {
     });
 
     it('when activity is not found => expected 404 w/ NOT_FOUND', async () => {
-      vi.mocked(activityParticipantsService.canAccessActivityChat).mockRejectedValueOnce(
-        new Error('Activity not found'),
-      );
+      vi.mocked(
+        activityParticipantsService.canAccessActivityChat,
+      ).mockRejectedValueOnce(new Error('Activity not found'));
 
       const app = createApp();
 
@@ -155,11 +161,15 @@ describe('activity check-in routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(checkInService.checkIn).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(checkInService.checkIn).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).post('/api/activities/activity-1/check-in').send({});
+      const response = await request(app)
+        .post('/api/activities/activity-1/check-in')
+        .send({});
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -182,17 +192,18 @@ describe('activity check-in routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).get('/api/activities/activity-1/check-in/me');
+      const response = await request(app).get(
+        '/api/activities/activity-1/check-in/me',
+      );
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         ok: true,
         data: { checkedIn: true, checkedInAt: 1787000000000 },
       });
-      expect(activityParticipantsService.canAccessActivityChat).toHaveBeenCalledWith(
-        'activity-1',
-        'test-uid-1',
-      );
+      expect(
+        activityParticipantsService.canAccessActivityChat,
+      ).toHaveBeenCalledWith('activity-1', 'test-uid-1');
     });
 
     it('when not checked in => expected 200 with null timestamp', async () => {
@@ -203,7 +214,9 @@ describe('activity check-in routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).get('/api/activities/activity-1/check-in/me');
+      const response = await request(app).get(
+        '/api/activities/activity-1/check-in/me',
+      );
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -213,11 +226,15 @@ describe('activity check-in routes', () => {
     });
 
     it('when authenticated user is not host or participant => expected 403 w/ FORBIDDEN', async () => {
-      vi.mocked(activityParticipantsService.canAccessActivityChat).mockResolvedValueOnce(false);
+      vi.mocked(
+        activityParticipantsService.canAccessActivityChat,
+      ).mockResolvedValueOnce(false);
 
       const app = createApp();
 
-      const response = await request(app).get('/api/activities/activity-1/check-in/me');
+      const response = await request(app).get(
+        '/api/activities/activity-1/check-in/me',
+      );
 
       expect(response.status).toBe(403);
       expect(response.body).toEqual({
@@ -231,13 +248,15 @@ describe('activity check-in routes', () => {
     });
 
     it('when activity is not found => expected 404 w/ NOT_FOUND', async () => {
-      vi.mocked(activityParticipantsService.canAccessActivityChat).mockRejectedValueOnce(
-        new Error('Activity not found'),
-      );
+      vi.mocked(
+        activityParticipantsService.canAccessActivityChat,
+      ).mockRejectedValueOnce(new Error('Activity not found'));
 
       const app = createApp();
 
-      const response = await request(app).get('/api/activities/missing-activity/check-in/me');
+      const response = await request(app).get(
+        '/api/activities/missing-activity/check-in/me',
+      );
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({
@@ -248,11 +267,15 @@ describe('activity check-in routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(checkInService.getCheckInStatus).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(checkInService.getCheckInStatus).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).get('/api/activities/activity-1/check-in/me');
+      const response = await request(app).get(
+        '/api/activities/activity-1/check-in/me',
+      );
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({

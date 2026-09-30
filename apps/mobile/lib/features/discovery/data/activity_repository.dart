@@ -2,11 +2,22 @@ import '../../activities/domain/activity_participant.dart';
 import '../domain/activity_model.dart';
 import '../domain/discovery_filter.dart';
 
-/// Read/write contract for activity data.
+/// Read/write contract for activity data. Both [LocalActivityRepository]
+/// (current static-data fallback) and [RemoteActivityRepository] (calls
+/// the MatchUp backend via [ApiClient]) implement this interface, so screens
+/// can swap implementations at the provider layer without changes.
 abstract class ActivityRepository {
-  /// Discovery feed.
-  /// Implementations may serve a short-TTL in-memory cache.
-  /// When [strict] is true, failures rethrow the original error instead of falling back to the offline store.
+  /// Discovery feed. When [filter] is non-null and non-empty, routes
+  /// to `GET /api/activities?discover=1&...` for the ranked pipeline.
+  /// When null or empty, falls back to the regular feed path so the
+  /// "no filter" case stays cheap.
+  ///
+  /// Implementations may serve a short-TTL in-memory cache; pass
+  /// [forceRefresh] to skip it (filter changes, manual refresh).
+  ///
+  /// When [strict] is true, failures rethrow the original error instead
+  /// of falling back to the offline store, so the UI can render an
+  /// error state. Defaults to false (legacy fail-soft behavior).
   Future<List<ActivityModel>> feed({
     int limit = 20,
     int offset = 0,
@@ -68,16 +79,24 @@ abstract class ActivityRepository {
 
   Future<void> leave(String activityId);
 
-  /// Host-only removal of another participant (`DELETE /api/activities/:activityId/participants/:uid`).
+  /// Host-only removal of another participant (`DELETE
+  /// /api/activities/:activityId/participants/:uid`). The backend also
+  /// allows self-removal through this route, but mobile keeps [leave]
+  /// for that path. Throws on failure so the manage screen can show
+  /// an error and keep the row in place.
   Future<void> removeParticipant({
     required String activityId,
     required String uid,
   });
 
-  /// Files a join request on an approval-gated activity.
+  /// Files a join request on an approval-gated activity. Throws when
+  /// the activity is open-policy (call [join] instead), full, or a
+  /// request is already pending. Withdrawing a pending request goes
+  /// through [leave], which cancels it server-side.
   Future<void> requestJoin(String activityId);
 
-  /// Pending join requests for an activity.
+  /// Pending join requests for an activity. Host-only on the backend;
+  /// returns empty for anyone else (or offline).
   Future<List<ActivityParticipant>> joinRequests(String activityId);
 
   /// Host-only decision on a pending request.
@@ -86,10 +105,13 @@ abstract class ActivityRepository {
   /// Host-only decision on a pending request.
   Future<void> declineJoinRequest(String activityId, String uid);
 
-  /// Cancels a hosted activity, notifying all participants.
+  /// Cancels a hosted activity, notifying all participants. Used by the
+  /// Manage Activity screen's host-only "Cancel Activity" action.
   Future<void> cancel(String activityId);
 
-  /// Host-only field update (`PATCH /api/activities/:id`).
+  /// Host-only field update (`PATCH /api/activities/:id`). Only
+  /// non-null fields are sent; the backend validates + ignores the
+  /// rest. Used by the edit screen.
   Future<void> updateActivity({
     required String activityId,
     String? title,
@@ -109,13 +131,21 @@ abstract class ActivityRepository {
   });
 
   /// Host-only cover update (`PATCH /api/activities/:activityId/cover`).
+  /// The image bytes must already live at [coverImagePath] in Storage
+  /// (`activities/{id}/cover/…`, uploaded with [StorageService]);
+  /// [coverImageUrl] is its download URL. Both are required by the
+  /// backend, which validates the path prefix. Throws on failure so the
+  /// caller can warn while keeping the already-created activity.
   Future<void> updateCover({
     required String activityId,
     required String coverImagePath,
     required String coverImageUrl,
   });
 
-  /// Generic host-only status update.
+  /// Generic host-only status update. [status] is the wire value the
+  /// backend accepts: `'open' | 'cancelled' | 'completed' | 'removed'`.
+  /// Use this for "mark as completed" once the activity time has passed;
+  /// [cancel] stays as a convenience wrapper for `'cancelled'`.
   Future<void> updateStatus(String activityId, String status);
 
   Future<List<ActivityModel>> pastByUser(
@@ -124,16 +154,21 @@ abstract class ActivityRepository {
     int offset = 0,
   });
 
-  /// Outgoing pending join requests (`GET /api/activities/join-requests/me`), mapped to lightweight.
+  /// Outgoing pending join requests (`GET /api/activities/join-requests/me`),
+  /// mapped to lightweight [ActivityModel]s with `joinRequestStatus:
+  /// 'pending' for the My Games "Pending" tab.
   Future<List<ActivityModel>> pendingRequests({int limit = 20, int offset = 0});
 
   /// Persists a check-in (`POST /api/activities/:id/check-in`).
+  /// Throws on failure so the check-in screen can show an error and
+  /// revert to the not-checked-in state.
   Future<void> checkIn({
     required String activityId,
     double? latitude,
     double? longitude,
   });
 
-  /// Whether the viewer already checked in (`GET /api/activities/:id/check-in/me`).
+  /// Whether the viewer already checked in
+  /// (`GET /api/activities/:id/check-in/me`).
   Future<bool> isCheckedIn(String activityId);
 }

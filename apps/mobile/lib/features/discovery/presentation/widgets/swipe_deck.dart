@@ -13,9 +13,19 @@ import '../../../../core/widgets/asset_image.dart' show isRemoteImage;
 import '../../domain/activity_model.dart';
 import 'discovery_card.dart';
 
-/// The Discovery swipe deck: drag-to-dismiss/like gesture, spring-back on a sub-threshold release, LIKE/NOPE stamp.
-/// Performance: the drag offset lives in a [ValueNotifier] and the three visible cards are built ONCE per deck.
-/// Extracted out of `discovery_screen.dart` (PRD Section 1.1) so the screen itself only owns the activity list + swipe.
+/// The Discovery swipe deck: drag-to-dismiss/like gesture, spring-back on a
+/// sub-threshold release, LIKE/NOPE stamp fade-in past threshold, and a
+/// depth-cued card stack (next card visible behind at reduced scale/opacity).
+///
+/// Performance: the drag offset lives in a [ValueNotifier] and the three
+/// visible cards are built ONCE per deck position — pointer events only
+/// update the notifier, so a 60 Hz drag never rebuilds the heavy
+/// [DiscoveryCard] subtrees (image, layout). The [AnimatedBuilder] below
+/// re-applies transforms around the same widget instances, which the
+/// framework short-circuits without calling their build methods again.
+///
+/// Extracted out of `discovery_screen.dart` (PRD Section 1.1) so the screen
+/// itself only owns the activity list + swipe callbacks.
 class SwipeDeck extends StatefulWidget {
   const SwipeDeck({
     super.key,
@@ -30,10 +40,14 @@ class SwipeDeck extends StatefulWidget {
   final int topIndex;
   final void Function(bool liked) onSwiped;
 
-  /// Fires true when a drag starts, false when the drag (and any settle/exit animation it triggered) ends.
+  /// Fires true when a drag starts, false when the drag (and any
+  /// settle/exit animation it triggered) ends. The parent uses it to
+  /// suppress tap-to-details on mis-taps right after a drag.
   final ValueChanged<bool>? onDragging;
 
-  /// Invoked when persisting the swipe decision throws.
+  /// Invoked when persisting the swipe decision throws. The repository
+  /// rethrows (rather than swallowing) so the parent can surface a
+  /// snackbar instead of failing silently.
   final Future<void> Function()? onPersistError;
 
   @override
@@ -41,25 +55,37 @@ class SwipeDeck extends StatefulWidget {
 }
 
 class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
-  /// Current drag offset. Updated directly from pointer events — no setState, so dragging never rebuilds this State.
+  /// Current drag offset. Updated directly from pointer events — no
+  /// setState, so dragging never rebuilds this State.
   final ValueNotifier<Offset> _drag = ValueNotifier(Offset.zero);
 
-  /// Exit fade (1 → 0 over the last third of the fling).
+  /// Exit fade (1 → 0 over the last third of the fling). Plain field —
+  /// only read inside the [_drag]-driven builder, which repaints anyway.
   double _exitFade = 1;
 
   bool _animating = false;
   bool _exiting = false;
   bool _thresholdReached = false;
 
-  /// True while a spring-back or exit animation is running.
+  /// True while a spring-back or exit animation is running. The parent
+  /// checks this before driving a programmatic swipe so button taps
+  /// can't pile onto a mid-flight card.
   bool get isBusy => _animating;
 
-  // Prebuilt card widgets for the current deck position.
+  // Prebuilt card widgets for the current deck position. Rebuilt only
+  // when [widget.activities] or [widget.topIndex] changes, never while
+  // dragging — this is what keeps 60 Hz gestures cheap.
   Widget? _topCard;
   Widget? _nextCard;
   Widget? _afterNextCard;
 
   // Created eagerly in initState — not as lazy `late final` initializers.
+  // A lazy initializer only runs on first *access*, and if a SwipeDeck is
+  // disposed without ever being dragged (e.g. it's swapped out by a new
+  // `ValueKey` before any gesture fires), `dispose()` itself becomes the
+  // first access. That constructs an `AnimationController(vsync: this)`
+  // against a State that's already deactivating, which crashes with
+  // "Looking up a deactivated widget's ancestor is unsafe."
   late AnimationController _springController;
   late AnimationController _exitController;
   late Animation<Offset> _exitAnimation;
@@ -96,7 +122,8 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
 
   void _rebuildCards() {
     final items = widget.activities;
-    // Guard: the parent may advance topIndex past the end (deck exhausted) before this State is swapped out.
+    // Guard: the parent may advance topIndex past the end (deck
+    // exhausted) before this State is swapped out — never index blind.
     if (widget.topIndex < 0 || widget.topIndex >= items.length) {
       _topCard = null;
       _nextCard = null;
@@ -104,23 +131,26 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
       return;
     }
     final top = items[widget.topIndex];
-    // Background peeks render ONLY when a real next card exists.
-    final next = widget.topIndex + 1 < items.length
-        ? items[widget.topIndex + 1]
-        : null;
-    final afterNext = widget.topIndex + 2 < items.length
-        ? items[widget.topIndex + 2]
-        : null;
+    // Background peeks render ONLY when a real next card exists. The old
+    // `.clamp()` trick aliased them to the top card itself on the last
+    // index — so swiping the final card away revealed a ghost copy of
+    // itself behind, looking like the deck never ends.
+    final next =
+        widget.topIndex + 1 < items.length ? items[widget.topIndex + 1] : null;
+    final afterNext =
+        widget.topIndex + 2 < items.length ? items[widget.topIndex + 2] : null;
     _topCard = DiscoveryCard(activity: top);
     _nextCard = next == null ? null : DiscoveryCard(activity: next);
-    _afterNextCard = afterNext == null
-        ? null
-        : DiscoveryCard(activity: afterNext);
-    // Warm the image cache 3 cards ahead so the next swipe reveals a decoded photo.
+    _afterNextCard =
+        afterNext == null ? null : DiscoveryCard(activity: afterNext);
+    // Warm the image cache 3 cards ahead so the next swipe reveals an
+    // already-decoded photo instead of starting the download mid-gesture.
+    // Shared provider with AssetImageWithFallback — one fetch, not two.
     _precacheUpcoming(items, widget.topIndex);
   }
 
-  /// Precache hero images for the next few deck positions.
+  /// Precache hero images for the next few deck positions. Best-effort:
+  /// failures are swallowed, the card loads normally on display.
   void _precacheUpcoming(List<ActivityModel> items, int topIndex) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -128,7 +158,9 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
       for (var i = topIndex + 1; i <= topIndex + 3 && i < items.length; i++) {
         final url = items[i].coverImageUrl;
         if (url == null || !isRemoteImage(url)) continue;
-        precacheImage(CachedNetworkImageProvider(url), ctx).catchError((_) {});
+        precacheImage(CachedNetworkImageProvider(url), ctx).catchError(
+          (_) {},
+        );
       }
     });
   }
@@ -148,9 +180,11 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
 
   void _onPanUpdate(DragUpdateDetails d) {
     if (_animating) return;
-    // Horizontal only: vertical drift is locked so diagonal drags can't smuggle the card off-axis.
+    // Horizontal only: vertical drift is locked so diagonal drags can't
+    // smuggle the card off-axis (dy stays 0 for the whole gesture).
     _drag.value += Offset(d.delta.dx, 0);
-    // Subtle tick when crossing the commit threshold.
+    // Subtle tick when crossing the commit threshold — confirms "release
+    // now and it will count" without looking at the stamps.
     final threshold = _commitThreshold(context);
     final crossed = _drag.value.dx.abs() >= threshold;
     if (crossed && !_thresholdReached) {
@@ -161,7 +195,8 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
     }
   }
 
-  /// Commit distance: a quarter of the deck width, capped so large tablets don't demand an absurd throw.
+  /// Commit distance: a quarter of the deck width, capped so large
+  /// tablets don't demand an absurd throw.
   double _commitThreshold(BuildContext context) =>
       math.min(MediaQuery.of(context).size.width * 0.25, 160);
 
@@ -171,7 +206,10 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
     final threshold = _commitThreshold(context);
     final dragDx = _drag.value.dx;
     final vx = d.velocity.pixelsPerSecond.dx;
-    // A fast flick commits in the fling direction even with (near-)zero displacement.
+    // A fast flick commits in the fling direction even with (near-)zero
+    // displacement — otherwise a stationary-finger velocity spike with
+    // dx == 0 (or opposing dx) silently springs back and the flick
+    // feels dead.
     if (dragDx > threshold || vx > 700) {
       _animateOut(true, d.velocity.pixelsPerSecond);
     } else if (dragDx < -threshold || vx < -700) {
@@ -210,7 +248,9 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
     final exitDurationMs = (280 - (exitVx.clamp(0, 1200) / 1200) * 100).round();
     _exitEnd = Offset(travelX, _drag.value.dy + 80);
     _exitController.duration = Duration(milliseconds: exitDurationMs);
-    // Throw feel: accelerate off-screen (ease-in) instead of coasting out, and fade over the last third so the card.
+    // Throw feel: accelerate off-screen (ease-in) instead of coasting
+    // out, and fade over the last third so the card dissolves rather
+    // than clipping at the screen edge.
     _exitAnimation = Tween<Offset>(begin: _exitStart, end: _exitEnd).animate(
       CurvedAnimation(parent: _exitController, curve: Curves.easeInCubic),
     );
@@ -243,9 +283,13 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Guarded in [_rebuildCards]: an out-of-range topIndex.
+    // Guarded in [_rebuildCards]: an out-of-range topIndex (deck
+    // exhausted before the swap) renders nothing instead of crashing.
     if (_topCard == null) return const SizedBox.shrink();
-    // One AnimatedBuilder for the whole stack: pointer ticks update.
+    // One AnimatedBuilder for the whole stack: pointer ticks update
+    // [_drag] (and [_exitFade] mid-fling), and the builder re-applies
+    // transforms around the PREBUILT card widgets — their build methods
+    // don't re-run because the instances are identical.
     return AnimatedBuilder(
       animation: _drag,
       builder: (context, _) {
@@ -264,7 +308,11 @@ class _SwipeDeckState extends State<SwipeDeck> with TickerProviderStateMixin {
         final afterOpacity = lerpDouble(0.55, 0.85, progress)!;
         final afterOffset = lerpDouble(32.0, 16.0, progress)!;
 
-        // Each card is sized to the full deck area.
+        // Each card is sized to the full deck area (via the LayoutBuilder box)
+        // so the DiscoveryCard's internal Expanded hero can absorb the leftover
+        // height — the card fills the deck exactly (no bottom overflow) while its
+        // info block keeps its natural height (no mid-row clipping). Depth-cued
+        // background cards peek out via their scale/offset.
         return LayoutBuilder(
           builder: (context, constraints) {
             final deckWidth = constraints.maxWidth;

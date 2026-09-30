@@ -7,8 +7,15 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/pressable_scale.dart';
 import '../../../../core/widgets/skeleton.dart';
 
-/// Shared loading skeleton for every activity detail screen (unjoined, joined, manage, pending-request, full view).
-/// The back button pops when possible (with a Discover fallback for deep-link/stack-root entries): loading must.
+/// Shared loading skeleton for every activity detail screen (unjoined,
+/// joined, manage, pending-request, full view). Mirrors the standard
+/// detail anatomy — 280px hero, 44px-overlap rounded sheet, SafeArea
+/// back/share row, pill placeholders and an optional bottom action
+/// pill — so swapping loading → content never jumps, whichever detail
+/// the user opened.
+///
+/// The back button pops when possible (with a Discover fallback for
+/// deep-link/stack-root entries): loading must never trap the user.
 class DetailLoadingSkeleton extends StatelessWidget {
   const DetailLoadingSkeleton({super.key, this.bottomBar = true});
 
@@ -46,7 +53,8 @@ class DetailLoadingSkeleton extends StatelessWidget {
             child: SkeletonBox(width: double.infinity, height: 280, radius: 0),
           ),
 
-          // Layer 2: white sheet overlapping the hero, same geometry (rounded top, sheet shadow) as the real cards.
+          // Layer 2: white sheet overlapping the hero, same geometry
+          // (rounded top, sheet shadow) as the real cards.
           Positioned(
             top: heroHeight - overlap,
             left: 0,
@@ -123,7 +131,9 @@ class DetailLoadingSkeleton extends StatelessWidget {
   }
 }
 
-/// Circular skeleton button.
+/// Circular skeleton button. Back pops when possible (with a Discover
+/// fallback for stack-root entries); Share is inert until content
+/// arrives.
 class _SkeletonCircleBtn extends StatelessWidget {
   const _SkeletonCircleBtn({required this.label, required this.pop});
   final String label;

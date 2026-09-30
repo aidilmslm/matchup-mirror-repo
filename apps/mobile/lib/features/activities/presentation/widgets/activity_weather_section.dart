@@ -7,7 +7,11 @@ import '../../../../core/theme/dark_colors.dart';
 import '../../domain/activity_model.dart';
 
 /// Weather section for activity detail screens.
-/// Prefers the snapshot saved at creation ([ActivityModel.hasWeatherSnapshot]).
+///
+/// Prefers the snapshot saved at creation ([ActivityModel.hasWeatherSnapshot]);
+/// falls back to a live Open-Meteo lookup for activities that predate the
+/// snapshot (or where it was unavailable). Renders nothing when there is
+/// neither a snapshot nor enough info for a live lookup.
 class ActivityWeatherSection extends StatelessWidget {
   const ActivityWeatherSection({super.key, required this.activity});
 
@@ -25,12 +29,14 @@ class ActivityWeatherSection extends StatelessWidget {
       return _card(
         context,
         icon: weatherIconFor(code),
-        title: temp == null || temp.isNaN ? desc : '${temp.round()}°C · $desc',
+        title: temp == null || temp.isNaN
+            ? desc
+            : '${temp.round()}°C · $desc',
         sub: rain == null
             ? 'Forecast at creation'
             : rain > 0
-            ? 'Rain $rain% · forecast at creation'
-            : 'Low rain · forecast at creation',
+                ? 'Rain $rain% · forecast at creation'
+                : 'Low rain · forecast at creation',
       );
     }
     final lat = activity.latitude;
@@ -48,7 +54,8 @@ class ActivityWeatherSection extends StatelessWidget {
       builder: (context, snap) {
         final w = snap.data;
         if (w == null) return const SizedBox.shrink();
-        final temp = w.temperatureC.isNaN ? '—' : '${w.temperatureC.round()}°C';
+        final temp =
+            w.temperatureC.isNaN ? '—' : '${w.temperatureC.round()}°C';
         return _card(
           context,
           icon: w.icon,
@@ -88,23 +95,33 @@ class ActivityWeatherSection extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 19, color: context.colors.primaryOnSurface),
+            child: Icon(
+              icon,
+              size: 19,
+              color: context.colors.primaryOnSurface,
+            ),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Weather', style: AppTypography.metaSub(context)),
+                Text(
+                  'Weather',
+                  style: AppTypography.metaSub(context),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   title,
-                  style: AppTypography.bodyMedium(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w700),
+                  style: AppTypography.bodyMedium(context).copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (sub.isNotEmpty)
-                  Text(sub, style: AppTypography.metaSub(context)),
+                  Text(
+                    sub,
+                    style: AppTypography.metaSub(context),
+                  ),
               ],
             ),
           ),

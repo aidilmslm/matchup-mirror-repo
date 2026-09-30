@@ -6,26 +6,39 @@ import '../storage/local_storage.dart';
 import '../utils/logger.dart';
 import 'auth_state_provider.dart';
 
-// Keys.
+// ─── Keys ─────────────────────────────────────────────────────────────────────
 
 const _kSportPrefs = 'pref_sport_skills_v1';
 const _kDistance = 'pref_distance_km_v1';
 const _kPrice = 'pref_price_mode_v1';
 
-// User scoping.
-// Filter prefs must not leak across accounts (logout Benjamin → login Lisa showed Benjamin's sports filter.
+// ─── User scoping ─────────────────────────────────────────────────────────────
+//
+// Filter prefs must not leak across accounts (logout Benjamin → login
+// Lisa showed Benjamin's sports filter — same leak class as the repo
+// caches fixed via `_scopeToUser`). Every provider below rebuilds when
+// the auth uid changes, and persists under a per-user key, so each
+// account gets isolated prefs that survive logout/login cycles instead
+// of being reset or shared.
 String _keyFor(String base, String? uid) => '${base}_${uid ?? 'anon'}';
 
-// Sport preferences.
+// ─── Sport preferences ────────────────────────────────────────────────────────
 
-/// Persists the user's sport + skill preferences.
-/// Key: sport name (e.g.
-/// Values are stored as a JSON-encoded map in SharedPreferences.
+/// Persists the user's sport + skill preferences so the discovery feed
+/// and filter screen share the same source of truth.
+///
+/// Key: sport name (e.g. 'Basketball'), Value: skill level string.
+/// Empty map = no filter (show all sports).
+///
+/// Values are stored as a JSON-encoded map in [SharedPreferences] under
+/// [_kSportPrefs] so they survive app restarts and OS kills.
 final sportPreferencesProvider =
-    StateNotifierProvider<SportPreferencesNotifier, Map<String, String>>((ref) {
-      final uid = ref.watch(authStateProvider.select((s) => s.userId));
-      return SportPreferencesNotifier(uid: uid);
-    });
+    StateNotifierProvider<SportPreferencesNotifier, Map<String, String>>(
+      (ref) {
+        final uid = ref.watch(authStateProvider.select((s) => s.userId));
+        return SportPreferencesNotifier(uid: uid);
+      },
+    );
 
 class SportPreferencesNotifier extends StateNotifier<Map<String, String>> {
   SportPreferencesNotifier({this._uid}) : super(const {}) {
@@ -83,15 +96,15 @@ class SportPreferencesNotifier extends StateNotifier<Map<String, String>> {
   }
 }
 
-// Distance filter.
+// ─── Distance filter ──────────────────────────────────────────────────────────
 
 /// Discovery distance in km — shared between preferences and filter screens.
-final distanceFilterProvider = StateNotifierProvider<_DoubleNotifier, double>((
-  ref,
-) {
-  final uid = ref.watch(authStateProvider.select((s) => s.userId));
-  return _DoubleNotifier(_keyFor(_kDistance, uid), 5);
-});
+/// Persisted to [SharedPreferences] so the last chosen radius survives restart.
+final distanceFilterProvider =
+    StateNotifierProvider<_DoubleNotifier, double>((ref) {
+      final uid = ref.watch(authStateProvider.select((s) => s.userId));
+      return _DoubleNotifier(_keyFor(_kDistance, uid), 5);
+    });
 
 class _DoubleNotifier extends StateNotifier<double> {
   _DoubleNotifier(this._key, double defaultValue) : super(defaultValue) {
@@ -122,15 +135,15 @@ class _DoubleNotifier extends StateNotifier<double> {
   }
 }
 
-// Price filter.
+// ─── Price filter ─────────────────────────────────────────────────────────────
 
+/// Price preference: 'free' | 'paid' | 'both'.
 /// Persisted to [SharedPreferences].
-final priceFilterProvider = StateNotifierProvider<_StringNotifier, String>((
-  ref,
-) {
-  final uid = ref.watch(authStateProvider.select((s) => s.userId));
-  return _StringNotifier(_keyFor(_kPrice, uid), 'both');
-});
+final priceFilterProvider =
+    StateNotifierProvider<_StringNotifier, String>((ref) {
+      final uid = ref.watch(authStateProvider.select((s) => s.userId));
+      return _StringNotifier(_keyFor(_kPrice, uid), 'both');
+    });
 
 class _StringNotifier extends StateNotifier<String> {
   _StringNotifier(this._key, String defaultValue) : super(defaultValue) {

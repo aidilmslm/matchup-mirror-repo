@@ -8,7 +8,7 @@ import type {
 } from 'react';
 import { cn } from '../../utils/cn';
 
-// Button.
+/* ----------------------------- Button ----------------------------- */
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -38,7 +38,7 @@ export function Button({
   );
 }
 
-// Input.
+/* ----------------------------- Input ----------------------------- */
 
 export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -52,7 +52,7 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
   );
 }
 
-// Textarea.
+/* --------------------------- Textarea ---------------------------- */
 
 export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
@@ -66,7 +66,7 @@ export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLText
   );
 }
 
-// Select.
+/* ----------------------------- Select ----------------------------- */
 
 export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -82,7 +82,7 @@ export function Select({ className, children, ...rest }: SelectHTMLAttributes<HT
   );
 }
 
-// Card.
+/* ------------------------------ Card ----------------------------- */
 
 export function Card({ className, children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -92,7 +92,7 @@ export function Card({ className, children, ...rest }: HTMLAttributes<HTMLDivEle
   );
 }
 
-// Badge.
+/* ------------------------------ Badge ----------------------------- */
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: 'neutral' | 'success' | 'warning' | 'danger';
@@ -112,9 +112,15 @@ export function Badge({ tone = 'neutral', className, children, ...rest }: BadgeP
   );
 }
 
-// PageHeader.
+/* --------------------------- PageHeader --------------------------- */
 
-export function PageHeader({ title, actions }: { title: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  actions,
+}: {
+  title: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <div className="page-header">
       <h1 className="text-2xl font-semibold text-ink-900">{title}</h1>
@@ -123,7 +129,7 @@ export function PageHeader({ title, actions }: { title: ReactNode; actions?: Rea
   );
 }
 
-// ModalShell.
+/* --------------------------- ModalShell --------------------------- */
 
 export function ModalShell({
   open,
@@ -142,7 +148,11 @@ export function ModalShell({
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button className="text-ink-500 hover:text-ink-700" onClick={onClose} aria-label="Close">
+          <button
+            className="text-ink-500 hover:text-ink-700"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -152,7 +162,7 @@ export function ModalShell({
   );
 }
 
-// TableWrapper.
+/* -------------------------- TableWrapper -------------------------- */
 
 export function TableWrapper({ children }: { children: ReactNode }) {
   return (

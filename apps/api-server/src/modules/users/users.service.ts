@@ -21,7 +21,10 @@ export type UserRecord = {
   authUid: string;
   email: string;
   createdAt: FirebaseFirestore.Timestamp;
-  /** Computed on read (never stored): participations and hosted activities. */
+  /**
+   * Computed on read (never stored): participations and hosted
+   * activities. Absent when the counts could not be computed.
+   */
   activitiesCount?: number;
   hostedCount?: number;
   updatedAt?: FirebaseFirestore.Timestamp;
@@ -115,7 +118,10 @@ function normalizeEmail(email: string): string {
 
 function isSkillLevel(value: unknown): value is SkillLevel {
   return (
-    value === 'beginner' || value === 'intermediate' || value === 'advanced' || value === 'any'
+    value === 'beginner' ||
+    value === 'intermediate' ||
+    value === 'advanced' ||
+    value === 'any'
   );
 }
 
@@ -202,9 +208,7 @@ function mapUserDoc(userDoc: FirebaseFirestore.DocumentSnapshot): UserRecord | n
   }
 
   if (data.skillLevel !== undefined && !isSkillLevel(data.skillLevel)) {
-    throw new Error(
-      'Invalid user record: skillLevel must be beginner, intermediate, advanced, or any',
-    );
+    throw new Error('Invalid user record: skillLevel must be beginner, intermediate, advanced, or any');
   }
 
   if (data.profileCompleted !== undefined && typeof data.profileCompleted !== 'boolean') {
@@ -237,7 +241,9 @@ function mapUserDoc(userDoc: FirebaseFirestore.DocumentSnapshot): UserRecord | n
     ...(data.preferredLocations !== undefined
       ? { preferredLocations: assertStringArray(data.preferredLocations, 'preferredLocations') }
       : {}),
-    ...(typeof data.joinReason === 'string' ? { joinReason: data.joinReason } : {}),
+    ...(typeof data.joinReason === 'string'
+      ? { joinReason: data.joinReason }
+      : {}),
     ...(typeof data.profileCompleted === 'boolean'
       ? { profileCompleted: data.profileCompleted }
       : {}),
@@ -270,16 +276,12 @@ function toPublicUserProfile(user: UserRecord): PublicUserProfile {
     ...(user.skillLevel !== undefined ? { skillLevel: user.skillLevel } : {}),
     ...(user.preferredSports !== undefined ? { preferredSports: user.preferredSports } : {}),
     ...(user.sportSkillLevels !== undefined ? { sportSkillLevels: user.sportSkillLevels } : {}),
-    ...(user.preferredLocations !== undefined
-      ? { preferredLocations: user.preferredLocations }
-      : {}),
+    ...(user.preferredLocations !== undefined ? { preferredLocations: user.preferredLocations } : {}),
     ...(user.profileCompleted !== undefined ? { profileCompleted: user.profileCompleted } : {}),
     ...(user.ratingBySport !== undefined ? { ratingBySport: user.ratingBySport } : {}),
     ...(user.totalRatingCount !== undefined ? { totalRatingCount: user.totalRatingCount } : {}),
     ...(user.hostRatingBySport !== undefined ? { hostRatingBySport: user.hostRatingBySport } : {}),
-    ...(user.totalHostRatingCount !== undefined
-      ? { totalHostRatingCount: user.totalHostRatingCount }
-      : {}),
+    ...(user.totalHostRatingCount !== undefined ? { totalHostRatingCount: user.totalHostRatingCount } : {}),
   };
 }
 
@@ -381,7 +383,17 @@ export async function getUserByAuthUid(authUid: string): Promise<UserRecord | nu
   };
 }
 
-/** Counts participations (`participants` collection group, by `uid`) and hosted activities (`activities` by. */
+/**
+ * Counts participations (`participants` collection group, by `uid`)
+ * and hosted activities (`activities` by `hostId`). The host is never
+ * a participant row, so the two counts are disjoint.
+ *
+ * Falls back to zeros when the aggregation cannot run — notably when
+ * the `participants/uid` collection-group index has not been created
+ * yet (see `infra/firebase/firestore.indexes.json`). The profile then
+ * shows zeros instead of failing outright, and heals once the index
+ * exists.
+ */
 export async function countUserActivities(
   authUid: string,
 ): Promise<{ activitiesCount: number; hostedCount: number }> {
@@ -455,7 +467,11 @@ export async function getPublicUserProfile(authUid: string): Promise<PublicUserP
     return toPublicUserProfile(user);
   }
 
-  // Fallback: mobile profile routes navigate by display name (`/player-profile/:name`).
+  // Fallback: mobile profile routes navigate by display name
+  // (`/player-profile/:name`), so a name that matches no uid is
+  // retried as an exact displayName lookup. Single-field equality —
+  // automatic index, no composite needed. First match wins; display
+  // names are not guaranteed unique.
   const byName = await getUserByDisplayName(authUid);
   if (!byName) {
     return null;
@@ -464,8 +480,13 @@ export async function getPublicUserProfile(authUid: string): Promise<PublicUserP
   return toPublicUserProfile(byName);
 }
 
-/** Exact-match lookup by display name. Used only as a fallback when a uid lookup misses (see above). */
-export async function getUserByDisplayName(displayName: string): Promise<UserRecord | null> {
+/**
+ * Exact-match lookup by display name. Used only as a fallback when a
+ * uid lookup misses (see above) — never as a primary key.
+ */
+export async function getUserByDisplayName(
+  displayName: string,
+): Promise<UserRecord | null> {
   const normalized = displayName.trim();
   if (!normalized) {
     throw new Error('displayName is required');
@@ -481,7 +502,8 @@ export async function getUserByDisplayName(displayName: string): Promise<UserRec
     return null;
   }
 
-  // QueryDocumentSnapshot satisfies the DocumentSnapshot shape mapUserDoc expects (users are keyed by authUid.
+  // QueryDocumentSnapshot satisfies the DocumentSnapshot shape
+  // mapUserDoc expects (users are keyed by authUid, so `.id` is it).
   const firstDoc = snap.docs[0];
   if (!firstDoc) {
     return null;

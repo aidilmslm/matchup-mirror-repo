@@ -14,24 +14,25 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../domain/chat_message.dart';
 
-/// Photo stream for [activityId] — every message in the group chat that carries a photo, oldest first.
+/// Photo stream for [activityId] — every message in the group chat that
+/// carries a photo, oldest first. Derived from the same
+/// [ChatRepository.watchMessages] stream as the chat itself, so the album
+/// stays in sync with the conversation at no extra backend cost.
 final _momentsStreamProvider = StreamProvider.autoDispose
     .family<List<ChatMessage>, String>((ref, activityId) {
-      return ref
-          .watch(chatRepositoryProvider)
-          .watchMessages(activityId)
-          .map(
-            (messages) => messages
-                .where(
-                  (m) =>
-                      m.isImage && (m.imageUrl != null || m.imagePath != null),
-                )
-                .toList(),
-          );
-    });
+  return ref.watch(chatRepositoryProvider).watchMessages(activityId).map(
+        (messages) => messages
+            .where((m) =>
+                m.isImage && (m.imageUrl != null || m.imagePath != null))
+            .toList(),
+      );
+});
 
 /// Album of every photo shared in an activity's group chat.
-/// Photos in the chat thread scroll away fast.
+///
+/// Photos in the chat thread scroll away fast; this screen collects them
+/// into one grid so members can relive (and revisit) the memories.
+/// Reached from the chat settings sheet ("Photo moments").
 class PhotoMomentsScreen extends ConsumerWidget {
   const PhotoMomentsScreen({super.key, required this.activityId});
   final String activityId;
@@ -57,7 +58,8 @@ class PhotoMomentsScreen extends ConsumerWidget {
             ? _EmptyMoments()
             : GridView.builder(
                 padding: const EdgeInsets.all(AppSpacing.x4),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
@@ -101,13 +103,16 @@ class _EmptyMoments extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.x4),
-            Text('No photos yet', style: AppTypography.titleMedium(context)),
+            Text(
+              'No photos yet',
+              style: AppTypography.titleMedium(context),
+            ),
             const SizedBox(height: AppSpacing.x2),
             Text(
               'Photos shared in this group chat will appear here.',
-              style: AppTypography.bodyMedium(
-                context,
-              ).copyWith(color: context.colors.textSecondary),
+              style: AppTypography.bodyMedium(context).copyWith(
+                color: context.colors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -117,7 +122,9 @@ class _EmptyMoments extends StatelessWidget {
   }
 }
 
-/// Single chat photo — local file when captured on this device, network image otherwise.
+/// Single chat photo — local file when captured on this device,
+/// network image otherwise. Mirrors the bubble rendering in
+/// `chat_screen.dart` so both paths stay in sync.
 class _MomentImage extends StatelessWidget {
   const _MomentImage({required this.msg, this.fit = BoxFit.cover});
   final ChatMessage msg;
@@ -134,21 +141,25 @@ class _MomentImage extends StatelessWidget {
       );
     }
     final remoteUrl = msg.imageUrl;
-    // Unreachable through the provider filter (it requires an image source), but guard anyway.
+    // Unreachable through the provider filter (it requires an image
+    // source), but guard anyway — a force-unwrap here would crash the
+    // whole grid on one malformed message.
     if (remoteUrl == null) return _brokenTile(context);
-    // Grid thumbnails — ~1/3 screen cells, 2x decode for retina.
+    // Grid thumbnail — sel grid ~1/3 layar, decode 2x untuk retina.
+    // Placeholder kotak abu STATIS (bukan shimmer): grid bisa puluhan
+    // sel, satu shimmer per sel = puluhan controller + kedip massal.
     return CachedNetworkImage(
       imageUrl: remoteUrl,
       fit: fit,
-      memCacheWidth:
-          (MediaQuery.sizeOf(context).width *
-                  MediaQuery.devicePixelRatioOf(context) ~/
-                  3)
-              .clamp(1, 600),
+      memCacheWidth: (MediaQuery.sizeOf(context).width *
+              MediaQuery.devicePixelRatioOf(context) ~/
+          3)
+          .clamp(1, 600),
       fadeInDuration: const Duration(milliseconds: 150),
       fadeOutDuration: Duration.zero,
-      placeholder: (context, url) =>
-          Container(color: context.colors.surfaceMuted),
+      placeholder: (context, url) => Container(
+        color: context.colors.surfaceMuted,
+      ),
       errorWidget: (context, url, error) {
         debugPrint('[MomentImage] failed: $url ($error)');
         return _brokenTile(context);
@@ -168,9 +179,10 @@ class _MomentImage extends StatelessWidget {
   }
 }
 
-// Full screen viewer.
+// ─── Full-screen viewer ─────────────────────────────────────────────────────
 
-/// Swipeable full-screen viewer over the album, with sender + time caption per photo.
+/// Swipeable full-screen viewer over the album, with sender + time
+/// caption per photo.
 class _MomentViewer extends StatefulWidget {
   const _MomentViewer({required this.photos, required this.index});
   final List<ChatMessage> photos;
@@ -214,10 +226,10 @@ class _MomentViewerState extends State<_MomentViewer> {
     final h = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final m = time.minute.toString().padLeft(2, '0');
     final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    // Sender names fall back to raw uids upstream — never leak those into the caption; "Unknown" is the honest label.
-    final name = msg.senderName.trim().isEmpty
-        ? 'Unknown'
-        : msg.senderName.trim();
+    // Sender names fall back to raw uids upstream — never leak those
+    // into the caption; "Unknown" is the honest label.
+    final name =
+        msg.senderName.trim().isEmpty ? 'Unknown' : msg.senderName.trim();
     return '$name · $h:$m $period';
   }
 
@@ -234,10 +246,7 @@ class _MomentViewerState extends State<_MomentViewer> {
               onPageChanged: (i) => setState(() => _current = i),
               itemBuilder: (_, i) => InteractiveViewer(
                 child: Center(
-                  child: _MomentImage(
-                    msg: widget.photos[i],
-                    fit: BoxFit.contain,
-                  ),
+                  child: _MomentImage(msg: widget.photos[i], fit: BoxFit.contain),
                 ),
               ),
             ),

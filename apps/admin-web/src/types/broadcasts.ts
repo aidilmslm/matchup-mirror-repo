@@ -1,4 +1,3 @@
-// broadcasts.
 export type BroadcastStatus = 'Sent' | 'Scheduled' | 'Draft';
 export type BroadcastAudience = 'All Users' | 'Hosts Only' | 'Players Only' | 'Inactive Users';
 

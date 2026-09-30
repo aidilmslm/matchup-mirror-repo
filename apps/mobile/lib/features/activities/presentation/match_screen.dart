@@ -21,34 +21,34 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../discovery/domain/activity_model.dart';
 
-// Provider.
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 final _matchActivityProvider = FutureProvider.autoDispose
     .family<ActivityModel, String>((ref, activityId) async {
-      final activity = await ref
-          .watch(activityRepositoryProvider)
-          .byId(activityId);
-      if (activity == null) throw StateError('Activity not found');
-      return activity;
-    });
+  final activity =
+      await ref.watch(activityRepositoryProvider).byId(activityId);
+  if (activity == null) throw StateError('Activity not found');
+  return activity;
+});
 
-// Screen.
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
-/// Back to the deck without recreating it (preserves the swipe position).
+/// Back to the deck without recreating it (preserves the swipe
+/// position). Falls back to `/discovery` when there's nothing to pop
+/// (e.g. a cold start straight into the match route).
 Future<void> _popOrDiscovery(BuildContext context) async {
   final popped = await Navigator.of(context).maybePop();
   if (!popped && context.mounted) context.go('/discovery');
 }
 
 class MatchScreen extends ConsumerStatefulWidget {
-  const MatchScreen({
-    super.key,
-    required this.activityId,
-    this.initialActivity,
-  });
+  const MatchScreen({super.key, required this.activityId, this.initialActivity});
   final String activityId;
 
-  /// The just-joined activity passed as route `extra` by the discovery flow.
+  /// The just-joined activity passed as route `extra` by the discovery
+  /// flow. Used as fallback content when the [byId] refetch fails
+  /// (offline right after joining) so a successful join never renders
+  /// a full error screen.
   final ActivityModel? initialActivity;
 
   @override
@@ -62,7 +62,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     duration: AppDurations.emphasized * 5,
   );
 
-  /// Confetti starts only once the activity data has arrived.
+  /// Confetti starts only once the activity data has arrived. Firing it
+  /// in initState rained confetti over the loading skeleton: join()
+  /// invalidates the detail cache, so byId almost always refetches and
+  /// the content pops in long after the celebration started.
   bool _confettiStarted = false;
 
   void _maybeStartConfetti(bool hasData) {
@@ -78,7 +81,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Confetti trigger lives here (and in the provider listener in [build]).
+    // Confetti trigger lives here (and in the provider listener in
+    // [build]) — never in [build] itself, so rebuilds stay side-effect
+    // free. Covers data that was already cached on first mount.
     if (ref.read(_matchActivityProvider(widget.activityId)).hasValue) {
       _maybeStartConfetti(true);
     }
@@ -92,7 +97,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Route extra (the just-joined activity) doubles as the offline fallback — read here so no router change is needed.
+    // Route extra (the just-joined activity) doubles as the offline
+    // fallback — read here so no router change is needed.
     final routeExtra = GoRouterState.of(context).extra;
     final fallback = routeExtra is ActivityModel
         ? routeExtra
@@ -111,48 +117,51 @@ class _MatchScreenState extends ConsumerState<MatchScreen>
     return SystemBackFallback(
       onEmptyStack: (context) => context.go('/discovery'),
       child: AppScaffold(
-        backgroundColor: context.colors.background,
-        showHomeIndicator: false,
-        body: Stack(
-          children: [
-            async.when(
-              loading: () => const SkeletonList(count: 3),
-              error: (_, _) => fallback != null
-                  // Offline after a successful join: the join happened.
-                  ? _MatchBody(activity: fallback, offline: true)
-                  : ErrorRetry(
-                      message: 'Could not load this match.',
-                      onRetry: () => ref.invalidate(
-                        _matchActivityProvider(widget.activityId),
-                      ),
+      backgroundColor: context.colors.background,
+      showHomeIndicator: false,
+      body: Stack(
+        children: [
+          async.when(
+            loading: () => const SkeletonList(count: 3),
+            error: (_, _) => fallback != null
+                // Offline after a successful join: the join happened
+                // (the activity is in My Games), only the refetch
+                // failed — show the cached copy with an offline note
+                // instead of a full error.
+                ? _MatchBody(activity: fallback, offline: true)
+                : ErrorRetry(
+                    message: 'Could not load this match.',
+                    onRetry: () => ref.invalidate(
+                      _matchActivityProvider(widget.activityId),
                     ),
-              data: (activity) => _MatchBody(activity: activity),
-            ),
-            // Confetti overlay
-            Positioned.fill(
-              top: 80,
-              child: IgnorePointer(
-                child: AnimatedBuilder(
-                  animation: _confettiCtrl,
-                  builder: (_, _) =>
-                      _ConfettiLayer(progress: _confettiCtrl.value),
-                ),
+                  ),
+            data: (activity) => _MatchBody(activity: activity),
+          ),
+          // Confetti overlay
+          Positioned.fill(
+            top: 80,
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _confettiCtrl,
+                builder: (_, _) =>
+                    _ConfettiLayer(progress: _confettiCtrl.value),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ));
   }
 }
 
-// Body.
+// ─── Body ─────────────────────────────────────────────────────────────────────
 
 class _MatchBody extends StatelessWidget {
   const _MatchBody({required this.activity, this.offline = false});
   final ActivityModel activity;
 
-  /// True when [activity] is cached fallback content (offline after a successful join) rather than a fresh fetch.
+  /// True when [activity] is cached fallback content (offline after a
+  /// successful join) rather than a fresh fetch.
   final bool offline;
 
   @override
@@ -177,7 +186,10 @@ class _MatchBody extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
-                border: Border.all(color: AppColors.primary, width: 1.5),
+                border: Border.all(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -190,9 +202,10 @@ class _MatchBody extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     'SUCCESS MATCH',
-                    style: AppTypography.chipLabel(
-                      context,
-                    ).copyWith(color: AppColors.primary, letterSpacing: 0.5),
+                    style: AppTypography.chipLabel(context).copyWith(
+                      color: AppColors.primary,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
               ),
@@ -204,22 +217,16 @@ class _MatchBody extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.star_border_rounded,
-                  size: 32,
-                  color: context.colors.warningText,
-                ),
+                Icon(Icons.star_border_rounded,
+                    size: 32, color: context.colors.warningText),
                 const SizedBox(width: AppSpacing.x2),
                 Text(
                   "It's a Match!",
                   style: AppTypography.headlineLarge(context),
                 ),
                 const SizedBox(width: AppSpacing.x2),
-                Icon(
-                  Icons.star_border_rounded,
-                  size: 32,
-                  color: context.colors.warningText,
-                ),
+                Icon(Icons.star_border_rounded,
+                    size: 32, color: context.colors.warningText),
               ],
             ),
             const SizedBox(height: AppSpacing.x2),
@@ -244,7 +251,9 @@ class _MatchBody extends StatelessWidget {
             _ActivityCard(activity: activity),
             const SizedBox(height: AppSpacing.x5),
 
-            // View Activity Details — full-width blue pill.
+            // View Activity Details — full-width blue pill. Pushed
+            // (not go) so the system back button returns to the
+            // match screen instead of closing the app.
             PressableScale(
               onTap: () {
                 HapticFeedback.lightImpact();
@@ -267,7 +276,9 @@ class _MatchBody extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.x4),
 
-            // Keep Swiping — underlined blue link.
+            // Keep Swiping — underlined blue link. Pops back to the
+            // live deck (position preserved) instead of go()ing, which
+            // would recreate Discover and rewind to the top.
             Semantics(
               button: true,
               label: 'Keep swiping',
@@ -294,7 +305,7 @@ class _MatchBody extends StatelessWidget {
   }
 }
 
-// Activity card.
+// ─── Activity card ────────────────────────────────────────────────────────────
 
 class _ActivityCard extends StatelessWidget {
   const _ActivityCard({required this.activity});
@@ -327,7 +338,10 @@ class _ActivityCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Title
-                Text(activity.title, style: AppTypography.titleLarge(context)),
+                Text(
+                  activity.title,
+                  style: AppTypography.titleLarge(context),
+                ),
                 const SizedBox(height: AppSpacing.x1),
 
                 // Location row
@@ -342,9 +356,9 @@ class _ActivityCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         activity.location,
-                        style: AppTypography.metaSub(
-                          context,
-                        ).copyWith(fontSize: 13),
+                        style: AppTypography.metaSub(context).copyWith(
+                          fontSize: 13,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -436,7 +450,7 @@ class _ActivityCard extends StatelessWidget {
   }
 }
 
-// Cover image.
+// ─── Cover image ──────────────────────────────────────────────────────────────
 
 class _CoverImage extends StatelessWidget {
   const _CoverImage({required this.activity});
@@ -446,7 +460,9 @@ class _CoverImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final distanceText = distanceLabel(activity.distanceKm)?.toUpperCase();
     return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(AppRadius.xl),
+      ),
       child: SizedBox(
         height: 180,
         width: double.infinity,
@@ -455,8 +471,7 @@ class _CoverImage extends StatelessWidget {
           children: [
             // Image (bundled asset or remote Storage URL)
             AssetImageWithFallback(
-              imagePath:
-                  activity.coverImageUrl ??
+              imagePath: activity.coverImageUrl ??
                   'assets/images/discovery/covers/basketball_full.png',
               fit: BoxFit.cover,
             ),
@@ -480,9 +495,10 @@ class _CoverImage extends StatelessWidget {
                     ),
                     child: Text(
                       activity.sportType.toUpperCase(),
-                      style: AppTypography.chipLabel(
-                        context,
-                      ).copyWith(color: AppColors.textPrimary, fontSize: 11),
+                      style: AppTypography.chipLabel(context).copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                   // Distance — blue pill (hidden when unknown).
@@ -516,7 +532,7 @@ class _CoverImage extends StatelessWidget {
   }
 }
 
-// Meta chip.
+// ─── Meta chip ────────────────────────────────────────────────────────────────
 
 class _MetaChip extends StatelessWidget {
   const _MetaChip({
@@ -530,9 +546,8 @@ class _MetaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isBlue
-        ? context.colors.primaryOnSurface
-        : context.colors.textSecondary;
+    final color =
+        isBlue ? context.colors.primaryOnSurface : context.colors.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -553,9 +568,10 @@ class _MetaChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: AppTypography.chipLabel(
-              context,
-            ).copyWith(fontSize: 12, color: color),
+            style: AppTypography.chipLabel(context).copyWith(
+              fontSize: 12,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -563,9 +579,11 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-// Avatar stack.
+// ─── Avatar stack ─────────────────────────────────────────────────────────────
 
-/// Neutral participant placeholders — generic person icons sized by the live [count].
+/// Neutral participant placeholders — generic person icons sized by
+/// the live [count]. No fake faces or invented initials: the card has
+/// no roster data, and one roster fetch per card would be N+1 traffic.
 class _AvatarStack extends StatelessWidget {
   const _AvatarStack({required this.count});
   final int count;
@@ -575,7 +593,8 @@ class _AvatarStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = count.clamp(0, _maxShown);
-    // No placeholder gap when nobody joined yet — the spots label beside it already carries the count.
+    // No placeholder gap when nobody joined yet — the spots label
+    // beside it already carries the count.
     if (shown == 0) return const SizedBox.shrink();
     return SizedBox(
       width: 66,
@@ -591,7 +610,8 @@ class _AvatarStack extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: context.colors.surfaceMuted,
-                  border: Border.all(color: context.colors.surface, width: 2),
+                  border:
+                      Border.all(color: context.colors.surface, width: 2),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
@@ -607,7 +627,7 @@ class _AvatarStack extends StatelessWidget {
   }
 }
 
-// Confetti.
+// ─── Confetti ─────────────────────────────────────────────────────────────────
 
 class _ConfettiParticle {
   _ConfettiParticle(math.Random rng, double width, double height)
@@ -629,8 +649,7 @@ class _ConfettiParticle {
 const _kConfettiColors = [
   AppColors.primary,
   AppColors.primaryLight,
-  AppColors
-      .warning, // Decorative confetti — readability delegated to bg contrast.
+  AppColors.warning, // Decorative confetti — readability delegated to bg contrast.
   AppColors.statusSuccessBg, // Same — celebration particle, no text.
   AppColors.accent,
 ];
@@ -654,10 +673,8 @@ class _ConfettiLayer extends StatelessWidget {
         final px = p.x + p.speedX * elapsed;
         final py = p.y + p.speedY * elapsed;
         final rot = p.rotation + p.rotationSpeed * elapsed;
-        final opacity = (1 - ((progress - 0.7) / 0.3).clamp(0.0, 1.0)).clamp(
-          0.0,
-          1.0,
-        );
+        final opacity =
+            (1 - ((progress - 0.7) / 0.3).clamp(0.0, 1.0)).clamp(0.0, 1.0);
 
         return Positioned(
           left: px,

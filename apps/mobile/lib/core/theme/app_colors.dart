@@ -5,9 +5,13 @@ class AppColors {
   AppColors._();
 
   // Primary blue — `#0B1F8A`.
+  // Use for FILLS only. For text on white use [primaryDarker]: primary on white
+  // is 4.03:1 (fails WCAG AA for text), primaryDarker is 6.4:1 (passes).
   static const Color primary = Color(0xFF0B1F8A);
   static const Color primaryDark = Color(0xFF0B1F8A);
-  static const Color primaryDarker = Color(0xFF0B1F8A); // primary-dark token
+  static const Color primaryDarker = Color(
+    0xFF0B1F8A,
+  ); // primary-dark token
   static const Color primaryLight = Color(0xFFDBEAFE);
 
   // Splash gradient endpoints
@@ -26,11 +30,12 @@ class AppColors {
   // Text (Figma tokens)
   static const Color textPrimary = Color(0xFF0F172A); // Figma text-primary
   static const Color textLabel = Color(0xFF334155); // Figma text-label
-  static const Color textSecondary = Color(
-    0xFF475569,
-  ); // Figma text-secondary (slate-600, AA on white)
+  static const Color textSecondary = Color(0xFF475569); // Figma text-secondary (slate-600, AA on white)
 
   /// Contrast on white is only 2.54:1 — fails WCAG AA for text (needs 4.5:1).
+  /// Decorative use only: unselected nav icons, dots, empty-state glyphs.
+  /// Never set this as the colour of a [AppTypography] text style — use
+  /// [textSecondary] instead. See PRD Appendix E.3.
   static const Color textTertiary = Color(0xFF9CA3AF);
   static const Color textOnPrimary = Colors.white;
 
@@ -41,11 +46,14 @@ class AppColors {
   static const Color warningLight = Color(0xFFFEF3C7);
 
   /// Stronger amber for icon/text on a light warning background.
+  /// [warning] (#F59E0B) on [warningLight] (#FEF3C7) only reaches 2.07:1 —
+  /// fails WCAG AA for text. This dark variant reaches 5.5:1 on the same bg.
   static const Color warningStrong = Color(0xFFB45309);
   static const Color error = Color(0xFFEF4444);
   static const Color errorLight = Color(0xFFFEE2E2);
 
   /// Darker red for icon/text on a light error background.
+  /// [error] (#EF4444) on [errorLight] (#FEE2E2) only reaches 3.08:1.
   static const Color errorStrong = Color(0xFFB91C1C);
 
   // UI
@@ -69,10 +77,12 @@ class AppColors {
   /// Fully transparent stop for gradient ends.
   static const Color scrimTransparent = Color(0x00000000);
 
-  /// Scrim for a control sitting *on top of* [scrim].
+  /// Scrim for a control sitting *on top of* [scrim] (e.g. the back/share
+  /// buttons over a hero photo). 30% slate: dark enough to separate the button
+  /// from the image behind it without stacking into a solid black block.
   static const Color scrimControl = Color(0x4D0F172A);
 
-  // Semantic status colors.
+  // ─── Semantic status colors ────────────────────────────────────────────
   /// Success text on soft backgrounds (e.g. "Open" status chip).
   static const Color statusSuccessText = Color(0xFF04694A);
 
@@ -94,7 +104,7 @@ class AppColors {
   /// Avatar ring / neutral avatar bg.
   static const Color avatarNeutral = Color(0xFFE2E8F0);
 
-  // Shadows glows.
+  // ─── Shadows / glows ───────────────────────────────────────────────────
   /// Soft blue glow under primary action buttons & cards.
   static const Color glowPrimary = Color(0x402D7FF9);
 
@@ -110,13 +120,16 @@ class AppColors {
   /// Input border — slightly stronger than default border (Figma: #CBD5E1).
   static const Color borderInput = Color(0xFFCBD5E1);
 
-  /// Muted surface — segmented-control track, attachment button, neutral badge (Figma: #F1F5F9).
+  /// Muted surface — segmented-control track, attachment button, neutral badge
+  /// (Figma: #F1F5F9).
   static const Color surfaceMuted = Color(0xFFF1F5F9);
 
-  /// `ColorScheme.surfaceContainerHighest` — a step darker than.
+  /// `ColorScheme.surfaceContainerHighest` — a step darker than
+  /// [surfaceMuted], only ever used inside Material's own `ColorScheme`.
   static const Color surfaceContainerHighest = Color(0xFFF3F4F6);
 
-  /// Muted slate (Figma: #94A3B8).
+  /// Muted slate (Figma: #94A3B8). Contrast on white is only 2.8:1, so this is
+  /// for decorative rules, dots and unselected radio strokes — never for text.
   static const Color textMuted = Color(0xFF94A3B8);
 
   /// Destructive sign-out / log out accent (Figma: #F43F5E).
@@ -128,6 +141,8 @@ class AppColors {
   /// Success background variant (Figma: #E1F9F1).
   static const Color successBg = Color(0xFFE1F9F1);
 
-  /// Dark canvas for media placeholders (empty cover-photo dropzone, image upload wells).
+  /// Dark canvas for media placeholders (empty cover-photo dropzone, image
+  /// upload wells). Slate-800 — reads as "photo goes here" and gives white
+  /// icons/labels on top a 12:1 contrast ratio.
   static const Color surfaceInverse = Color(0xFF1E293B);
 }

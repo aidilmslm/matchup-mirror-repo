@@ -1,4 +1,16 @@
-/** Activities service — database-backed (Firestore `activities` via api-server). */
+/**
+ * Activities service — database-backed (Firestore `activities` via api-server).
+ *
+ * Live endpoints (api-server, all admin-gated):
+ *   GET   /api/admin/activities            → AdminActivityView[]
+ *   PATCH /api/admin/activities/:id/status → void  { status: 'open' | 'cancelled' | 'completed' | 'removed' }
+ *   DELETE /api/admin/activities/:id       → void
+ *
+ * Status mapping (frontend ⇄ backend):
+ *   Active ⇄ open · Cancelled ⇄ cancelled · Completed ⇄ completed
+ *   Flagged ⇄ removed (hidden from every feed)
+ *   Full is computed live (participants >= capacity), never written.
+ */
 import { apiFetch } from './api';
 import type { AdminActivity, ActivityStatus } from '../types/activities';
 
@@ -99,17 +111,24 @@ export async function fetchActivities(): Promise<AdminActivity[]> {
   return res.data.map(toAdminActivity);
 }
 
-export async function updateActivityStatus(id: string, status: ActivityStatus): Promise<void> {
-  const res = await apiFetch<void>(`/api/admin/activities/${encodeURIComponent(id)}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: toBackendStatus(status) }),
-  });
+export async function updateActivityStatus(
+  id: string,
+  status: ActivityStatus,
+): Promise<void> {
+  const res = await apiFetch<void>(
+    `/api/admin/activities/${encodeURIComponent(id)}/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status: toBackendStatus(status) }),
+    },
+  );
   if (!res.ok) throw new Error(res.error.message);
 }
 
 export async function deleteActivity(id: string): Promise<void> {
-  const res = await apiFetch<void>(`/api/admin/activities/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
+  const res = await apiFetch<void>(
+    `/api/admin/activities/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+  );
   if (!res.ok) throw new Error(res.error.message);
 }

@@ -1,4 +1,3 @@
-// useActivities (hooks).
 import { useCallback, useEffect, useReducer } from 'react';
 import {
   fetchActivities,
@@ -21,12 +20,9 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'FETCH_START':
-      return { status: 'loading' };
-    case 'FETCH_SUCCESS':
-      return { status: 'success', activities: action.activities };
-    case 'FETCH_ERROR':
-      return { status: 'error', message: action.message };
+    case 'FETCH_START':   return { status: 'loading' };
+    case 'FETCH_SUCCESS': return { status: 'success', activities: action.activities };
+    case 'FETCH_ERROR':   return { status: 'error', message: action.message };
     case 'UPDATE_STATUS':
       if (state.status !== 'success') return state;
       return {
@@ -38,8 +34,7 @@ function reducer(state: State, action: Action): State {
     case 'REMOVE':
       if (state.status !== 'success') return state;
       return { ...state, activities: state.activities.filter((a) => a.id !== action.id) };
-    default:
-      return state;
+    default: return state;
   }
 }
 
@@ -52,40 +47,21 @@ export function useActivities() {
       const activities = await fetchActivities();
       dispatch({ type: 'FETCH_SUCCESS', activities });
     } catch (err) {
-      dispatch({
-        type: 'FETCH_ERROR',
-        message: err instanceof Error ? err.message : 'Failed to load activities',
-      });
+      dispatch({ type: 'FETCH_ERROR', message: err instanceof Error ? err.message : 'Failed to load activities' });
     }
   }, []);
 
-  useEffect(() => {
-    load();
+  useEffect(() => { load(); }, [load]);
+
+  const handleStatusChange = useCallback(async (id: string, activityStatus: ActivityStatus) => {
+    dispatch({ type: 'UPDATE_STATUS', id, activityStatus });
+    try { await updateActivityStatus(id, activityStatus); } catch { load(); }
   }, [load]);
 
-  const handleStatusChange = useCallback(
-    async (id: string, activityStatus: ActivityStatus) => {
-      dispatch({ type: 'UPDATE_STATUS', id, activityStatus });
-      try {
-        await updateActivityStatus(id, activityStatus);
-      } catch {
-        load();
-      }
-    },
-    [load],
-  );
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      dispatch({ type: 'REMOVE', id });
-      try {
-        await deleteActivity(id);
-      } catch {
-        load();
-      }
-    },
-    [load],
-  );
+  const handleDelete = useCallback(async (id: string) => {
+    dispatch({ type: 'REMOVE', id });
+    try { await deleteActivity(id); } catch { load(); }
+  }, [load]);
 
   return {
     loading: state.status === 'idle' || state.status === 'loading',

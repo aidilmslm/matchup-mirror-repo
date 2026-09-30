@@ -4,7 +4,11 @@ import { useToast } from '../../context/ToastContext';
 import { PageSkeleton, PageError, EmptyState, EmptyIcons } from '../../components/ui/PageStates';
 import type { NotifTemplate, TemplateCategory, TemplateTrigger } from '../../types/templates';
 
-// Known unfired triggers: the backend dispatcher only fires a subset of triggers.
+// ─── Known-unfired triggers ───────────────────────────────────────────────────
+// Contract: backend notification dispatcher currently only fires a subset of
+// triggers (joined/cancelled/full/account/moderation). The activity.reminder,
+// activity.starting_soon and engagement.* triggers below have no sender yet,
+// so surface them as "Inactive trigger" instead of silently looking enabled.
 // eslint-disable-next-line react-refresh/only-export-components
 export const UNFIRED_TRIGGERS: TemplateTrigger[] = [
   'activity.reminder',
@@ -13,19 +17,19 @@ export const UNFIRED_TRIGGERS: TemplateTrigger[] = [
   'engagement.new_activity_nearby',
 ];
 
-// Category badge.
+// ─── Category badge ───────────────────────────────────────────────────────────
 
 function CategoryBadge({ category }: { category: TemplateCategory }) {
   const map: Record<TemplateCategory, string> = {
-    Activity: 'badge-blue',
-    Account: 'badge-neutral',
+    Activity:   'badge-blue',
+    Account:    'badge-neutral',
     Moderation: 'badge-red',
     Engagement: 'badge-green',
   };
   return <span className={map[category]}>{category}</span>;
 }
 
-// Toggle.
+// ─── Toggle ───────────────────────────────────────────────────────────────────
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -38,14 +42,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
         checked ? 'bg-brand-500' : 'bg-ink-300 dark:bg-ink-600'
       }`}
     >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`}
-      />
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   );
 }
 
-// Variable chip.
+// ─── Variable chip ────────────────────────────────────────────────────────────
 
 function VarChip({ variable, onClick }: { variable: string; onClick: () => void }) {
   return (
@@ -60,28 +62,16 @@ function VarChip({ variable, onClick }: { variable: string; onClick: () => void 
   );
 }
 
-// Phone preview.
+// ─── Phone preview ────────────────────────────────────────────────────────────
 
 function PhonePreview({ title, body }: { title: string; body: string }) {
   // Replace {{variable}} with sample values for preview
   const sampleValues: Record<string, string> = {
-    participantName: 'Alex M.',
-    activityName: 'Sunday Basketball',
-    participantCount: '6',
-    capacity: '10',
-    activityDate: 'Nov 3',
-    activityTime: '10:00 AM',
-    location: 'City Gym',
-    hostName: 'Coach Dave',
-    userName: 'Jordan',
-    reason: 'Community guideline violation',
-    supportEmail: 'support@matchup.app',
-    appealDeadline: 'Nov 10',
-    adminNote: 'Your record has been restored.',
-    nearbyCount: '5',
-    sport: 'Futsal',
-    distanceKm: '2.3',
-    spotsLeft: '3',
+    participantName: 'Alex M.', activityName: 'Sunday Basketball', participantCount: '6',
+    capacity: '10', activityDate: 'Nov 3', activityTime: '10:00 AM', location: 'City Gym',
+    hostName: 'Coach Dave', userName: 'Jordan', reason: 'Community guideline violation',
+    supportEmail: 'support@matchup.app', appealDeadline: 'Nov 10', adminNote: 'Your record has been restored.',
+    nearbyCount: '5', sport: 'Futsal', distanceKm: '2.3', spotsLeft: '3',
   };
 
   function render(text: string) {
@@ -97,37 +87,16 @@ function PhonePreview({ title, body }: { title: string; body: string }) {
           <div className="flex items-center justify-between px-4 pb-2 text-[9px] font-semibold text-ink-500 dark:text-ink-400">
             <span>9:41</span>
             <div className="flex items-center gap-1">
-              <svg width="10" height="8" viewBox="0 0 10 8" fill="currentColor">
-                <rect x="0" y="4" width="2" height="4" rx="0.5" />
-                <rect x="3" y="2.5" width="2" height="5.5" rx="0.5" />
-                <rect x="6" y="1" width="2" height="7" rx="0.5" />
-              </svg>
-              <svg width="14" height="8" viewBox="0 0 14 8" fill="currentColor">
-                <rect
-                  x="0.5"
-                  y="0.5"
-                  width="11"
-                  height="7"
-                  rx="2"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  fill="none"
-                />
-                <rect x="12" y="2" width="1.5" height="4" rx="0.75" />
-                <rect x="1.5" y="1.5" width="7" height="5" rx="1.2" />
-              </svg>
+              <svg width="10" height="8" viewBox="0 0 10 8" fill="currentColor"><rect x="0" y="4" width="2" height="4" rx="0.5"/><rect x="3" y="2.5" width="2" height="5.5" rx="0.5"/><rect x="6" y="1" width="2" height="7" rx="0.5"/></svg>
+              <svg width="14" height="8" viewBox="0 0 14 8" fill="currentColor"><rect x="0.5" y="0.5" width="11" height="7" rx="2" stroke="currentColor" strokeWidth="1" fill="none"/><rect x="12" y="2" width="1.5" height="4" rx="0.75"/><rect x="1.5" y="1.5" width="7" height="5" rx="1.2"/></svg>
             </div>
           </div>
           <div className="mx-3 rounded-2xl bg-white dark:bg-ink-800 px-3.5 py-3 shadow-sm border border-ink-100 dark:border-ink-700">
             <div className="flex items-start gap-2">
-              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white text-xs font-bold shadow">
-                M
-              </div>
+              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white text-xs font-bold shadow">M</div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between">
-                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wide">
-                    MatchUp
-                  </p>
+                  <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wide">MatchUp</p>
                   <p className="text-[9px] text-ink-400">now</p>
                 </div>
                 <p className="mt-0.5 text-[11px] font-bold text-ink-900 dark:text-ink-100 leading-tight">
@@ -146,7 +115,7 @@ function PhonePreview({ title, body }: { title: string; body: string }) {
   );
 }
 
-// Template editor drawer.
+// ─── Template editor drawer ───────────────────────────────────────────────────
 
 function EditDrawer({
   template,
@@ -203,12 +172,7 @@ function EditDrawer({
             <h2 className="text-base font-semibold text-ink-900">Edit Template</h2>
             <p className="text-xs text-ink-500 mt-0.5">{template.name}</p>
           </div>
-          <button
-            onClick={onCancel}
-            className="text-ink-400 hover:text-ink-700 text-xl leading-none"
-          >
-            ×
-          </button>
+          <button onClick={onCancel} className="text-ink-400 hover:text-ink-700 text-xl leading-none">×</button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-ink-100 dark:divide-ink-700">
@@ -217,9 +181,7 @@ function EditDrawer({
             {/* Variable chips */}
             {template.variables.length > 0 && (
               <div>
-                <p className="mb-2 text-xs font-semibold text-ink-500">
-                  Available variables — click to insert
-                </p>
+                <p className="mb-2 text-xs font-semibold text-ink-500">Available variables — click to insert</p>
                 <div className="flex flex-wrap gap-1.5">
                   {template.variables.map((v) => (
                     <VarChip key={v} variable={v} onClick={() => insertVar(v, 'body')} />
@@ -231,14 +193,10 @@ function EditDrawer({
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-ink-600">
                 Title
-                <span className="ml-1.5 text-[10px] font-normal text-ink-400">
-                  (shown as notification heading)
-                </span>
+                <span className="ml-1.5 text-[10px] font-normal text-ink-400">(shown as notification heading)</span>
               </label>
               <input
-                ref={(el) => {
-                  titleRef.current = el;
-                }}
+                ref={(el) => { titleRef.current = el; }}
                 className="input text-sm"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -250,14 +208,10 @@ function EditDrawer({
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-ink-600">
                 Body
-                <span className="ml-1.5 text-[10px] font-normal text-ink-400">
-                  (notification message text)
-                </span>
+                <span className="ml-1.5 text-[10px] font-normal text-ink-400">(notification message text)</span>
               </label>
               <textarea
-                ref={(el) => {
-                  bodyRef.current = el;
-                }}
+                ref={(el) => { bodyRef.current = el; }}
                 className="input min-h-[120px] resize-none text-sm"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -286,7 +240,7 @@ function EditDrawer({
   );
 }
 
-// Template row.
+// ─── Template row ─────────────────────────────────────────────────────────────
 
 function TemplateRow({
   template,
@@ -298,11 +252,9 @@ function TemplateRow({
   onToggle: () => void;
 }) {
   return (
-    <div
-      className={`flex items-start gap-4 px-4 sm:px-6 py-4 transition-colors hover:bg-ink-50 dark:hover:bg-ink-800/50 ${
-        !template.enabled ? 'opacity-60' : ''
-      }`}
-    >
+    <div className={`flex items-start gap-4 px-4 sm:px-6 py-4 transition-colors hover:bg-ink-50 dark:hover:bg-ink-800/50 ${
+      !template.enabled ? 'opacity-60' : ''
+    }`}>
       <div className="mt-0.5 shrink-0">
         <Toggle checked={template.enabled} onChange={onToggle} />
       </div>
@@ -311,10 +263,7 @@ function TemplateRow({
           <p className="text-sm font-semibold text-ink-900">{template.name}</p>
           <CategoryBadge category={template.category} />
           {UNFIRED_TRIGGERS.includes(template.trigger) && (
-            <span
-              className="rounded-full bg-warning-100 px-2 py-0.5 text-[10px] font-semibold text-warning-700"
-              title={`Trigger "${template.trigger}" has no sender yet`}
-            >
+            <span className="rounded-full bg-warning-100 px-2 py-0.5 text-[10px] font-semibold text-warning-700" title={`Trigger "${template.trigger}" has no sender yet`}>
               Inactive trigger
             </span>
           )}
@@ -338,10 +287,7 @@ function TemplateRow({
         {template.variables.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {template.variables.map((v) => (
-              <span
-                key={v}
-                className="rounded bg-ink-100 dark:bg-ink-700 px-1.5 py-0.5 font-mono text-[10px] text-ink-500 dark:text-ink-400"
-              >
+              <span key={v} className="rounded bg-ink-100 dark:bg-ink-700 px-1.5 py-0.5 font-mono text-[10px] text-ink-500 dark:text-ink-400">
                 {`{{${v}}}`}
               </span>
             ))}
@@ -350,13 +296,12 @@ function TemplateRow({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <p className="hidden sm:block text-[10px] text-ink-400">
-          Edited{' '}
-          {new Date(template.lastEditedAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          })}
+          Edited {new Date(template.lastEditedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </p>
-        <button onClick={onEdit} className="btn-outline btn-sm">
+        <button
+          onClick={onEdit}
+          className="btn-outline btn-sm"
+        >
           Edit
         </button>
       </div>
@@ -364,15 +309,9 @@ function TemplateRow({
   );
 }
 
-// Page.
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-const ALL_CATEGORIES: Array<TemplateCategory | 'All'> = [
-  'All',
-  'Activity',
-  'Account',
-  'Moderation',
-  'Engagement',
-];
+const ALL_CATEGORIES: Array<TemplateCategory | 'All'> = ['All', 'Activity', 'Account', 'Moderation', 'Engagement'];
 
 export function NotificationTemplatesPage() {
   const { loading, error, templates, handleUpdate, handleToggle, reload } = useNotifTemplates();
@@ -408,7 +347,7 @@ export function NotificationTemplatesPage() {
   }
 
   const filtered = templates.filter((t) => {
-    const matchCat = activeCategory === 'All' || t.category === activeCategory;
+    const matchCat    = activeCategory === 'All' || t.category === activeCategory;
     const matchSearch =
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -416,8 +355,8 @@ export function NotificationTemplatesPage() {
     return matchCat && matchSearch;
   });
 
-  const enabledCount = templates.filter((t) => t.enabled).length;
-  const disabledCount = templates.filter((t) => !t.enabled).length;
+  const enabledCount  = templates.filter(t => t.enabled).length;
+  const disabledCount = templates.filter(t => !t.enabled).length;
 
   return (
     <div className="page-container space-y-5">
@@ -443,8 +382,8 @@ export function NotificationTemplatesPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Total Templates', value: templates.length, color: 'text-ink-900' },
-          { label: 'Enabled', value: enabledCount, color: 'text-success-600' },
-          { label: 'Disabled', value: disabledCount, color: 'text-ink-400' },
+          { label: 'Enabled',  value: enabledCount,  color: 'text-success-600' },
+          { label: 'Disabled', value: disabledCount,  color: 'text-ink-400' },
           { label: 'Categories', value: 4, color: 'text-brand-500' },
         ].map((s) => (
           <div key={s.label} className="card py-4 text-center">
@@ -458,9 +397,7 @@ export function NotificationTemplatesPage() {
       <div className="rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-900/20 px-4 py-3 text-sm text-brand-700 dark:text-brand-300">
         <span className="font-semibold">Note: </span>
         Template changes take effect on the next notification send. Variables in{' '}
-        <code className="rounded bg-brand-100 dark:bg-brand-800/50 px-1 font-mono text-xs">
-          {'{{double braces}}'}
-        </code>{' '}
+        <code className="rounded bg-brand-100 dark:bg-brand-800/50 px-1 font-mono text-xs">{'{{double braces}}'}</code>{' '}
         are replaced automatically by the backend with real user/activity data.
       </div>
 
@@ -474,9 +411,7 @@ export function NotificationTemplatesPage() {
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  activeCategory === cat
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
+                  activeCategory === cat ? 'bg-brand-500 text-white' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-700 dark:text-ink-300 dark:hover:bg-ink-600'
                 }`}
               >
                 {cat}
@@ -484,17 +419,8 @@ export function NotificationTemplatesPage() {
             ))}
           </div>
           <div className="flex items-center gap-2 rounded-full bg-ink-50 dark:bg-ink-700/50 px-3 py-1.5 w-full sm:w-auto">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            >
-              <circle cx="6" cy="6" r="4" />
-              <path d="M11 11l-2.5-2.5" />
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <circle cx="6" cy="6" r="4" /><path d="M11 11l-2.5-2.5" />
             </svg>
             <input
               type="text"

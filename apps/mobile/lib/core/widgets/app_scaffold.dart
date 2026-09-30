@@ -7,27 +7,57 @@ import '../theme/dark_colors.dart';
 import 'home_indicator.dart';
 import 'pressable_scale.dart';
 
-/// The three header shapes every screen in the app needs.
+/// The three header shapes every screen in the app needs. Picking one of
+/// these via the named constructors — instead of hand-rolling a header per
+/// screen — is what keeps header height, title size, and back-button style
+/// consistent across all 32 screens (PRD Section 1.1).
 enum _HeaderVariant {
-  /// Big left-aligned title, optional trailing actions.
+  /// Big left-aligned title, optional trailing actions. Top-level tab
+  /// screens: Discovery, Activities, Messages, Profile.
   primary,
 
   /// Back button + centred title + optional single trailing action.
+  /// Pushed screens reached via `context.push`.
   detail,
 
-  /// Back/close + centred title + optional trailing *text* action ("Save", "Done").
+  /// Back/close + centred title + optional trailing *text* action
+  /// ("Save", "Done"). Forms and sheet-like screens.
   sheet,
 
-  /// No header at all — the screen supplies its own top content.
+  /// No header at all — the screen supplies its own top content (e.g. a
+  /// full-bleed hero) or genuinely has none.
   none,
 }
 
 /// Standard scaffold for MatchUp screens — the mandatory screen shell.
-/// Every screen should reach for one of the three named constructors instead of composing a raw [Scaffold]:
-/// ```dart AppScaffold.primary( title: 'My Activities', actions: [NotificationIconButton(onTap: ...)], body: ..., ).
-/// AppScaffold.detail( title: 'Manage Activity', body: ..., ).
-/// AppScaffold.sheet( title: 'Edit Profile', trailingAction: 'Save', onTrailingAction: _save, body: ..., ) ```.
+///
+/// Every screen should reach for one of the three named constructors instead
+/// of composing a raw [Scaffold]:
+///
+/// ```dart
+/// AppScaffold.primary(
+///   title: 'My Activities',
+///   actions: [NotificationIconButton(onTap: ...)],
+///   body: ...,
+/// )
+///
+/// AppScaffold.detail(
+///   title: 'Manage Activity',
+///   body: ...,
+/// )
+///
+/// AppScaffold.sheet(
+///   title: 'Edit Profile',
+///   trailingAction: 'Save',
+///   onTrailingAction: _save,
+///   body: ...,
+/// )
+/// ```
+///
 /// Handles safe area, background color, and an optional pinned bottom bar.
+/// The default plain constructor remains available for the rare screen that
+/// needs a fully custom header (e.g. a collapsing hero) — pass
+/// `header: null` and build it directly in `body`.
 class AppScaffold extends StatelessWidget {
   const AppScaffold({
     super.key,
@@ -100,7 +130,8 @@ class AppScaffold extends StatelessWidget {
        onTrailingAction = null,
        trailingActionEnabled = true;
 
-  /// Back/close + centred title + optional trailing text action.
+  /// Back/close + centred title + optional trailing text action. Forms and
+  /// sheet-like screens (Edit Profile, Create Activity).
   const AppScaffold.sheet({
     super.key,
     required this.body,
@@ -148,7 +179,10 @@ class AppScaffold extends StatelessWidget {
   final bool resizeToAvoidBottomInset;
   final bool safeAreaTop;
 
-  /// Screens hoisted outside `ShellRoute` (no bottom nav) should draw their own home indicator here.
+  /// Screens hoisted outside `ShellRoute` (no bottom nav) should draw their
+  /// own home indicator here. Screens inside `ShellRoute` must leave this
+  /// `false` — [AppShell] already draws one below the tab bar; drawing a
+  /// second one stacks two indicators.
   final bool showHomeIndicator;
   final EdgeInsetsGeometry headerPadding;
 
@@ -222,7 +256,8 @@ class AppScaffold extends StatelessWidget {
                   ),
                 ),
               ),
-              // Mirrors the back button's 44px width so the title stays centred against the *content* area.
+              // Mirrors the back button's 44px width so the title stays
+              // centred against the *content* area, not the full row.
               if (actions != null && actions!.isNotEmpty)
                 Row(mainAxisSize: MainAxisSize.min, children: actions!)
               else
@@ -281,6 +316,8 @@ class AppScaffold extends StatelessWidget {
 }
 
 /// Consistent screen header: back/leading slot + title + actions.
+/// Used by [AppScaffold]'s plain constructor and directly by screens that
+/// need a custom body layout but still want the standard title treatment.
 class AppScreenHeader extends StatelessWidget {
   const AppScreenHeader({
     super.key,
@@ -326,7 +363,8 @@ class AppScreenHeader extends StatelessWidget {
   }
 }
 
-/// Standard back button aligned with [AppScreenHeader] and used by [AppScaffold]'s `.detail()` / `.sheet()` headers.
+/// Standard back button aligned with [AppScreenHeader] and used by
+/// [AppScaffold]'s `.detail()` / `.sheet()` headers.
 class AppBackButton extends StatelessWidget {
   const AppBackButton({super.key, this.onPressed, this.color});
 

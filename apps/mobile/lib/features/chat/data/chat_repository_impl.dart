@@ -1,4 +1,3 @@
-// Group chat: RTDB realtime stream first, HTTP polling fallback (3 s, backoff + 429 breaker) when the socket stalls.
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -20,7 +19,8 @@ import 'chat_repository.dart';
 import 'dm_repository.dart' show parseSharedLocation;
 
 class LocalChatRepository implements ChatRepository {
-  /// Offline-only chat store.
+  /// Offline-only chat store. Reads return empty results, writes
+  /// throw. The app **always** talks to the live backend for chat.
   @override
   Future<List<ChatMessage>> messages(String activityId) async {
     return const <ChatMessage>[];
@@ -113,22 +113,27 @@ class RemoteChatRepository implements ChatRepository {
     ApiClient? client,
     ChatRepository? fallback,
     RemoteActivityRepository? activities,
-  }) : _client = client ?? ApiClient.instance,
-       _fallback = fallback ?? LocalChatRepository(),
-       _activities = activities ?? RemoteActivityRepository();
+  })  : _client = client ?? ApiClient.instance,
+        _fallback = fallback ?? LocalChatRepository(),
+        _activities = activities ?? RemoteActivityRepository();
 
   final ApiClient _client;
   final ChatRepository _fallback;
   final RemoteActivityRepository _activities;
 
-  /// Polling interval for the HTTP fallback.
+  /// Polling interval for the HTTP fallback. RTDB is preferred when
+  /// available — 3 seconds is the next best thing for chat-feel.
   static const Duration _pollingInterval = Duration(seconds: 3);
 
-  /// 429 circuit-breaker for the HTTP polling fallbacks (messages, reactions, polls).
+  /// 429 circuit-breaker for the HTTP polling fallbacks (messages,
+  /// reactions, polls). While armed, ticks are skipped instead of
+  /// hammering a per-IP limiter window that is shared with every other
+  /// route (e.g. `GET /users/me`).
   DateTime? _pollBlockedUntil;
 
   bool get _pollBlocked =>
-      _pollBlockedUntil != null && DateTime.now().isBefore(_pollBlockedUntil!);
+      _pollBlockedUntil != null &&
+      DateTime.now().isBefore(_pollBlockedUntil!);
 
   void _notePollRateLimit(Object e) {
     if (e is! DioException || e.response?.statusCode != 429) return;
@@ -143,7 +148,9 @@ class RemoteChatRepository implements ChatRepository {
     );
   }
 
-  /// uid → sender profile cache per activity, so chat bubbles show names and avatars without an N+1 profile lookup.
+  /// uid → sender profile cache per activity, so chat bubbles show names
+  /// and avatars without an N+1 profile lookup on every poll tick.
+  /// Refreshed at most once a minute per activity.
   final Map<String, _SenderCache> _senderCache = {};
 
   @override
@@ -164,8 +171,13 @@ class RemoteChatRepository implements ChatRepository {
     }
   }
 
-  /// Resolves sender uids to display names + avatar URLs via the activity roster.
-  Future<Map<String, _SenderProfile>> _senderProfiles(String activityId) async {
+  /// Resolves sender uids to display names + avatar URLs via the
+  /// activity roster. Falls back to the last-known cached entry (even
+  /// if stale) when the roster is unreachable, so good names never wipe
+  /// to raw UIDs; only a cache-less failure degrades to raw uids.
+  Future<Map<String, _SenderProfile>> _senderProfiles(
+    String activityId,
+  ) async {
     final cached = _senderCache[activityId];
     if (cached != null &&
         DateTime.now().difference(cached.fetchedAt) <
@@ -179,7 +191,8 @@ class RemoteChatRepository implements ChatRepository {
           p.userId: _SenderProfile(name: p.name, avatarUrl: p.avatarUrl),
       };
       _senderCache[activityId] = _SenderCache(senders, DateTime.now());
-      // Cap the per-activity cache: drop the stalest entries beyond 100 so long sessions can't grow it without bound.
+      // Cap the per-activity cache: drop the stalest entries beyond 100
+      // so long sessions can't grow it without bound.
       while (_senderCache.length > 100) {
         var oldestKey = _senderCache.keys.first;
         var oldestAt = _senderCache[oldestKey]!.fetchedAt;
@@ -201,16 +214,27 @@ class RemoteChatRepository implements ChatRepository {
 
   @override
   Stream<List<ChatMessage>> watchMessages(String activityId) async* {
-    // Try the RTDB-backed real-time path first.
+    // Try the RTDB-backed real-time path first. Falls back to HTTP
+    // polling if Firebase isn't initialised (no google-services.json /
+    // GoogleService-Info.plist) or if the RTDB listener errors.
     if (_isFirebaseReady()) {
       try {
-        // Make sure the SDK session exists before subscribing.
+        // Make sure the SDK session exists before subscribing — an
+        // anonymous listener gets permission-denied under the RTDB
+        // rules and would permanently fall back to polling for this
+        // screen session.
         await RtdbAuthService.instance.ensureSignedIn();
         final myUid = await SecureTokenStore.instance.readUserId() ?? '';
         final senders = await _senderProfiles(activityId);
-        // First-event watchdog: a stalled RTDB socket emits neither data nor error, which would pin the chat on its.
+        // First-event watchdog: a stalled RTDB socket emits neither data
+        // nor error, which would pin the chat on its skeleton forever.
+        // The timeout throws into the catch below → HTTP polling.
         await for (final messages in withFirstEventTimeout(
-          _watchViaRtdb(activityId, myUid: myUid, senders: senders),
+          _watchViaRtdb(
+            activityId,
+            myUid: myUid,
+            senders: senders,
+          ),
         )) {
           yield messages;
         }
@@ -225,7 +249,9 @@ class RemoteChatRepository implements ChatRepository {
     yield* _watchViaPolling(activityId);
   }
 
-  /// Real-time path: subscribe to `activityChats/{activityId}/messages` in the Firebase Realtime Database.
+  /// Real-time path: subscribe to `activityChats/{activityId}/messages`
+  /// in the Firebase Realtime Database. Emits a fresh list each time
+  /// the snapshot changes (new message, edit, delete).
   Stream<List<ChatMessage>> _watchViaRtdb(
     String activityId, {
     required String myUid,
@@ -237,25 +263,26 @@ class RemoteChatRepository implements ChatRepository {
     return ref.onValue.map((event) {
       final value = event.snapshot.value;
       if (value is! Map) return <ChatMessage>[];
-      final messages =
-          value.entries
-              .whereType<MapEntry<dynamic, dynamic>>()
-              .map(
-                (e) => _parseRtdbMessage(
-                  e.key.toString(),
-                  e.value,
-                  myUid: myUid,
-                  senders: senders,
-                ),
-              )
-              .whereType<ChatMessage>()
-              .toList()
-            ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+      final messages = value.entries
+          .whereType<MapEntry<dynamic, dynamic>>()
+          .map(
+            (e) => _parseRtdbMessage(
+              e.key.toString(),
+              e.value,
+              myUid: myUid,
+              senders: senders,
+            ),
+          )
+          .whereType<ChatMessage>()
+          .toList()
+        ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
       return messages;
     });
   }
 
-  /// Polling fallback. Less efficient than RTDB but works without any Firebase config.
+  /// Polling fallback. Hits the HTTP `/activities/:id/messages` endpoint
+  /// every [_pollingInterval] and emits the latest list. Less efficient
+  /// than RTDB but works without any Firebase config.
   Stream<List<ChatMessage>> _watchViaPolling(String activityId) async* {
     final controller = StreamController<List<ChatMessage>>();
     Timer? timer;
@@ -283,15 +310,17 @@ class RemoteChatRepository implements ChatRepository {
     yield* controller.stream;
   }
 
-  /// Real-time stream of emoji reactions for [activityId], keyed by message id.
+  /// Real-time stream of emoji reactions for [activityId], keyed by
+  /// message id. Same transport strategy as [watchMessages]: RTDB
+  /// (`activityChats/{activityId}/reactions`) when Firebase is ready,
+  /// HTTP polling (`GET /chat/:id/reactions`) otherwise.
   @override
   Stream<MessageReactions> watchReactions(String activityId) async* {
     if (_isFirebaseReady()) {
       try {
         await RtdbAuthService.instance.ensureSignedIn();
-        await for (final reactions in withFirstEventTimeout(
-          _watchReactionsViaRtdb(activityId),
-        )) {
+        await for (final reactions
+            in withFirstEventTimeout(_watchReactionsViaRtdb(activityId))) {
           yield reactions;
         }
         return;
@@ -312,7 +341,9 @@ class RemoteChatRepository implements ChatRepository {
     return ref.onValue.map((event) => parseReactionMap(event.snapshot.value));
   }
 
-  Stream<MessageReactions> _watchReactionsViaPolling(String activityId) async* {
+  Stream<MessageReactions> _watchReactionsViaPolling(
+    String activityId,
+  ) async* {
     final controller = StreamController<MessageReactions>();
     Timer? timer;
 
@@ -339,7 +370,9 @@ class RemoteChatRepository implements ChatRepository {
     yield* controller.stream;
   }
 
-  /// Toggles the current user's [emoji] reaction on one message via `POST.
+  /// Toggles the current user's [emoji] reaction on one message via
+  /// `POST /chat/:activityId/messages/:messageId/reactions`.
+  /// Returns the server's `reacted` flag, or `null` on failure.
   @override
   Future<bool?> toggleReaction({
     required String activityId,
@@ -363,15 +396,17 @@ class RemoteChatRepository implements ChatRepository {
     }
   }
 
-  /// Real-time stream of polls for [activityId].
+  /// Real-time stream of polls for [activityId]. Same transport
+  /// strategy as [watchMessages]: RTDB (`activityChats/{activityId}/polls`)
+  /// when Firebase is ready, HTTP polling (`GET /chat/:id/polls`)
+  /// otherwise.
   @override
   Stream<List<ChatPoll>> watchPolls(String activityId) async* {
     if (_isFirebaseReady()) {
       try {
         await RtdbAuthService.instance.ensureSignedIn();
-        await for (final polls in withFirstEventTimeout(
-          _watchPollsViaRtdb(activityId),
-        )) {
+        await for (final polls
+            in withFirstEventTimeout(_watchPollsViaRtdb(activityId))) {
           yield polls;
         }
         return;
@@ -420,6 +455,7 @@ class RemoteChatRepository implements ChatRepository {
   }
 
   /// Creates a poll via `POST /chat/:activityId/polls`.
+  /// Returns the new poll id, or `null` on failure.
   @override
   Future<String?> createPoll({
     required String activityId,
@@ -441,6 +477,7 @@ class RemoteChatRepository implements ChatRepository {
   }
 
   /// Votes via `POST /chat/:activityId/polls/:pollId/votes`.
+  /// Returns the server's `voted` flag, or `null` on failure.
   @override
   Future<bool?> votePoll({
     required String activityId,
@@ -457,7 +494,8 @@ class RemoteChatRepository implements ChatRepository {
       return null;
     } catch (e, st) {
       debugPrint('[RemoteChatRepository.votePoll] $e\n$st');
-      // Same as send(): a decided 4xx.
+      // Same as send(): a decided 4xx (e.g. CHAT_ARCHIVED) rethrows
+      // so the caller can show the backend's own message.
       if (e is DioException && (e.response?.statusCode ?? 0) ~/ 100 == 4) {
         rethrow;
       }
@@ -465,7 +503,10 @@ class RemoteChatRepository implements ChatRepository {
     }
   }
 
-  /// Parses a single RTDB message entry.
+  /// Parses a single RTDB message entry. The backend writes messages
+  /// with this shape (per the chat service):
+  ///   { senderId: string, text: string, type: 'text' | 'system',
+  ///     timestamp: number (epoch millis) }
   ChatMessage? _parseRtdbMessage(
     String id,
     dynamic raw, {
@@ -479,7 +520,9 @@ class RemoteChatRepository implements ChatRepository {
     if (senderId.isEmpty || text.isEmpty) return null;
     final isMine = myUid.isNotEmpty && senderId == myUid;
     final sender = senders[senderId];
-    // Location shares travel as text (`'📍 Shared location: <maps link>'`) on the wire.
+    // Location shares travel as text (`'📍 Shared location: <maps link>'`)
+    // on the wire — extract coords so received shares render the tappable
+    // Maps card instead of a raw link (same helper the DM repo uses).
     final coords = parseSharedLocation(text);
     return ChatMessage(
       id: id,
@@ -496,13 +539,16 @@ class RemoteChatRepository implements ChatRepository {
     );
   }
 
-  /// Coerces a Firestore / RTDB timestamp (ISO string, epoch number, or `{ seconds.
+  /// Coerces a Firestore / RTDB timestamp (ISO string, epoch number, or
+  /// `{ seconds, nanoseconds }` map) into a [DateTime].
   DateTime? _parseTimestamp(dynamic raw) {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
     if (raw is String) return DateTime.tryParse(raw);
     if (raw is num) {
-      // Server timestamps are typically epoch seconds, but Firebase JS SDKs sometimes serialise as milliseconds.
+      // Server timestamps are typically epoch seconds, but Firebase JS
+      // SDKs sometimes serialise as milliseconds. Heuristic: anything
+      // smaller than 10^11 is treated as seconds.
       final ms = raw.toInt() < 100000000000 ? raw.toInt() * 1000 : raw.toInt();
       return DateTime.fromMillisecondsSinceEpoch(ms);
     }
@@ -515,7 +561,9 @@ class RemoteChatRepository implements ChatRepository {
     return null;
   }
 
-  /// True if Firebase has been initialised (apps list non-empty).
+  /// True if Firebase has been initialised (i.e. `Firebase.initializeApp()`
+  /// succeeded at app start). When false, the real-time path is skipped
+  /// and the polling fallback is used.
   bool _isFirebaseReady() {
     try {
       return Firebase.apps.isNotEmpty;
@@ -530,14 +578,16 @@ class RemoteChatRepository implements ChatRepository {
     required String text,
   }) async {
     try {
-      // Canonical route is `POST /api/chat/messages` with the activity id in the body.
+      // Canonical route is `POST /api/chat/messages` with the activity
+      // id in the body. The response carries `{messageId}` only, so the
+      // bubble is constructed locally (sender = me).
       final res = await _client.dio.post(
         '/chat/messages',
         data: {'activityId': activityId, 'text': text},
       );
       final messageId =
           apiDataMap(res.data)?['messageId']?.toString() ??
-          '$activityId-${DateTime.now().millisecondsSinceEpoch}';
+              '$activityId-${DateTime.now().millisecondsSinceEpoch}';
       final myUid = await SecureTokenStore.instance.readUserId() ?? '';
       return ChatMessage(
         id: messageId,
@@ -549,7 +599,9 @@ class RemoteChatRepository implements ChatRepository {
       );
     } catch (e, st) {
       debugPrint('[RemoteChatRepository.send] $e\n$st');
-      // Server rejections (4xx with a decision.
+      // Server rejections (4xx with a decision, e.g. CHAT_ARCHIVED)
+      // must surface verbatim — falling back would replace a precise
+      // refusal with a misleading offline error.
       if (e is DioException && (e.response?.statusCode ?? 0) ~/ 100 == 4) {
         rethrow;
       }
@@ -562,11 +614,16 @@ class RemoteChatRepository implements ChatRepository {
     required String activityId,
     required String imagePath,
   }) async {
-    // The backend stores text-only messages, so images upload to Firebase Storage first.
+    // The backend stores text-only messages, so an image is shared by
+    // uploading to Firebase Storage first and posting the download URL
+    // as the message text. The local bubble keeps `imagePath` so the
+    // photo renders inline immediately.
     try {
-      // Fail fast on oversized picks (8 MB server cap): the denial must surface as a "too large" alert.
+      // Fail fast on oversized picks (8 MB server cap): the denial
+      // must surface as a "too large" alert, never as a silent drop.
       await StorageService.checkImageSize(imagePath, kMaxChatImageBytes);
-      // Owner-scoped path so only the uploader can overwrite or delete the file.
+      // M2 fix: owner-scoped path so only the uploader can overwrite or
+      // delete the file (see StorageService.uploadChatAttachment).
       final myUid = await SecureTokenStore.instance.readUserId() ?? '';
       if (myUid.isEmpty) {
         throw Exception('Photo uploads are unavailable right now');
@@ -577,7 +634,10 @@ class RemoteChatRepository implements ChatRepository {
         uid: myUid,
       );
       if (uploadedUrl == null) {
-        // Storage returns null for every failure mode (unconfigured Firebase, missing file, failed upload.
+        // Storage returns null for every failure mode (unconfigured
+        // Firebase, missing file, failed upload — see StorageService):
+        // the photo literally cannot leave the device, so fail loudly
+        // with a specific message instead of the generic offline error.
         throw Exception('Photo uploads are unavailable right now');
       }
       final sent = await send(activityId: activityId, text: uploadedUrl);
@@ -593,7 +653,9 @@ class RemoteChatRepository implements ChatRepository {
       );
     } catch (e, st) {
       debugPrint('[RemoteChatRepository.sendImage] $e\n$st');
-      // The upload-unavailable and too-large signals must reach the screen verbatim.
+      // The upload-unavailable and too-large signals must reach the
+      // screen verbatim (each renders as its own snackbar copy) —
+      // never downgrade them to the generic offline fallback error.
       if (e is ImageTooLargeException) rethrow;
       if (e.toString().contains('Photo uploads are unavailable')) rethrow;
       return _fallback.sendImage(activityId: activityId, imagePath: imagePath);
@@ -606,12 +668,13 @@ class RemoteChatRepository implements ChatRepository {
     required double latitude,
     required double longitude,
   }) async {
-    // Same text-only constraint as images: the coordinates travel as a maps link inside a regular message.
+    // Same text-only constraint as images: the coordinates travel as a
+    // maps link inside a regular message. The local bubble keeps the
+    // raw coordinates so the map preview renders immediately.
     try {
       final sent = await send(
         activityId: activityId,
-        text:
-            '📍 Shared location: https://maps.google.com/?q=$latitude,$longitude',
+        text: '📍 Shared location: https://maps.google.com/?q=$latitude,$longitude',
       );
       return ChatMessage(
         id: sent.id,
@@ -635,18 +698,33 @@ class RemoteChatRepository implements ChatRepository {
 
   @override
   Future<List<ChatConversation>> conversations() async {
-    // No dedicated backend route — the inbox is derived from the viewer's own activities.
+    // No dedicated backend route — the inbox is derived from the
+    // viewer's own activities (hosted + joined, ALL statuses) plus the
+    // latest message of each, best-effort.
+    //
+    // Previously this filtered a capped `feed()` (status `open` only),
+    // so completed/full/cancelled games never got an inbox row — e.g.
+    // 14 hosted but only 7 groups. `hostedByUser`/`joinedByUser` hit
+    // the paginated `?mine=` endpoints (falling back to feed-derivation
+    // on old backends), covering every lifecycle status.
+    // The per-thread previews fan out via Future.wait (parallel, not
+    // sequential) and are capped at 20 activities so a heavy join
+    // list can't stall the inbox. One broken thread never sinks the
+    // whole inbox (per-thread try/catch), but a total feed failure
+    // rethrows so the inbox can show its ErrorRetry state.
     try {
       final results = await Future.wait([
         _activities.hostedByUser('me', limit: 50),
         _activities.joinedByUser('me', limit: 50),
       ]);
       final seen = <String>{};
-      final mine = [
-        ...results[0],
-        ...results[1],
-      ].where((a) => seen.add(a.id)).take(20).toList();
-      final lastOpened = await _lastOpenedAt({for (final a in mine) a.id});
+      final mine = [...results[0], ...results[1]]
+          .where((a) => seen.add(a.id))
+          .take(20)
+          .toList();
+      final lastOpened = await _lastOpenedAt({
+        for (final a in mine) a.id,
+      });
       final entries = await Future.wait(
         mine.map((activity) async {
           String lastMessage = '';
@@ -657,14 +735,18 @@ class RemoteChatRepository implements ChatRepository {
             if (msgs.isNotEmpty) {
               final last = msgs.last;
               final who = last.isMine ? 'You' : last.senderName;
-              // NOTE: assign the outer `lastMessage` — `var` here would shadow it, silently discarding the preview.
+              // NOTE: assign the outer `lastMessage` — `var` here would
+              // shadow it, silently discarding the preview while `time`
+              // still gets set (empty preview + real timestamp).
               lastMessage = ChatMessage.previewText(last.text);
-              lastMessage = lastMessage.length > 60
-                  ? '${lastMessage.substring(0, 60)}…'
-                  : lastMessage;
+              lastMessage =
+                  lastMessage.length > 60 ? '${lastMessage.substring(0, 60)}…' : lastMessage;
               lastMessage = '$who: $lastMessage';
               time = _relativeTime(last.sentAt);
-              // No server-side read state exists on ChatMessage.
+              // No server-side read state exists on ChatMessage, so
+              // unread = others' messages newer than the last time this
+              // chat was opened (persisted by the chat screen). Chats
+              // never opened have no baseline → 0, not "everything".
               final openedAt = lastOpened[activity.id];
               if (openedAt != null) {
                 unreadCount = msgs
@@ -673,7 +755,9 @@ class RemoteChatRepository implements ChatRepository {
               }
             }
           } catch (e, st) {
-            // One broken thread must not sink the whole inbox.
+            // One broken thread must not sink the whole inbox — but log
+            // which activity failed so "No messages yet" can be debugged
+            // instead of silently blanking a thread that has messages.
             debugPrint(
               '[RemoteChatRepository.conversations] preview failed for '
               '${activity.id}: $e\n$st',
@@ -696,7 +780,9 @@ class RemoteChatRepository implements ChatRepository {
     }
   }
 
-  /// Last-opened timestamps per activity, backing the inbox unread badges (see [recordChatOpened]).
+  /// Last-opened timestamps per activity, backing the inbox unread
+  /// badges (see [recordChatOpened]). Missing entries mean "never
+  /// opened" — callers treat those as 0, not as everything-unread.
   Future<Map<String, DateTime>> _lastOpenedAt(Set<String> ids) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -713,7 +799,8 @@ class RemoteChatRepository implements ChatRepository {
     }
   }
 
-  /// Compact relative timestamp for the inbox rows (`2m ago`, `3h ago`, `Yesterday`, `4d ago`).
+  /// Compact relative timestamp for the inbox rows
+  /// (`2m ago`, `3h ago`, `Yesterday`, `4d ago`).
   String _relativeTime(DateTime sentAt) {
     final diff = DateTime.now().difference(sentAt);
     if (diff.inMinutes < 1) return 'Just now';
@@ -723,7 +810,8 @@ class RemoteChatRepository implements ChatRepository {
     return '${diff.inDays}d ago';
   }
 
-  /// Parses one backend chat message: `{messageId, senderId, text, type, timestamp}`.
+  /// Parses one backend chat message:
+  /// `{messageId, senderId, text, type, timestamp}`.
   ChatMessage? _parse(
     Map<String, dynamic> json, {
     required String myUid,
@@ -734,7 +822,8 @@ class RemoteChatRepository implements ChatRepository {
     if (senderId.isEmpty || text.isEmpty) return null;
     final isMine = myUid.isNotEmpty && senderId == myUid;
     final sender = senders[senderId];
-    // Same wire-format handling as the RTDB path above: a location share arrives as text.
+    // Same wire-format handling as the RTDB path above: a location share
+    // arrives as text, so pull the coords out for the tappable card.
     final coords = parseSharedLocation(text);
     return ChatMessage(
       id: json['messageId']?.toString() ?? json['id']?.toString() ?? '',
@@ -752,10 +841,16 @@ class RemoteChatRepository implements ChatRepository {
   }
 }
 
-/// SharedPreferences key prefix for per-activity last-opened timestamps (`<prefix><activityId>` → epoch millis).
+/// SharedPreferences key prefix for per-activity last-opened
+/// timestamps (`<prefix><activityId>` → epoch millis). Written by the
+/// chat screen on open, read by [RemoteChatRepository.conversations]
+/// to compute inbox unread badges (no server-side read state exists
+/// on [ChatMessage]).
 const _lastOpenedPrefix = 'chat_last_opened_';
 
 /// Persists "this chat was opened now" for the inbox unread baseline.
+/// Best-effort and never throws (safe to call unawaited from a screen's
+/// `initState`, including under widget tests without plugin mocks).
 Future<void> recordChatOpened(String activityId) async {
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -766,14 +861,16 @@ Future<void> recordChatOpened(String activityId) async {
   } catch (_) {}
 }
 
-/// uid → sender profile snapshot with its fetch time, backing the sender cache in [RemoteChatRepository].
+/// uid → sender profile snapshot with its fetch time, backing the
+/// sender cache in [RemoteChatRepository].
 class _SenderCache {
   const _SenderCache(this.senders, this.fetchedAt);
   final Map<String, _SenderProfile> senders;
   final DateTime fetchedAt;
 }
 
-/// Display name + avatar URL of one chat participant, resolved from the activity roster.
+/// Display name + avatar URL of one chat participant, resolved from
+/// the activity roster.
 class _SenderProfile {
   const _SenderProfile({required this.name, this.avatarUrl});
   final String name;

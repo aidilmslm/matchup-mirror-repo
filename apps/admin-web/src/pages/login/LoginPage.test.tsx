@@ -1,4 +1,3 @@
-// Tests for LoginPage.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -34,23 +33,13 @@ describe('LoginPage', () => {
   });
 
   it('redirects to "/" when already authenticated', () => {
-    useAuthMock.mockReturnValue({
-      signIn: vi.fn(),
-      isAuthenticated: true,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn: vi.fn(), isAuthenticated: true, loading: false, sessionExpired: false });
     renderLoginPage();
     expect(screen.getByText('Dashboard page')).toBeInTheDocument();
   });
 
   it('shows a validation error when submitting with empty fields', async () => {
-    useAuthMock.mockReturnValue({
-      signIn: vi.fn(),
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn: vi.fn(), isAuthenticated: false, loading: false, sessionExpired: false });
     const user = userEvent.setup();
     renderLoginPage();
 
@@ -60,12 +49,7 @@ describe('LoginPage', () => {
 
   it('signs in and navigates to the attempted page on success', async () => {
     const signIn = vi.fn().mockResolvedValue(undefined);
-    useAuthMock.mockReturnValue({
-      signIn,
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn, isAuthenticated: false, loading: false, sessionExpired: false });
     const user = userEvent.setup();
     renderLoginPage();
 
@@ -79,12 +63,7 @@ describe('LoginPage', () => {
 
   it('shows the AuthError message when sign-in is rejected', async () => {
     const signIn = vi.fn().mockRejectedValue(new AuthError('This account is not an admin.'));
-    useAuthMock.mockReturnValue({
-      signIn,
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn, isAuthenticated: false, loading: false, sessionExpired: false });
     const user = userEvent.setup();
     renderLoginPage();
 
@@ -97,12 +76,7 @@ describe('LoginPage', () => {
 
   it('shows a generic message for a non-AuthError failure', async () => {
     const signIn = vi.fn().mockRejectedValue(new Error('boom'));
-    useAuthMock.mockReturnValue({
-      signIn,
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn, isAuthenticated: false, loading: false, sessionExpired: false });
     const user = userEvent.setup();
     renderLoginPage();
 
@@ -114,23 +88,13 @@ describe('LoginPage', () => {
   });
 
   it('shows the session-expired banner when flagged, unless there is an error', async () => {
-    useAuthMock.mockReturnValue({
-      signIn: vi.fn(),
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: true,
-    });
+    useAuthMock.mockReturnValue({ signIn: vi.fn(), isAuthenticated: false, loading: false, sessionExpired: true });
     renderLoginPage();
     expect(screen.getByText('Your session has expired. Please sign in again.')).toBeInTheDocument();
   });
 
   it('toggles password visibility', async () => {
-    useAuthMock.mockReturnValue({
-      signIn: vi.fn(),
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn: vi.fn(), isAuthenticated: false, loading: false, sessionExpired: false });
     const user = userEvent.setup();
     renderLoginPage();
 
@@ -142,12 +106,7 @@ describe('LoginPage', () => {
   });
 
   it('toggles the remember-me checkbox', async () => {
-    useAuthMock.mockReturnValue({
-      signIn: vi.fn(),
-      isAuthenticated: false,
-      loading: false,
-      sessionExpired: false,
-    });
+    useAuthMock.mockReturnValue({ signIn: vi.fn(), isAuthenticated: false, loading: false, sessionExpired: false });
     const user = userEvent.setup();
     renderLoginPage();
 

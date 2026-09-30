@@ -128,13 +128,19 @@ void main() {
         heightCm: any(named: 'heightCm'),
         weightKg: any(named: 'weightKg'),
       ),
-    ).thenAnswer((_) async => UserModel(id: 'me', displayName: 'Test User'));
+    ).thenAnswer(
+      (_) async => UserModel(id: 'me', displayName: 'Test User'),
+    );
     // GTK1 saves the join reason with a different argument shape —
     // mocktail matches stubs by exact named-arg set, so both shapes
     // need stubs.
     when(
-      () => userRepo.updateProfile(joinReason: any(named: 'joinReason')),
-    ).thenAnswer((_) async => UserModel(id: 'me', displayName: 'Test User'));
+      () => userRepo.updateProfile(
+        joinReason: any(named: 'joinReason'),
+      ),
+    ).thenAnswer(
+      (_) async => UserModel(id: 'me', displayName: 'Test User'),
+    );
 
     await tester.pumpWidget(
       ProviderScope(
@@ -193,9 +199,9 @@ void main() {
     // and Complete stalls on "Saving…" forever).
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-          (call) async => null,
-        );
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (call) async => null,
+    );
     // NavGuard debounce state is static: without a reset, taps in one
     // test can swallow same-key pushes in the next (fake clocks restart
     // at the same epoch every test).

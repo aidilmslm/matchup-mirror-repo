@@ -1,4 +1,3 @@
-// Tests for AnalyticsPage.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,9 +7,7 @@ const { useAnalyticsMock, downloadCsvMock } = vi.hoisted(() => ({
   downloadCsvMock: vi.fn(),
 }));
 vi.mock('../../hooks/useAnalytics', () => ({ useAnalytics: useAnalyticsMock }));
-vi.mock('../../context/ThemeContext', () => ({
-  useTheme: () => ({ theme: 'light', toggle: vi.fn() }),
-}));
+vi.mock('../../context/ThemeContext', () => ({ useTheme: () => ({ theme: 'light', toggle: vi.fn() }) }));
 vi.mock('../../utils/csvExport', () => ({ downloadCsv: downloadCsvMock }));
 
 import { AnalyticsPage } from './AnalyticsPage';
@@ -33,14 +30,7 @@ describe('AnalyticsPage audit fixes', () => {
 
   it('F1: Export button downloads analytics CSV', async () => {
     const data = makeData();
-    useAnalyticsMock.mockReturnValue({
-      loading: false,
-      error: null,
-      data,
-      range: '7d',
-      setRange: vi.fn(),
-      reload: vi.fn(),
-    });
+    useAnalyticsMock.mockReturnValue({ loading: false, error: null, data, range: '7d', setRange: vi.fn(), reload: vi.fn() });
     const user = userEvent.setup();
     render(<AnalyticsPage />);
     await user.click(screen.getByRole('button', { name: 'Export' }));
@@ -53,14 +43,7 @@ describe('AnalyticsPage audit fixes', () => {
 
   it('F4: shows empty-state when retention and health are empty', () => {
     const data = makeData({ retention: [], health: [] });
-    useAnalyticsMock.mockReturnValue({
-      loading: false,
-      error: null,
-      data,
-      range: '7d',
-      setRange: vi.fn(),
-      reload: vi.fn(),
-    });
+    useAnalyticsMock.mockReturnValue({ loading: false, error: null, data, range: '7d', setRange: vi.fn(), reload: vi.fn() });
     render(<AnalyticsPage />);
     expect(screen.getAllByText('No data yet — events not collected')).toHaveLength(2);
   });

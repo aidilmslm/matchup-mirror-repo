@@ -27,8 +27,7 @@ class _FakeDmRepo implements DmRepository {
   final List<String> sent = [];
 
   @override
-  Stream<List<ChatMessage>> watchMessages(String otherUid) =>
-      _controller.stream;
+  Stream<List<ChatMessage>> watchMessages(String otherUid) => _controller.stream;
 
   @override
   Future<List<ChatMessage>> messages(String otherUid, {int limit = 50}) async =>
@@ -62,11 +61,9 @@ class _FakeDmRepo implements DmRepository {
     throw UnimplementedError();
   }
 
+
   @override
-  Future<ChatMessage> send({
-    required String otherUid,
-    required String text,
-  }) async {
+  Future<ChatMessage> send({required String otherUid, required String text}) async {
     sent.add(text);
     final m = ChatMessage(
       id: 'm-${sent.length}',
@@ -83,13 +80,13 @@ class _FakeDmRepo implements DmRepository {
 }
 
 ChatMessage _msg(String id, String senderId, String text) => ChatMessage(
-  id: id,
-  senderId: senderId,
-  senderName: senderId == 'me' ? 'You' : 'Sam',
-  text: text,
-  sentAt: DateTime.now(),
-  isMine: senderId == 'me',
-);
+      id: id,
+      senderId: senderId,
+      senderName: senderId == 'me' ? 'You' : 'Sam',
+      text: text,
+      sentAt: DateTime.now(),
+      isMine: senderId == 'me',
+    );
 
 Future<void> _pump(
   WidgetTester tester,
@@ -122,9 +119,7 @@ void main() {
   testWidgets('renders incoming + outgoing bubbles', (tester) async {
     await _pump(
       tester,
-      _FakeDmRepo(
-        seed: [_msg('m-1', 'u-9', 'hey there'), _msg('m-2', 'me', 'hi!')],
-      ),
+      _FakeDmRepo(seed: [_msg('m-1', 'u-9', 'hey there'), _msg('m-2', 'me', 'hi!')]),
     );
 
     expect(find.text('hey there'), findsOneWidget);
@@ -135,7 +130,10 @@ void main() {
   });
 
   testWidgets('shows a timestamp under each bubble', (tester) async {
-    await _pump(tester, _FakeDmRepo(seed: [_msg('m-1', 'u-9', 'hey there')]));
+    await _pump(
+      tester,
+      _FakeDmRepo(seed: [_msg('m-1', 'u-9', 'hey there')]),
+    );
 
     // e.g. "11:29 AM" — one per bubble.
     expect(
@@ -158,9 +156,7 @@ void main() {
     expect(find.text('hello sam'), findsOneWidget);
   });
 
-  testWidgets('falls back to a generic title without a peer name', (
-    tester,
-  ) async {
+  testWidgets('falls back to a generic title without a peer name', (tester) async {
     final unknownUserRepo = _MockUserRepository();
     when(() => unknownUserRepo.byId(any())).thenAnswer((_) async => null);
     await tester.pumpWidget(
@@ -178,9 +174,8 @@ void main() {
     expect(find.text('Direct message'), findsOneWidget);
   });
 
-  testWidgets('shows the live profile name and avatar in the header', (
-    tester,
-  ) async {
+  testWidgets('shows the live profile name and avatar in the header',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -199,9 +194,8 @@ void main() {
     expect(find.text('SR'), findsOneWidget);
   });
 
-  testWidgets('settings sheet offers view profile and report user', (
-    tester,
-  ) async {
+  testWidgets('settings sheet offers view profile and report user',
+      (tester) async {
     await _pump(tester, _FakeDmRepo());
 
     await tester.tap(find.bySemanticsLabel('Conversation settings'));
@@ -246,7 +240,10 @@ void main() {
     expect(photoImage, findsOneWidget);
     expect(find.text('My Location'), findsOneWidget);
     expect(find.text('Tap to open in Maps'), findsOneWidget);
-    expect(find.textContaining('maps.google.com'), findsNothing);
+    expect(
+      find.textContaining('maps.google.com'),
+      findsNothing,
+    );
   });
 }
 

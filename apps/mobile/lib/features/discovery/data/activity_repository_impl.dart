@@ -3,8 +3,15 @@ import '../domain/activity_model.dart';
 import '../domain/discovery_filter.dart';
 import 'activity_repository.dart';
 
-/// Offline-only activity store.
-/// Every read returns an empty list / `null` — there is **no hardcoded seed data** anywhere in the app.
+/// Offline-only activity store. The app **always** talks to the live
+/// backend in production; this implementation exists solely as a
+/// graceful-degradation fallback so the network layer's `try/catch`
+/// in [RemoteActivityRepository] can return an empty result instead
+/// of a hard exception when the backend is unreachable.
+///
+/// Every read returns an empty list / `null` — there is **no
+/// hardcoded seed data** anywhere in the app. Any data the user sees
+/// must come from the backend.
 class LocalActivityRepository implements ActivityRepository {
   final Map<String, List<String>> _joinedByUser = {};
   final Map<String, List<String>> _hostedByUser = {};
@@ -15,7 +22,8 @@ class LocalActivityRepository implements ActivityRepository {
     int offset = 0,
     DiscoveryFilter? filter,
     bool forceRefresh = false,
-    // No network here, so nothing can fail — accepted for interface compatibility with the `strict` contract only.
+    // No network here, so nothing can fail — accepted for interface
+    // compatibility with the `strict` contract only.
     bool strict = false,
   }) async {
     await _delay();
@@ -37,7 +45,9 @@ class LocalActivityRepository implements ActivityRepository {
     await _delay();
     final ids = _joinedByUser[userId] ?? const <String>[];
     if (ids.isEmpty) return const <ActivityModel>[];
-    // No local seed to look up — these ids would correspond to activities the backend knows about.
+    // No local seed to look up — these ids would correspond to
+    // activities the backend knows about, but with no in-memory
+    // mirror we can't reconstruct them. Return empty.
     return const <ActivityModel>[];
   }
 
@@ -89,7 +99,9 @@ class LocalActivityRepository implements ActivityRepository {
     String? weatherDesc,
     int? weatherRain,
   }) async {
-    // Writes only succeed against the backend.
+    // Writes only succeed against the backend. The fallback here is
+    // a no-op: we don't fabricate a fake activity just because the
+    // user is offline.
     throw StateError(
       'ActivityRepository.create() requires a live backend — no offline '
       'fallback is provided. Check your connection and retry.',
@@ -198,10 +210,7 @@ class LocalActivityRepository implements ActivityRepository {
   }
 
   @override
-  Future<List<ActivityModel>> pendingRequests({
-    int limit = 20,
-    int offset = 0,
-  }) async {
+  Future<List<ActivityModel>> pendingRequests({int limit = 20, int offset = 0}) async {
     await _delay();
     return const <ActivityModel>[];
   }

@@ -22,8 +22,13 @@ import '../../discovery/domain/activity_model.dart';
 import '../../discovery/presentation/widgets/venue_map_card.dart';
 import 'my_activities_screen.dart';
 
-/// Read-only detail for an activity the viewer requested to join but the host hasn't approved yet.
-/// Deliberately sparse: no chat entry, no check-in, no join actions — the viewer isn't a participant.
+/// Read-only detail for an activity the viewer requested to join but
+/// the host hasn't approved yet.
+///
+/// Deliberately sparse: no chat entry, no check-in, no join actions —
+/// the viewer isn't a participant. The only action is cancelling the
+/// request (backend deletes the pending row via `leave`). All colors
+/// come from theme tokens for dark-mode parity.
 class PendingRequestDetailScreen extends ConsumerWidget {
   const PendingRequestDetailScreen({super.key, required this.activityId});
   final String activityId;
@@ -33,14 +38,16 @@ class PendingRequestDetailScreen extends ConsumerWidget {
     final async = ref.watch(_pendingDetailProvider(activityId));
     return AppScaffold(
       showHomeIndicator: false,
-      // Full-bleed hero like the standard detail screen: the cover extends behind the status bar instead of starting.
+      // Full-bleed hero like the standard detail screen: the cover
+      // extends behind the status bar instead of starting below it.
       safeAreaTop: false,
       backgroundColor: context.colors.background,
       body: async.when(
         loading: () => const DetailLoadingSkeleton(bottomBar: false),
         error: (_, _) => ErrorRetry(
           message: 'Could not load this activity.',
-          onRetry: () => ref.invalidate(_pendingDetailProvider(activityId)),
+          onRetry: () =>
+              ref.invalidate(_pendingDetailProvider(activityId)),
         ),
         data: (activity) {
           if (activity == null) {
@@ -55,8 +62,8 @@ class PendingRequestDetailScreen extends ConsumerWidget {
 
 final _pendingDetailProvider = FutureProvider.autoDispose
     .family<ActivityModel?, String>((ref, id) {
-      return ref.watch(activityRepositoryProvider).byId(id);
-    });
+  return ref.watch(activityRepositoryProvider).byId(id);
+});
 
 class _PendingBody extends ConsumerWidget {
   const _PendingBody({required this.activity});
@@ -107,197 +114,196 @@ class _PendingBody extends ConsumerWidget {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Cover hero — same 280px anatomy as the standard detail screen, with an overlapping sheet below.
-            SizedBox(
-              height: 280,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  activity.coverImageUrl != null
-                      ? AssetImageWithFallback(
-                          imagePath: activity.coverImageUrl!,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primaryDark,
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.sports,
-                              size: 64,
-                              color: AppColors.textOnPrimary.withValues(
-                                alpha: 0.38,
-                              ),
-                            ),
-                          ),
-                        ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.x4),
-                        child: Semantics(
-                          button: true,
-                          label: 'Back',
-                          child: GestureDetector(
-                            onTap: () {
-                              if (Navigator.of(context).canPop()) {
-                                Navigator.of(context).pop();
-                              } else {
-                                context.go('/activities');
-                              }
-                            },
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                color: AppColors.scrimControl,
-                                shape: BoxShape.circle,
-                              ),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.arrow_back_rounded,
-                                size: 20,
-                                color: AppColors.textOnPrimary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Overlapping sheet.
-            Container(
-              transform: Matrix4.translationValues(0, -20, 0),
-              decoration: BoxDecoration(
-                color: context.colors.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppRadius.xl),
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.x5,
-                AppSpacing.x4,
-                AppSpacing.x5,
-                AppSpacing.x8,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Status banner
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.x4),
-                    decoration: BoxDecoration(
-                      color: context.colors.warningBg,
-                      borderRadius: BorderRadius.circular(AppRadius.card),
-                      border: Border.all(
-                        color: context.colors.warningText.withValues(
-                          alpha: 0.3,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.hourglass_top_rounded,
-                          size: 22,
-                          color: context.colors.warningText,
-                        ),
-                        const SizedBox(width: AppSpacing.x3),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Waiting for host approval',
-                                style: AppTypography.labelField(context)
-                                    .copyWith(
-                                      color: context.colors.warningText,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'You can look around, but chat and check-in unlock after approval.',
-                                style: AppTypography.metaSub(context).copyWith(
-                                  color: context.colors.warningText,
-                                  fontSize: 13,
-                                ),
-                              ),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Cover hero — same 280px anatomy as the standard detail
+          // screen, with an overlapping sheet below.
+          SizedBox(
+            height: 280,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                activity.coverImageUrl != null
+                    ? AssetImageWithFallback(
+                        imagePath: activity.coverImageUrl!,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primaryDark,
                             ],
                           ),
                         ),
-                      ],
+                        child: Center(
+                          child: Icon(
+                            Icons.sports,
+                            size: 64,
+                            color: AppColors.textOnPrimary.withValues(
+                              alpha: 0.38,
+                            ),
+                          ),
+                        ),
+                      ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.x4),
+                      child: Semantics(
+                        button: true,
+                        label: 'Back',
+                        child: GestureDetector(
+                          onTap: () {
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop();
+                            } else {
+                              context.go('/activities');
+                            }
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: AppColors.scrimControl,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 20,
+                              color: AppColors.textOnPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.x4),
+                ),
+              ],
+            ),
+          ),
 
-                  Text(
-                    activity.title,
-                    style: AppTypography.headingDisplay(context),
-                  ),
-                  const SizedBox(height: AppSpacing.x3),
-
-                  // Host row — tappable, same as the standard detail.
-                  _HostRow(activity: activity),
-                  const SizedBox(height: AppSpacing.x3),
-
-                  // Meta card — date / location / fee rows.
-                  _MetaCard(activity: activity),
-                  const SizedBox(height: AppSpacing.x5),
-
-                  if (activity.latitude != null &&
-                      activity.longitude != null) ...[
-                    VenueMapCard(activity: activity),
-                    const SizedBox(height: AppSpacing.x5),
-                  ],
-
-                  if (activity.description.isNotEmpty) ...[
-                    Text(
-                      'About this Activity',
-                      style: AppTypography.titleMedium(context),
-                    ),
-                    const SizedBox(height: AppSpacing.x2),
-                    Text(
-                      activity.description,
-                      style: AppTypography.bodyReading(context),
-                    ),
-                    const SizedBox(height: AppSpacing.x6),
-                  ],
-
-                  // The only action: withdraw.
-                  AppButton.danger(
-                    label: 'Cancel Request',
-                    onPressed: () => _cancelRequest(context, ref),
-                  ),
-                ],
+          // Overlapping sheet.
+          Container(
+            transform: Matrix4.translationValues(0, -20, 0),
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppRadius.xl),
               ),
             ),
-          ],
-        ),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.x5,
+              AppSpacing.x4,
+              AppSpacing.x5,
+              AppSpacing.x8,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Status banner
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.x4),
+                  decoration: BoxDecoration(
+                    color: context.colors.warningBg,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    border: Border.all(
+                      color: context.colors.warningText
+                          .withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        size: 22,
+                        color: context.colors.warningText,
+                      ),
+                      const SizedBox(width: AppSpacing.x3),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Waiting for host approval',
+                              style: AppTypography.labelField(context).copyWith(
+                                color: context.colors.warningText,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'You can look around, but chat and check-in unlock after approval.',
+                              style: AppTypography.metaSub(context).copyWith(
+                                color: context.colors.warningText,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.x4),
+
+                Text(
+                  activity.title,
+                  style: AppTypography.headingDisplay(context),
+                ),
+                const SizedBox(height: AppSpacing.x3),
+
+                // Host row — tappable, same as the standard detail.
+                _HostRow(activity: activity),
+                const SizedBox(height: AppSpacing.x3),
+
+                // Meta card — date / location / fee rows.
+                _MetaCard(activity: activity),
+                const SizedBox(height: AppSpacing.x5),
+
+                if (activity.latitude != null &&
+                    activity.longitude != null) ...[
+                  VenueMapCard(activity: activity),
+                  const SizedBox(height: AppSpacing.x5),
+                ],
+
+                if (activity.description.isNotEmpty) ...[
+                  Text(
+                    'About this Activity',
+                    style: AppTypography.titleMedium(context),
+                  ),
+                  const SizedBox(height: AppSpacing.x2),
+                  Text(
+                    activity.description,
+                    style: AppTypography.bodyReading(context),
+                  ),
+                  const SizedBox(height: AppSpacing.x6),
+                ],
+
+                // The only action: withdraw.
+                AppButton.danger(
+                  label: 'Cancel Request',
+                  onPressed: () => _cancelRequest(context, ref),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
 }
 
-// Host row (tappable, mirrors the standard detail screen).
+// ─── Host row (tappable, mirrors the standard detail screen) ────────────────
 
 class _HostRow extends StatelessWidget {
   const _HostRow({required this.activity});
@@ -313,7 +319,9 @@ class _HostRow extends StatelessWidget {
       child: GestureDetector(
         // Same pushOnce guard as the standard detail host card.
         onTap: canOpen
-            ? () => NavGuard.push(context, '/player-profile/uid/$hostId')
+            ? () => NavGuard.push(context,
+                  '/player-profile/uid/$hostId',
+                )
             : null,
         behavior: HitTestBehavior.opaque,
         child: Container(
@@ -328,7 +336,10 @@ class _HostRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              AppAvatar(name: activity.hostName, size: AppAvatarSize.sm),
+              AppAvatar(
+                name: activity.hostName,
+                size: AppAvatarSize.sm,
+              ),
               const SizedBox(width: AppSpacing.x3),
               Expanded(
                 child: Column(
@@ -336,9 +347,10 @@ class _HostRow extends StatelessWidget {
                   children: [
                     Text(
                       activity.hostName,
-                      style: AppTypography.labelField(
-                        context,
-                      ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                      style: AppTypography.labelField(context).copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text('Host', style: AppTypography.metaSub(context)),
                   ],
@@ -366,9 +378,9 @@ class _HostRow extends StatelessWidget {
               else
                 Text(
                   'New host',
-                  style: AppTypography.metaSub(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.metaSub(context).copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               if (canOpen) ...[
                 const SizedBox(width: AppSpacing.x1),
@@ -425,13 +437,13 @@ class _MetaCard extends StatelessWidget {
             title: !activity.isPaid
                 ? 'Free Activity'
                 : activity.isSplitCost
-                ? 'Split Cost'
-                : 'Paid Activity',
+                    ? 'Split Cost'
+                    : 'Paid Activity',
             sub: !activity.isPaid
                 ? 'No cost to join'
                 : activity.splitExplainer ??
-                      activity.feeLabel ??
-                      'Fee required to join',
+                    activity.feeLabel ??
+                    'Fee required to join',
           ),
         ],
       ),
@@ -463,7 +475,11 @@ class _MetaRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 18, color: context.colors.primaryOnSurface),
+            child: Icon(
+              icon,
+              size: 18,
+              color: context.colors.primaryOnSurface,
+            ),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
@@ -472,9 +488,9 @@ class _MetaRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: AppTypography.labelField(
-                    context,
-                  ).copyWith(fontSize: 14),
+                  style: AppTypography.labelField(context).copyWith(
+                    fontSize: 14,
+                  ),
                 ),
                 if (sub.isNotEmpty)
                   Text(

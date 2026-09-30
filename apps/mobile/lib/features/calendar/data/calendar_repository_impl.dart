@@ -8,7 +8,13 @@ import '../../discovery/data/activity_repository.dart';
 import '../domain/calendar_event.dart';
 import 'calendar_repository.dart';
 
-/// Offline-only calendar store.
+/// Offline-only calendar store. Reads return empty, writes report
+/// failure — going offline never throws: [upcoming] resolves to an
+/// empty list and [addToDeviceCalendar] returns false instead of
+/// touching the OS calendar. UID resolution is unchanged (both this
+/// repo and My Games read the signed-in uid from [SecureTokenStore] —
+/// My Games via `myGamesUidProvider`, this repo directly — so they
+/// always agree).
 class LocalCalendarRepository implements CalendarRepository {
   @override
   Future<List<CalendarEvent>> upcoming({int days = 30}) async {
@@ -24,22 +30,27 @@ class RemoteCalendarRepository implements CalendarRepository {
     ApiClient? client,
     CalendarRepository? fallback,
     ActivityRepository? activities,
-  }) : _client = client ?? ApiClient.instance,
-       _fallback = fallback ?? LocalCalendarRepository(),
-       _activities = activities; // ignore: prefer_initializing_formals
+  })  : _client = client ?? ApiClient.instance,
+        _fallback = fallback ?? LocalCalendarRepository(),
+        _activities = activities; // ignore: prefer_initializing_formals
 
   final ApiClient _client;
   final CalendarRepository _fallback;
 
-  /// Source of committed games. Injected (instead of constructed) so tests can substitute a fake.
+  /// Source of committed games. Injected (instead of constructed) so
+  /// tests can substitute a fake. Null = legacy backend mode.
   final ActivityRepository? _activities;
 
-  /// Activity ids successfully written to the OS calendar this session, surfaced as `addedToDeviceCalendar` checkmarks.
+  /// Activity ids successfully written to the OS calendar this
+  /// session, surfaced as `addedToDeviceCalendar` checkmarks.
   final Set<String> _syncedIds = {};
 
   @override
   Future<List<CalendarEvent>> upcoming({int days = 30}) async {
-    // Prefer the dedicated endpoint when the backend offers it (`GET /api/calendar/upcoming`).
+    // Prefer the dedicated endpoint when the backend offers it
+    // (`GET /api/calendar/upcoming`). It does not exist on current
+    // backends (404), so any transport failure falls through to the
+    // derivation below — never to an empty screen or a throw.
     try {
       final res = await _client.dio.get(
         '/calendar/upcoming',
@@ -51,12 +62,14 @@ class RemoteCalendarRepository implements CalendarRepository {
     }
 
     final activities = _activities;
-    // No injected source → legacy backend mode with no derivation possible: degrade to the offline store (empty, never.
+    // No injected source → legacy backend mode with no derivation
+    // possible: degrade to the offline store (empty, never throws).
     if (activities == null) {
       return _fallback.upcoming(days: days);
     }
 
-    // Derive from committed games (joined + hosted): always consistent with My Games, works offline from cache.
+    // Derive from committed games (joined + hosted): always consistent
+    // with My Games, works offline from cache, no backend endpoint.
     try {
       final uid = await SecureTokenStore.instance.readUserId() ?? '';
       final results = await Future.wait([
@@ -67,7 +80,8 @@ class RemoteCalendarRepository implements CalendarRepository {
       final horizon = now.add(Duration(days: days));
       final seen = <String>{};
       final events = <CalendarEvent>[];
-      // Joined and hosted are added in separate loops so the hosted flag survives dedup.
+      // Joined and hosted are added in separate loops so the hosted
+      // flag survives dedup (a game appearing in both reads as hosted).
       for (final activity in results[1]) {
         if (!seen.add(activity.id)) continue;
         if (activity.endTime.isBefore(now)) continue;
@@ -131,19 +145,23 @@ class RemoteCalendarRepository implements CalendarRepository {
 
   CalendarEvent _parse(dynamic raw) {
     final json = raw as Map<String, dynamic>;
-    // Backend sends UTC ISO (`Z`); convert to device-local ONCE here so calendar rows render correct local times.
+    // Backend sends UTC ISO (`Z`); convert to device-local ONCE here so
+    // calendar rows render correct local times. Unparseable timestamps
+    // fall back to a far-future sentinel (NOT now) so corrupt rows sort
+    // last instead of masquerading as starting now.
     return CalendarEvent(
       id: json['id']?.toString() ?? '',
       activityId: json['activity_id']?.toString() ?? '',
       title: json['title'] as String? ?? '',
       start:
           DateTime.tryParse(json['start'] as String? ?? '')?.toLocal() ??
-          DateTime(2100),
+              DateTime(2100),
       end:
           DateTime.tryParse(json['end'] as String? ?? '')?.toLocal() ??
-          DateTime(2100),
+              DateTime(2100),
       location: json['location'] as String? ?? '',
       addedToDeviceCalendar: json['synced'] as bool? ?? false,
     );
   }
+
 }

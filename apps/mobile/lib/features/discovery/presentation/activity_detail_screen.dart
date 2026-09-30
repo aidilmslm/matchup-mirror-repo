@@ -31,7 +31,10 @@ import '../../activities/presentation/my_activities_screen.dart';
 import '../../report/presentation/report_activity_sheet.dart';
 import 'widgets/venue_map_card.dart';
 
-/// Back navigation that always lands somewhere.
+/// Back navigation that always lands somewhere. This screen is usually
+/// reached via `context.go` (deck tap, deep link), which replaces the
+/// route stack — a bare `maybePop()` then silently does nothing and the
+/// back button feels dead. Fall back to Discover in that case.
 void _popOrDiscovery(BuildContext context) {
   if (Navigator.of(context).canPop()) {
     Navigator.of(context).pop();
@@ -40,19 +43,20 @@ void _popOrDiscovery(BuildContext context) {
   }
 }
 
-// Provider.
+// ─── Provider ─────────────────────────────────────────────────────────────────
 final _activityDetailProvider = FutureProvider.autoDispose
     .family<ActivityModel?, String>((ref, id) {
       return ref.watch(activityRepositoryProvider).byId(id);
     });
 
-/// Live roster for the avatar stack. Rendered faces always come from this provider — never from bundled stock photos.
+/// Live roster for the avatar stack. Rendered faces always come from
+/// this provider — never from bundled stock photos.
 final _rosterProvider = FutureProvider.autoDispose
     .family<List<ActivityParticipant>, String>((ref, activityId) {
       return ref.watch(activityRepositoryProvider).participants(activityId);
     });
 
-// Screen.
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
 class ActivityDetailScreen extends ConsumerWidget {
   const ActivityDetailScreen({super.key, required this.activityId});
@@ -61,99 +65,96 @@ class ActivityDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_activityDetailProvider(activityId));
-    // System back on a go-opened detail (deep link, restored route) would otherwise close the app.
+    // System back on a go-opened detail (deep link, restored route)
+    // would otherwise close the app — fall back to Discover.
     return SystemBackFallback(
       onEmptyStack: (context) => context.go('/discovery'),
       child: async.when(
-        loading: () => const DetailLoadingSkeleton(),
-        error: (e, _) => AppScaffold(
-          showHomeIndicator:
-              false, // inside ShellRoute — AppShell draws its own.
-          body: ErrorRetry(
-            message: 'Could not load activity details.',
-            onRetry: () => ref.invalidate(_activityDetailProvider(activityId)),
-          ),
+      loading: () => const DetailLoadingSkeleton(),
+      error: (e, _) => AppScaffold(
+        showHomeIndicator: false, // inside ShellRoute — AppShell draws its own.
+        body: ErrorRetry(
+          message: 'Could not load activity details.',
+          onRetry: () => ref.invalidate(_activityDetailProvider(activityId)),
         ),
-        data: (activity) {
-          if (activity == null) {
-            return AppScaffold(
-              showHomeIndicator:
-                  false, // inside ShellRoute — AppShell draws its own.
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.x5),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Activity not found.'),
-                      const SizedBox(height: AppSpacing.x4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          PressableScale(
-                            onTap: () => _popOrDiscovery(context),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.x5,
-                                vertical: AppSpacing.x3,
+      ),
+      data: (activity) {
+        if (activity == null) {
+          return AppScaffold(
+            showHomeIndicator: false, // inside ShellRoute — AppShell draws its own.
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.x5),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Activity not found.'),
+                    const SizedBox(height: AppSpacing.x4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        PressableScale(
+                          onTap: () => _popOrDiscovery(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.x5,
+                              vertical: AppSpacing.x3,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
+                              border: Border.all(
+                                color: context.colors.border,
                               ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.pill,
-                                ),
-                                border: Border.all(
-                                  color: context.colors.border,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Back',
-                                style: AppTypography.buttonPrimary.copyWith(
-                                  color: context.colors.textPrimary,
-                                ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Back',
+                              style: AppTypography.buttonPrimary.copyWith(
+                                color: context.colors.textPrimary,
                               ),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.x3),
-                          PressableScale(
-                            onTap: () => ref.invalidate(
-                              _activityDetailProvider(activityId),
+                        ),
+                        const SizedBox(width: AppSpacing.x3),
+                        PressableScale(
+                          onTap: () => ref.invalidate(
+                            _activityDetailProvider(activityId),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.x5,
+                              vertical: AppSpacing.x3,
                             ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.x5,
-                                vertical: AppSpacing.x3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.pill,
-                                ),
-                                boxShadow: AppShadows.glowPrimary,
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Retry',
-                                style: AppTypography.buttonPrimary,
-                              ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
+                              boxShadow: AppShadows.glowPrimary,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Retry',
+                              style: AppTypography.buttonPrimary,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            );
-          }
-          return _DetailBody(activity: activity, activityId: activityId);
-        },
+            ),
+          );
+        }
+        return _DetailBody(activity: activity, activityId: activityId);
+      },
       ),
     );
   }
 }
 
-// Detail body.
+// ─── Detail body ─────────────────────────────────────────────────────────────
 
 class _DetailBody extends ConsumerStatefulWidget {
   const _DetailBody({required this.activity, required this.activityId});
@@ -167,7 +168,9 @@ class _DetailBody extends ConsumerStatefulWidget {
 class _DetailBodyState extends ConsumerState<_DetailBody> {
   bool _joining = false;
 
-  /// Tracks a just-sent join request locally so the button flips to "pending" immediately.
+  /// Tracks a just-sent join request locally so the button flips to
+  /// "pending" immediately. Initialised from the backend viewer context
+  /// (`joinRequestStatus`) for requests sent on another device/session.
   bool _requestPending = false;
   final ScrollController _scrollController = ScrollController();
   bool _hasMoreBelow = true;
@@ -202,15 +205,16 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     HapticFeedback.mediumImpact();
     setState(() => _joining = true);
     try {
-      // Approval-gated activities file a join request instead of joining outright.
+      // Approval-gated activities file a join request instead of
+      // joining outright; withdrawing a pending request goes through
+      // leave (the backend cancels it server-side).
       if (widget.activity.requiresApproval && !_requestPending) {
-        await ref
-            .read(activityRepositoryProvider)
-            .requestJoin(widget.activityId);
+        await ref.read(activityRepositoryProvider).requestJoin(widget.activityId);
         if (!mounted) return;
         HapticFeedback.heavyImpact();
         setState(() => _requestPending = true);
-        // Refresh the detail (viewer context now carries the pending request) so a remount renders the pending pill.
+        // Refresh the detail (viewer context now carries the pending
+        // request) so a remount renders the pending pill from data.
         ref.invalidate(_activityDetailProvider(widget.activityId));
         // And the Pending tab, which caches keepAlive-side.
         ref.invalidate(pendingGamesProvider);
@@ -224,14 +228,18 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       await ref.read(activityRepositoryProvider).join(widget.activityId);
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      // Upcoming caches keepAlive-side — refresh it now so the game is there when the user opens My Games.
+      // Upcoming caches keepAlive-side — refresh it now so the game is
+      // there when the user opens My Games.
       ref.invalidate(joinedGamesProvider);
       AppSnackbar.show(
         context,
         message: 'You\'ve joined ${widget.activity.title}!',
         variant: AppSnackbarVariant.success,
       );
-      // The joined activity rides along as route extra for any downstream screen that accepts cached fallback content.
+      // The joined activity rides along as route extra for any
+      // downstream screen that accepts cached fallback content.
+      // Pushed (not go) so the system back button returns to this
+      // detail screen instead of closing the app.
       NavGuard.push(
         context,
         '/joined-activity/${widget.activityId}',
@@ -239,12 +247,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       );
     } catch (e) {
       if (!mounted) return;
-      // Surface precise backend rejections ("Activity is full", "Activity has already started") instead of a generic.
+      // Surface precise backend rejections ("Activity is full",
+      // "Activity has already started") instead of a generic failure.
       final message = e is DioException && e.error is ApiException
           ? (e.error as ApiException).userMessage
           : (widget.activity.requiresApproval && !_requestPending
-                ? 'Could not send request. Please try again.'
-                : 'Could not join. Please try again.');
+              ? 'Could not send request. Please try again.'
+              : 'Could not join. Please try again.');
       AppSnackbar.show(
         context,
         message: message,
@@ -259,7 +268,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   Widget build(BuildContext context) {
     final a = widget.activity;
 
-    // Overlap: the card rises this far into the hero.
+    // Overlap amount: card naik sejauh ini ke dalam hero.
+    // Pills ada di bottom: x4 (~16px) hero, tinggi pill ~32px → pills
+    // berakhir di heroHeight - 16. Card overlap 20px: card top = heroHeight - 20.
+    // Pills dengan bottom:16 berarti top = heroHeight - 16 - 32 ≈ heroHeight - 48.
+    // Jadi pills tetap di atas card (heroHeight-48 < heroHeight-20). ✓
     const double overlapAmount = 44;
     const double heroH = _Hero.heroHeight;
 
@@ -275,14 +288,16 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       ),
       body: Stack(
         children: [
-          // Layer 1: hero (fixed height, full width).
+          // ── Layer 1: hero (fixed height, full-width) ─────────────────
           SizedBox(
             height: heroH,
             width: double.infinity,
             child: _Hero(activity: a),
           ),
 
-          // ── Layer 2: white card, starts heroH - overlap from top ───── Positioned.fill + top leaves the card.
+          // ── Layer 2: white card, starts heroH - overlap from top ─────
+          // Positioned.fill + top leaves the card filling everything from
+          // that top offset to the bottom of the body.
           Positioned(
             top: heroH - overlapAmount,
             left: 0,
@@ -308,7 +323,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 ),
                 child: SingleChildScrollView(
                   controller: _scrollController,
-                  // Extra top padding compensates for the overlap so content starts below where the pills hang over.
+                  // Extra top padding compensates for the overlap so content
+                  // starts below where the pills hang over.
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.x5,
                     AppSpacing.x5,
@@ -334,7 +350,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                       _MetaCard(activity: a),
                       ActivityWeatherSection(activity: a),
                       const SizedBox(height: AppSpacing.x5),
-                      // Venue map only when the activity carries coordinates — older rows may not have them.
+                      // Venue map only when the activity carries
+                      // coordinates — older rows may not have them.
                       if (a.latitude != null && a.longitude != null) ...[
                         VenueMapCard(activity: a),
                         const SizedBox(height: AppSpacing.x5),
@@ -364,7 +381,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   }
 }
 
-// Hero.
+// ─── Hero ─────────────────────────────────────────────────────────────────────
 
 class _Hero extends StatelessWidget {
   const _Hero({required this.activity});
@@ -430,7 +447,9 @@ class _Hero extends StatelessWidget {
             ),
           ),
 
-          // Pills — bottom, always above the card (last in Stack z-order).
+          // Pills — bottom, selalu di atas card (z-order terakhir dalam Stack).
+          // Wrap (not Row) so long sport/skill labels fold instead of
+          // overflowing on narrow screens.
           Positioned(
             left: AppSpacing.x5,
             bottom: AppSpacing.x4 + 20 + 20,
@@ -523,9 +542,9 @@ class _SportBadgeHero extends StatelessWidget {
       ),
       child: Text(
         sport.toUpperCase(),
-        style: AppTypography.chipLabel(
-          context,
-        ).copyWith(color: AppColors.textPrimary),
+        style: AppTypography.chipLabel(context).copyWith(
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }
@@ -547,17 +566,13 @@ class _SkillBadgeHero extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.flash_on_rounded,
-            size: 13,
-            color: AppColors.textOnPrimary,
-          ),
+          const Icon(Icons.flash_on_rounded, size: 13, color: AppColors.textOnPrimary),
           const SizedBox(width: 4),
           Text(
             level.toUpperCase(),
-            style: AppTypography.chipLabel(
-              context,
-            ).copyWith(color: AppColors.textOnPrimary),
+            style: AppTypography.chipLabel(context).copyWith(
+              color: AppColors.textOnPrimary,
+            ),
           ),
         ],
       ),
@@ -565,7 +580,7 @@ class _SkillBadgeHero extends StatelessWidget {
   }
 }
 
-// Host card.
+// ─── Host card ────────────────────────────────────────────────────────────────
 
 class _HostCard extends StatelessWidget {
   const _HostCard({
@@ -579,7 +594,9 @@ class _HostCard extends StatelessWidget {
   final String hostId;
   final double? hostRating;
 
-  /// Host-role average (stars received while hosting).
+  /// Host-role average (stars received while hosting). Shown first —
+  /// even a single rating. Falls back to [hostRating] (mixed) on
+  /// legacy rows, then "New host".
   final double? hostHostRating;
   final int hostHostRatingCount;
 
@@ -594,10 +611,12 @@ class _HostCard extends StatelessWidget {
       button: canOpen,
       label: canOpen ? 'View host profile: $hostName' : null,
       child: PressableScale(
-        // pushOnce: repeat taps while the profile is open are ignored, so duplicate page keys can never red-screen.
+        // pushOnce: repeat taps while the profile is open are ignored,
+        // so duplicate page keys can never red-screen. See NavGuard.
         onTap: canOpen
-            ? () =>
-                  NavGuard.push(context, '/player-profile/uid/${hostId.trim()}')
+            ? () => NavGuard.push(context,
+                  '/player-profile/uid/${hostId.trim()}',
+                )
             : null,
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -612,7 +631,10 @@ class _HostCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              AppAvatar(name: hostName, size: AppAvatarSize.sm),
+              AppAvatar(
+                name: hostName,
+                size: AppAvatarSize.sm,
+              ),
               const SizedBox(width: AppSpacing.x3),
               Expanded(
                 child: Column(
@@ -620,15 +642,18 @@ class _HostCard extends StatelessWidget {
                   children: [
                     Text(
                       hostName,
-                      style: AppTypography.labelField(
-                        context,
-                      ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                      style: AppTypography.labelField(context).copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text('Host', style: AppTypography.metaSub(context)),
                   ],
                 ),
               ),
-              // Host-role rating badge — stars received while hosting (even one shows).
+              // Host-role rating badge — stars received while hosting
+              // (even one shows). Falls back to the mixed community
+              // average on legacy rows, then "New host" (never a fake).
               if (hostStars != null)
                 Semantics(
                   label:
@@ -676,9 +701,9 @@ class _HostCard extends StatelessWidget {
               else
                 Text(
                   'New host',
-                  style: AppTypography.metaSub(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w600),
+                  style: AppTypography.metaSub(context).copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               if (canOpen) ...[
                 const SizedBox(width: AppSpacing.x1),
@@ -696,7 +721,7 @@ class _HostCard extends StatelessWidget {
   }
 }
 
-// Meta card (date location).
+// ─── Meta card (date + location) ─────────────────────────────────────────────
 
 class _MetaCard extends StatelessWidget {
   const _MetaCard({required this.activity});
@@ -720,7 +745,11 @@ class _MetaCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _MetaRow(icon: AppIcons.calendar, title: date, sub: timeRange),
+          _MetaRow(
+            icon: AppIcons.calendar,
+            title: date,
+            sub: timeRange,
+          ),
           Divider(height: 1, color: context.colors.border, indent: 60),
           _MetaRow(
             icon: AppIcons.mapPin,
@@ -733,13 +762,13 @@ class _MetaCard extends StatelessWidget {
             title: !activity.isPaid
                 ? 'Free Activity'
                 : activity.isSplitCost
-                ? 'Split Cost'
-                : 'Paid Activity',
+                    ? 'Split Cost'
+                    : 'Paid Activity',
             sub: !activity.isPaid
                 ? 'No cost to join'
                 : activity.splitExplainer ??
-                      activity.feeLabel ??
-                      'Fee required to join',
+                    activity.feeLabel ??
+                    'Fee required to join',
             trailingChip: _FeeChip(isPaid: activity.isPaid),
           ),
         ],
@@ -790,7 +819,8 @@ class _MetaRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: AppTypography.labelField(context)),
-                // The sub-row (address / distance) hides entirely when empty so no blank line sits under the title.
+                // The sub-row (address / distance) hides entirely when
+                // empty so no blank line sits under the title.
                 if (sub.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(sub, style: AppTypography.metaSub(context)),
@@ -829,15 +859,17 @@ class _FeeChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTypography.chipLabel(
-          context,
-        ).copyWith(color: fgColor, fontWeight: FontWeight.w700, fontSize: 12),
+        style: AppTypography.chipLabel(context).copyWith(
+          color: fgColor,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
       ),
     );
   }
 }
 
-// Participants section.
+// ─── Participants section ─────────────────────────────────────────────────────
 
 class _ParticipantsSection extends StatelessWidget {
   const _ParticipantsSection({required this.activity});
@@ -845,9 +877,7 @@ class _ParticipantsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final waiting = activity.requiresApproval
-        ? activity.pendingRequestCount
-        : 0;
+    final waiting = activity.requiresApproval ? activity.pendingRequestCount : 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -883,7 +913,10 @@ class _ParticipantsSection extends StatelessWidget {
 }
 
 /// Overlapping participant avatars with a `+N` overflow badge.
-/// Faces come from the live roster (`activityRepository.participants`): backend photo when the user has one, initials.
+///
+/// Faces come from the live roster (`activityRepository.participants`):
+/// backend photo when the user has one, initials otherwise. While the
+/// roster loads or fails, nothing fake is shown.
 class _ParticipantAvatars extends ConsumerWidget {
   const _ParticipantAvatars({required this.activityId});
   final String activityId;
@@ -911,7 +944,10 @@ class _ParticipantAvatars extends ConsumerWidget {
         }
         final visible = members.take(_maxVisible).toList();
         final overflow = members.length - visible.length;
-        return _AvatarStack(members: visible, overflow: overflow);
+        return _AvatarStack(
+          members: visible,
+          overflow: overflow,
+        );
       },
     );
   }
@@ -929,8 +965,8 @@ class _AvatarStack extends StatelessWidget {
 
     return SizedBox(
       height: _ParticipantAvatars._size,
-      width:
-          _ParticipantAvatars._step * (slots - 1) + _ParticipantAvatars._size,
+      width: _ParticipantAvatars._step * (slots - 1) +
+          _ParticipantAvatars._size,
       child: Stack(
         children: [
           for (var i = 0; i < members.length; i++)
@@ -985,7 +1021,7 @@ class _Ring extends StatelessWidget {
   }
 }
 
-// Report button.
+// ─── Report button ────────────────────────────────────────────────────────────
 
 class _ReportButton extends StatelessWidget {
   const _ReportButton({required this.activity});
@@ -1028,7 +1064,7 @@ class _ReportButton extends StatelessWidget {
   }
 }
 
-// Action bar.
+// ─── Action bar ───────────────────────────────────────────────────────────────
 
 class _ActionBar extends StatelessWidget {
   const _ActionBar({
@@ -1041,7 +1077,8 @@ class _ActionBar extends StatelessWidget {
   final ActivityModel activity;
   final bool joining;
 
-  /// A sent-but-undecided join request.
+  /// A sent-but-undecided join request. Renders a disabled pill so the
+  /// user knows the host still has to act.
   final bool requestPending;
   final VoidCallback onDislike;
   final VoidCallback onJoin;
@@ -1053,10 +1090,10 @@ class _ActionBar extends StatelessWidget {
     final joinLabel = requestPending
         ? 'Request pending'
         : activity.hasStarted
-        ? 'Already started'
-        : activity.requiresApproval
-        ? 'Request to Join'
-        : (canJoin ? 'Join Game' : 'Activity Full');
+            ? 'Already started'
+            : activity.requiresApproval
+                ? 'Request to Join'
+                : (canJoin ? 'Join Game' : 'Activity Full');
 
     // Why the pill is disabled — surfaced on tap instead of a dead tap.
     String? disabledReason() {
@@ -1112,27 +1149,31 @@ class _ActionBar extends StatelessWidget {
               label: requestPending
                   ? 'Join request pending'
                   : (activity.hasStarted
-                        ? 'Activity already started'
-                        : (canJoin ? 'Join Game' : 'Activity is full')),
+                      ? 'Activity already started'
+                      : (canJoin ? 'Join Game' : 'Activity is full')),
               child: PressableScale(
-                // Disabled pills still explain themselves on tap (full / started / pending).
+                // Disabled pills still explain themselves on tap
+                // (full / started / pending) — except mid-submit, when
+                // the spinner is showing and taps stay ignored.
                 onTap: canJoin
                     ? onJoin
                     : (joining
-                          ? null
-                          : () {
-                              final reason = disabledReason();
-                              if (reason == null) return;
-                              AppSnackbar.show(
-                                context,
-                                message: reason,
-                                variant: AppSnackbarVariant.info,
-                              );
-                            }),
+                        ? null
+                        : () {
+                            final reason = disabledReason();
+                            if (reason == null) return;
+                            AppSnackbar.show(
+                              context,
+                              message: reason,
+                              variant: AppSnackbarVariant.info,
+                            );
+                          }),
                 child: Container(
                   height: 56,
                   decoration: BoxDecoration(
-                    color: canJoin ? AppColors.primary : context.colors.border,
+                    color: canJoin
+                        ? AppColors.primary
+                        : context.colors.border,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     boxShadow: canJoin ? AppShadows.glowPrimary : null,
                   ),

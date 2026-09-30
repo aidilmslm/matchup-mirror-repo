@@ -29,14 +29,15 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(myProfileProvider);
-    final unreadCount = ref.watch(_unreadNotifCountProvider).valueOrNull ?? 0;
+    final unreadCount =
+        ref.watch(_unreadNotifCountProvider).valueOrNull ?? 0;
 
     return AppScaffold(
       showHomeIndicator: false,
       backgroundColor: context.colors.background,
       body: Column(
         children: [
-          // Header.
+          // ── Header ────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.x5,
@@ -58,9 +59,9 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         'Manage your account & games',
-                        style: AppTypography.bodyMedium(
-                          context,
-                        ).copyWith(color: context.colors.textSecondary),
+                        style: AppTypography.bodyMedium(context).copyWith(
+                          color: context.colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -115,7 +116,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
 
-          // Body.
+          // ── Body ──────────────────────────────────────────────────────
           Expanded(
             child: profileAsync.when(
               loading: () => const SkeletonList(count: 6),
@@ -157,14 +158,14 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-// Unread count provider (reused from notifications).
+// ─── Unread count provider (reused from notifications) ────────────────────────
 
 final _unreadNotifCountProvider = FutureProvider.autoDispose<int>((ref) async {
   final all = await ref.read(notificationRepositoryProvider).all();
   return all.where((n) => n.unread).length;
 });
 
-// Avatar card.
+// ─── Avatar card ──────────────────────────────────────────────────────────────
 
 class _AvatarCard extends StatelessWidget {
   const _AvatarCard({required this.user});
@@ -172,12 +173,13 @@ class _AvatarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No synthetic @handle: the backend has no username field.
+    // No synthetic @handle: the backend has no username field. Show the
+    // real location when set, else a counts subtitle from the model.
     final subtitle = (user.location?.trim().isNotEmpty ?? false)
         ? user.location!.trim()
         : '${user.sports.length} '
-              '${user.sports.length == 1 ? 'sport' : 'sports'} '
-              '• ${user.hostedCount} hosted';
+            '${user.sports.length == 1 ? 'sport' : 'sports'} '
+            '• ${user.hostedCount} hosted';
 
     return Container(
       width: double.infinity,
@@ -214,10 +216,12 @@ class _AvatarCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(2),
                     child: ClipOval(
-                      // Prefer the backend `photoUrl` (remote Storage URL) when present.
+                      // Prefer the backend `photoUrl` (remote Storage URL)
+                      // when present; fall back to the bundled asset.
                       child: (user.avatarUrl ?? user.avatarAsset) != null
                           ? AssetImageWithFallback(
-                              imagePath: user.avatarUrl ?? user.avatarAsset!,
+                              imagePath:
+                                  user.avatarUrl ?? user.avatarAsset!,
                               fit: BoxFit.cover,
                             )
                           : Container(
@@ -267,7 +271,10 @@ class _AvatarCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.x3),
 
           // Name
-          Text(user.displayName, style: AppTypography.headlineSmall(context)),
+          Text(
+            user.displayName,
+            style: AppTypography.headlineSmall(context),
+          ),
           const SizedBox(height: 4),
 
           // Location / counts subtitle — theme-aware brand blue.
@@ -284,7 +291,7 @@ class _AvatarCard extends StatelessWidget {
   }
 }
 
-// Stats row.
+// ─── Stats row ────────────────────────────────────────────────────────────────
 
 class _StatsRow extends StatelessWidget {
   const _StatsRow({required this.user});
@@ -292,7 +299,8 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Host-role average (even one rating shows) — displayed on the Hosted card so trust as a host reads at a glance.
+    // Host-role average (even one rating shows) — displayed on the
+    // Hosted card so trust as a host reads at a glance.
     final host = user.overallHostRating;
     return Row(
       children: [
@@ -383,16 +391,16 @@ class _StatCard extends StatelessWidget {
                     numeric == numeric.floorToDouble()
                         ? '${v.round()}'
                         : v.toStringAsFixed(1),
-                    style: AppTypography.headlineSmall(
-                      context,
-                    ).copyWith(fontSize: 22),
+                    style: AppTypography.headlineSmall(context).copyWith(
+                      fontSize: 22,
+                    ),
                   ),
                 )
               : Text(
                   value,
-                  style: AppTypography.headlineSmall(
-                    context,
-                  ).copyWith(fontSize: 22),
+                  style: AppTypography.headlineSmall(context).copyWith(
+                    fontSize: 22,
+                  ),
                 ),
           const SizedBox(height: 2),
           Text(label, style: AppTypography.caption(context)),
@@ -402,7 +410,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// My Sports section.
+// ─── My Sports section ────────────────────────────────────────────────────────
 
 class _SportsSection extends StatelessWidget {
   const _SportsSection({required this.sports});
@@ -416,7 +424,10 @@ class _SportsSection extends StatelessWidget {
         Text('My Sports', style: AppTypography.titleMedium(context)),
         const SizedBox(height: AppSpacing.x3),
         if (sports.isEmpty)
-          Text('No sports added yet.', style: AppTypography.metaSub(context))
+          Text(
+            'No sports added yet.',
+            style: AppTypography.metaSub(context),
+          )
         else
           Wrap(
             spacing: AppSpacing.x2,
@@ -473,14 +484,17 @@ class _SportPill extends StatelessWidget {
   }
 }
 
-// Options card.
+// ─── Options card ─────────────────────────────────────────────────────────────
 
-/// Restarts the first-run tour on demand from Profile, regardless of whether the user has already seen it.
+/// Restarts the first-run tour on demand from Profile, regardless of
+/// whether the user has already seen it — `reset` clears the "seen" flag
+/// first so `start` (which persists it again on completion/skip) behaves
+/// exactly like a fresh first run. Awaiting `reset` before navigating
+/// avoids a race where Discovery could mount and check tour state before
+/// the flag is actually cleared.
 Future<void> _replayTour(BuildContext context, WidgetRef ref) async {
   await ref.read(tourStoreProvider).reset(kFirstRunTourId);
-  ref
-      .read(tourControllerProvider.notifier)
-      .start(kFirstRunTourId, kFirstRunTour);
+  ref.read(tourControllerProvider.notifier).start(kFirstRunTourId, kFirstRunTour);
   if (context.mounted) context.go('/discovery');
 }
 
@@ -551,12 +565,8 @@ class _OptionsCard extends ConsumerWidget {
 
 class _Divider extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Divider(
-    height: 1,
-    color: context.colors.border,
-    indent: 16,
-    endIndent: 16,
-  );
+  Widget build(BuildContext context) =>
+      Divider(height: 1, color: context.colors.border, indent: 16, endIndent: 16);
 }
 
 class _OptionRow extends StatelessWidget {
@@ -583,10 +593,17 @@ class _OptionRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: context.colors.textPrimary),
+            Icon(
+              icon,
+              size: 22,
+              color: context.colors.textPrimary,
+            ),
             const SizedBox(width: AppSpacing.x4),
             Expanded(
-              child: Text(label, style: AppTypography.labelField(context)),
+              child: Text(
+                label,
+                style: AppTypography.labelField(context),
+              ),
             ),
             Icon(
               Icons.chevron_right_rounded,
@@ -754,7 +771,8 @@ class _ModeOption extends StatelessWidget {
                   color: selected
                       ? context.colors.textPrimary
                       : context.colors.textSecondary,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  fontWeight:
+                      selected ? FontWeight.w700 : FontWeight.w400,
                   fontSize: 15,
                 ),
               ),
@@ -805,9 +823,9 @@ class _LogoutRow extends ConsumerWidget {
             const SizedBox(width: AppSpacing.x4),
             Text(
               'Log Out',
-              style: AppTypography.labelField(
-                context,
-              ).copyWith(color: context.colors.errorText),
+              style: AppTypography.labelField(context).copyWith(
+                color: context.colors.errorText,
+              ),
             ),
             const Spacer(),
             Icon(
@@ -828,7 +846,9 @@ class _LogoutRow extends ConsumerWidget {
       builder: (ctx) => const _LogoutSheet(),
     );
     if (confirmed == true && context.mounted) {
-      // Unregister the FCM device from the backend's push-notification roster before clearing the auth state.
+      // Unregister the FCM device from the backend's push-notification
+      // roster before clearing the auth state — fire-and-forget so a
+      // slow network doesn't delay the sign-out UX.
       unawaited(
         PushNotificationService.instance.unregister(
           deviceRepository: ref.read(deviceRepositoryProvider),
@@ -840,7 +860,7 @@ class _LogoutRow extends ConsumerWidget {
   }
 }
 
-// Logout confirmation bottom sheet.
+// ─── Logout confirmation bottom sheet ────────────────────────────────────────
 
 class _LogoutSheet extends StatelessWidget {
   const _LogoutSheet();
@@ -884,7 +904,9 @@ class _LogoutSheet extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            // Theme-aware red: dangerAccent as text is 3.7:1 on white and raw danger is 3.5:1 on dark surfaces.
+            // Theme-aware red: dangerAccent as text is 3.7:1 on white
+            // and raw danger is 3.5:1 on dark surfaces — errorText
+            // clears AA both themes (6.5/9.4:1).
             child: Icon(
               Icons.logout_rounded,
               size: 26,
@@ -896,9 +918,9 @@ class _LogoutSheet extends StatelessWidget {
           // Title
           Text(
             'Log Out',
-            style: AppTypography.titleSheet(
-              context,
-            ).copyWith(color: context.colors.errorText),
+            style: AppTypography.titleSheet(context).copyWith(
+              color: context.colors.errorText,
+            ),
           ),
           const SizedBox(height: AppSpacing.x2),
 
@@ -916,7 +938,8 @@ class _LogoutSheet extends StatelessWidget {
             height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                // Solid danger red: white label clears AA (5.1:1) both themes, unlike dangerAccent (3.7:1).
+                // Solid danger red: white label clears AA (5.1:1) both
+                // themes, unlike dangerAccent (3.7:1).
                 backgroundColor: AppColors.danger,
                 foregroundColor: context.colors.textOnPrimary,
                 elevation: 0,
@@ -943,7 +966,10 @@ class _LogoutSheet extends StatelessWidget {
                 ),
               ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('Cancel', style: AppTypography.labelField(context)),
+              child: Text(
+                'Cancel',
+                style: AppTypography.labelField(context),
+              ),
             ),
           ),
         ],
@@ -952,4 +978,8 @@ class _LogoutSheet extends StatelessWidget {
   }
 }
 
-// NOTE (theme hardcodes kept deliberately): `AppColors.primary` (edit-photo badge) and `AppColors.dangerAccent`.
+// NOTE (theme hardcodes kept deliberately): `AppColors.primary` (edit-photo
+// badge) and `AppColors.dangerAccent` (logout rows/sheet) are saturated
+// theme-invariant accents — `dark_colors.dart` mandates such colours stay
+// on the static `AppColors` class (no same-value `context.colors` token
+// exists for either in light mode, so swapping would break light parity).

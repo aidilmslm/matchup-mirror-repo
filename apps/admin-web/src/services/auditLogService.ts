@@ -1,4 +1,10 @@
-/** Audit log service — database-backed (Firestore `adminActions` via api-server). */
+/**
+ * Audit log service — database-backed (Firestore `adminActions` via
+ * api-server).
+ *
+ * Live endpoint (api-server):
+ *   GET /api/admin/audit-log?category=&adminUid=&limit= → AuditLogEntry[]
+ */
 import { apiFetch } from './api';
 import type { AuditAction, AuditCategory, AuditLogEntry } from '../types/auditLog';
 
@@ -42,14 +48,18 @@ export interface FetchAuditLogParams {
   limit?: number;
 }
 
-export async function fetchAuditLog(params: FetchAuditLogParams = {}): Promise<AuditLogEntry[]> {
+export async function fetchAuditLog(
+  params: FetchAuditLogParams = {},
+): Promise<AuditLogEntry[]> {
   const query = new URLSearchParams();
   if (params.category !== undefined) query.set('category', params.category);
   if (params.adminUid !== undefined) query.set('adminUid', params.adminUid);
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   const qs = query.toString();
 
-  const res = await apiFetch<AuditLogEntryView[]>(`/api/admin/audit-log${qs ? `?${qs}` : ''}`);
+  const res = await apiFetch<AuditLogEntryView[]>(
+    `/api/admin/audit-log${qs ? `?${qs}` : ''}`,
+  );
   if (!res.ok) throw new Error(res.error.message);
   return res.data.map(toAuditLogEntry);
 }

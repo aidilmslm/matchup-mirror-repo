@@ -27,21 +27,27 @@ import '../../report/presentation/report_user_sheet.dart';
 import '../domain/chat_message.dart';
 import 'chat_attachment_sheet.dart';
 
-/// Peer profile for the avatar (best-effort.
+/// Peer profile for the avatar (best-effort — null while loading or
+/// when the lookup fails; bubbles fall back to initials/no avatar).
 final _peerProfileProvider = FutureProvider.autoDispose
     .family<UserModel?, String>((ref, uid) {
-      return ref.watch(userRepositoryProvider).byId(uid);
-    });
+  return ref.watch(userRepositoryProvider).byId(uid);
+});
 
 /// Minimal 1-on-1 direct-message thread.
-/// Peer name header, realtime bubble list (text, photos, shared locations), composer with photo/location.
+///
+/// Peer name header, realtime bubble list (text, photos, shared
+/// locations), composer with photo/location attachments, and a
+/// settings sheet (view profile, report user). Opened from player
+/// profiles (`/dm/:uid`) and from `dm_message` push taps.
 class DmScreen extends ConsumerStatefulWidget {
   const DmScreen({super.key, required this.otherUid, this.peerName});
 
   /// The other participant's uid (route path parameter).
   final String otherUid;
 
-  /// Display name passed via route `extra` — falls back to a generic label when absent.
+  /// Display name passed via route `extra` — falls back to a generic
+  /// label when absent (e.g. cold-start push taps).
   final String? peerName;
 
   @override
@@ -60,7 +66,8 @@ class _DmScreenState extends ConsumerState<DmScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
-    // Clear the badge right away (fire-and-forget); the inbox list refreshes underneath via its RTDB watch.
+    // Clear the badge right away (fire-and-forget); the inbox list
+    // refreshes underneath via its RTDB watch.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(dmRepositoryProvider).markRead(widget.otherUid);
@@ -88,9 +95,7 @@ class _DmScreenState extends ConsumerState<DmScreen> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    debugPrint(
-      '[DmScreen] send tapped (len=${text.length}, sending=$_sending)',
-    );
+    debugPrint('[DmScreen] send tapped (len=${text.length}, sending=$_sending)');
     if (text.isEmpty || _sending) return;
     setState(() {
       _sending = true;
@@ -108,7 +113,8 @@ class _DmScreenState extends ConsumerState<DmScreen> {
     } catch (e) {
       debugPrint('[DmScreen] send failed: $e');
       if (!mounted) return;
-      // Restore the draft so the user doesn't lose what they typed (mirrors the group chat send path).
+      // Restore the draft so the user doesn't lose what they typed
+      // (mirrors the group chat send path).
       _controller.text = text;
       setState(() {
         _errorText = 'Could not send. Tap send to retry.';
@@ -136,7 +142,8 @@ class _DmScreenState extends ConsumerState<DmScreen> {
 
   Future<void> _openAttachmentSheet() async {
     // Polls live under activity group chats — hidden in 1-on-1 threads.
-    final choice = await ChatAttachmentSheet.show(context, includePoll: false);
+    final choice =
+        await ChatAttachmentSheet.show(context, includePoll: false);
     if (choice == null || !mounted) return;
     switch (choice) {
       case ChatAttachmentChoice.photo:
@@ -189,7 +196,8 @@ class _DmScreenState extends ConsumerState<DmScreen> {
       if (!mounted) return;
       AppSnackbar.show(
         context,
-        // The "uploads unavailable" signal renders verbatim; every other failure keeps the generic copy.
+        // The "uploads unavailable" signal renders verbatim; every
+        // other failure keeps the generic copy.
         message: _photoErrorMessage(e),
         variant: AppSnackbarVariant.error,
       );
@@ -199,9 +207,11 @@ class _DmScreenState extends ConsumerState<DmScreen> {
   Future<void> _shareLocation() async {
     late final Position? position;
     try {
-      position = await LocationService.instance.getCurrentLocation();
+      position =
+          await LocationService.instance.getCurrentLocation();
     } on LocationTimeoutException {
-      // A slow fix is transient — offer a retry, not a lecture about permissions.
+      // A slow fix is transient — offer a retry, not a lecture about
+      // permissions.
       if (!mounted) return;
       AppSnackbar.show(
         context,
@@ -212,7 +222,8 @@ class _DmScreenState extends ConsumerState<DmScreen> {
     }
     if (!mounted) return;
     if (position == null) {
-      // Permanently denied ("don't ask again") can only be fixed in the OS settings — offer a shortcut there.
+      // Permanently denied ("don't ask again") can only be fixed in
+      // the OS settings — offer a shortcut there.
       final permanentlyDenied = await LocationService.instance
           .isPermissionPermanentlyDenied();
       if (!mounted) return;
@@ -221,7 +232,7 @@ class _DmScreenState extends ConsumerState<DmScreen> {
         message: permanentlyDenied
             ? 'Location permission is off. Enable it in Settings to share your location.'
             : 'Could not access your location. Check location '
-                  'permissions and try again.',
+                'permissions and try again.',
         variant: AppSnackbarVariant.error,
         actionLabel: permanentlyDenied ? 'Open Settings' : null,
         onAction: permanentlyDenied ? () => Geolocator.openAppSettings() : null,
@@ -230,13 +241,11 @@ class _DmScreenState extends ConsumerState<DmScreen> {
     }
     HapticFeedback.lightImpact();
     try {
-      await ref
-          .read(dmRepositoryProvider)
-          .sendLocation(
-            otherUid: widget.otherUid,
-            latitude: position.latitude,
-            longitude: position.longitude,
-          );
+      await ref.read(dmRepositoryProvider).sendLocation(
+        otherUid: widget.otherUid,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
       if (!mounted) return;
       _scrollToLatest();
     } catch (_) {
@@ -251,10 +260,11 @@ class _DmScreenState extends ConsumerState<DmScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stream = ref
-        .watch(dmRepositoryProvider)
-        .watchMessages(widget.otherUid);
-    // Peer identity resolves in order: live profile → route extra → generic fallback.
+    final stream =
+        ref.watch(dmRepositoryProvider).watchMessages(widget.otherUid);
+    // Peer identity resolves in order: live profile → route extra →
+    // generic fallback, so the header is correct no matter how the
+    // thread was opened (profile button, inbox tap, or push deep link).
     final peer = ref.watch(_peerProfileProvider(widget.otherUid)).valueOrNull;
     final peerName = (peer?.displayName.isNotEmpty == true)
         ? peer!.displayName
@@ -262,7 +272,8 @@ class _DmScreenState extends ConsumerState<DmScreen> {
     final peerPhotoUrl = peer?.avatarUrl;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Same treatment as the group chat header: white status-bar icons on navy, auto-restored when leaving this.
+      // Same treatment as the group chat header: white status-bar icons
+      // on navy, auto-restored when leaving this screen.
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
@@ -285,81 +296,83 @@ class _DmScreenState extends ConsumerState<DmScreen> {
                 ),
               ),
             ),
-            Expanded(
-              child: StreamBuilder<List<ChatMessage>>(
-                stream: stream,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return ErrorRetry(
-                      message: 'Could not load messages.',
-                      // The stream is recreated on rebuild, so a plain setState retries the subscription.
-                      onRetry: () => setState(() {}),
-                    );
-                  }
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final messages = snapshot.data ?? const <ChatMessage>[];
-                  if (messages.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'Say hi to start the conversation.',
-                        style: AppTypography.metaSub(context),
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    controller: _scroll,
-                    reverse: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.x4,
-                      vertical: AppSpacing.x3,
-                    ),
-                    itemCount: messages.length,
-                    itemBuilder: (_, i) {
-                      final m = messages[messages.length - 1 - i];
-                      return _DmBubble(
-                        message: m,
-                        peerName: peerName,
-                        peerPhotoUrl: peerPhotoUrl,
-                      );
-                    },
+          Expanded(
+            child: StreamBuilder<List<ChatMessage>>(
+              stream: stream,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ErrorRetry(
+                    message: 'Could not load messages.',
+                    // The stream is recreated on rebuild, so a plain
+                    // setState retries the subscription.
+                    onRetry: () => setState(() {}),
                   );
-                },
+                }
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final messages = snapshot.data ?? const <ChatMessage>[];
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Say hi to start the conversation.',
+                      style: AppTypography.metaSub(context),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  controller: _scroll,
+                  reverse: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.x4,
+                    vertical: AppSpacing.x3,
+                  ),
+                  itemCount: messages.length,
+                  itemBuilder: (_, i) {
+                    final m = messages[messages.length - 1 - i];
+                    return _DmBubble(
+                      message: m,
+                      peerName: peerName,
+                      peerPhotoUrl: peerPhotoUrl,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          if (_errorText != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.x5,
+                AppSpacing.x2,
+                AppSpacing.x5,
+                0,
+              ),
+              child: Text(
+                _errorText!,
+                style: AppTypography.metaSub(context).copyWith(
+                  color: context.colors.errorText,
+                ),
               ),
             ),
-            if (_errorText != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.x5,
-                  AppSpacing.x2,
-                  AppSpacing.x5,
-                  0,
-                ),
-                child: Text(
-                  _errorText!,
-                  style: AppTypography.metaSub(
-                    context,
-                  ).copyWith(color: context.colors.errorText),
-                ),
-              ),
-            _Composer(
-              controller: _controller,
-              focusNode: _focusNode,
-              hasText: _hasText,
-              sending: _sending,
-              onSend: _send,
-              onAttach: _openAttachmentSheet,
-            ),
-          ],
-        ),
+          _Composer(
+            controller: _controller,
+            focusNode: _focusNode,
+            hasText: _hasText,
+            sending: _sending,
+            onSend: _send,
+            onAttach: _openAttachmentSheet,
+          ),
+        ],
+      ),
       ),
     );
   }
 }
 
-/// Navy lift at the top edge of the DM header gradient.
+/// Navy lift at the top edge of the DM header gradient — same value as
+/// the group chat header so both bleed into the status bar identically.
 const _dmHeaderNavyTop = Color(0xFF1B2BA3);
 
 class _DmHeader extends StatelessWidget {
@@ -374,7 +387,8 @@ class _DmHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Visual parity with the group chat header: navy brand gradient, glow circles, rounded bottom sheet edge.
+    // Visual parity with the group chat header: navy brand gradient,
+    // glow circles, rounded bottom sheet edge, frosted back button.
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -426,7 +440,9 @@ class _DmHeader extends StatelessWidget {
                   label: 'Back',
                   child: PressableScale(
                     onTap: () async {
-                      // Cold-start deep links (push taps) have no route to pop back to.
+                      // Cold-start deep links (push taps) have no route
+                      // to pop back to — fall back to the inbox instead
+                      // of stranding the user on a dead back button.
                       final popped = await Navigator.of(context).maybePop();
                       if (!popped && context.mounted) {
                         context.go('/messages');
@@ -453,15 +469,16 @@ class _DmHeader extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.x2),
                 // Avatar + name — tappable to the peer profile.
+                // Photo comes from the peer lookup (best-effort); the
+                // settings sheet keeps a second entry point.
                 Expanded(
                   child: Semantics(
                     button: true,
                     label: 'View $peerName profile',
                     child: GestureDetector(
-                      onTap: () => NavGuard.push(
-                        context,
-                        '/player-profile/uid/$peerUid',
-                      ),
+                    onTap: () => NavGuard.push(context,
+                      '/player-profile/uid/$peerUid',
+                    ),
                       behavior: HitTestBehavior.opaque,
                       child: Row(
                         children: [
@@ -536,7 +553,9 @@ class _DmHeader extends StatelessWidget {
   }
 }
 
-/// Bottom sheet behind the DM header settings button: view the peer's profile or report them.
+/// Bottom sheet behind the DM header settings button: view the peer's
+/// profile or report them. Mirrors the group chat's [_ChatSettingsSheet]
+/// shape (drag handle, frosted rows) without importing it.
 class _DmSettingsSheet extends StatelessWidget {
   const _DmSettingsSheet({required this.peerUid, required this.peerName});
   final String peerUid;
@@ -585,8 +604,13 @@ class _DmSettingsSheet extends StatelessWidget {
             label: 'View profile',
             onTap: () {
               Navigator.of(context).pop();
-              // Uid route: exact match, safe for any display name (spaces, slashes, duplicates).
-              NavGuard.push(context, '/player-profile/uid/$peerUid');
+              // Uid route: exact match, safe for any display name
+              // (spaces, slashes, duplicates). Guarded: repeat pushes
+              // share a page key and red-screen
+              // ('!keyReservation.contains(key)').
+              NavGuard.push(context,
+                '/player-profile/uid/$peerUid',
+              );
             },
           ),
           _DmSettingsRow(
@@ -667,29 +691,30 @@ class _DmBubble extends StatelessWidget {
     final bubble = Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
-        crossAxisAlignment: mine
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(
-            flex: 0,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 3),
-              padding: message.isImage || message.isLocation
-                  ? const EdgeInsets.all(4)
-                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.72,
-              ),
-              decoration: BoxDecoration(
-                color: mine ? AppColors.primary : context.colors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: mine ? null : Border.all(color: context.colors.border),
-              ),
-              child: _DmBubbleContent(message: message, isMine: mine),
+        Flexible(
+          flex: 0,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 3),
+            padding: message.isImage || message.isLocation
+                ? const EdgeInsets.all(4)
+                : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.72,
             ),
+            decoration: BoxDecoration(
+              color: mine ? AppColors.primary : context.colors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: mine
+                  ? null
+                  : Border.all(color: context.colors.border),
+            ),
+            child: _DmBubbleContent(message: message, isMine: mine),
           ),
+        ),
           Padding(
             padding: EdgeInsets.only(
               left: mine ? 0 : 4,
@@ -698,9 +723,10 @@ class _DmBubble extends StatelessWidget {
             ),
             child: Text(
               _dmTime(message.sentAt),
-              style: AppTypography.metaSub(
-                context,
-              ).copyWith(fontSize: 11, color: context.colors.textTertiary),
+              style: AppTypography.metaSub(context).copyWith(
+                fontSize: 11,
+                color: context.colors.textTertiary,
+              ),
             ),
           ),
         ],
@@ -708,6 +734,7 @@ class _DmBubble extends StatelessWidget {
     );
     if (mine) return bubble;
     // Peer's avatar alongside their messages (group-chat parity).
+    // Falls back to initials when no photo is set.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -725,7 +752,9 @@ class _DmBubble extends StatelessWidget {
   }
 }
 
-/// Renders a DM bubble's payload — plain text by default, or a photo / location attachment when the message carries.
+/// Renders a DM bubble's payload — plain text by default, or a photo /
+/// location attachment when the message carries one (same wire format
+/// as group chat: download URL / maps link inside [ChatMessage.text]).
 class _DmBubbleContent extends StatelessWidget {
   const _DmBubbleContent({required this.message, required this.isMine});
   final ChatMessage message;
@@ -748,7 +777,9 @@ class _DmBubbleContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (message.isImage) {
-      // Defensive: isImage means an image source exists, but guard anyway.
+      // Defensive: isImage means an image source exists, but guard
+      // anyway — a null url with no local path renders the text
+      // instead of crashing on a force-unwrap.
       if (message.imageUrl == null && message.imagePath == null) {
         return _DmText(message: message, isMine: isMine);
       }
@@ -762,7 +793,8 @@ class _DmBubbleContent extends StatelessWidget {
     }
 
     if (message.isLocation) {
-      final fg = isMine ? AppColors.textOnPrimary : context.colors.textPrimary;
+      final fg =
+          isMine ? AppColors.textOnPrimary : context.colors.textPrimary;
       return PressableScale(
         onTap: () => _openLocation(context),
         child: SizedBox(
@@ -780,9 +812,9 @@ class _DmBubbleContent extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 'Tap to open in Maps',
-                style: AppTypography.metaSub(
-                  context,
-                ).copyWith(color: fg.withValues(alpha: 0.75)),
+                style: AppTypography.metaSub(context).copyWith(
+                  color: fg.withValues(alpha: 0.75),
+                ),
               ),
             ],
           ),
@@ -794,7 +826,8 @@ class _DmBubbleContent extends StatelessWidget {
   }
 }
 
-/// Plain-text DM bubble, also the fallback when an image message carries no usable image source.
+/// Plain-text DM bubble, also the fallback when an image message
+/// carries no usable image source. Selectable for native copy.
 class _DmText extends StatelessWidget {
   const _DmText({required this.message, required this.isMine});
   final ChatMessage message;
@@ -811,7 +844,8 @@ class _DmText extends StatelessWidget {
   }
 }
 
-/// Single DM photo — local file when just captured, network image otherwise.
+/// Single DM photo — local file when just captured, network image
+/// otherwise. Tapping opens the full-screen viewer.
 class _DmImage extends StatelessWidget {
   const _DmImage({
     required this.message,
@@ -841,9 +875,8 @@ class _DmImage extends StatelessWidget {
       width: width,
       height: height,
       fit: BoxFit.cover,
-      memCacheWidth: (width * MediaQuery.devicePixelRatioOf(context))
-          .round()
-          .clamp(1, 1200),
+      memCacheWidth:
+          (width * MediaQuery.devicePixelRatioOf(context)).round().clamp(1, 1200),
       fadeInDuration: const Duration(milliseconds: 150),
       fadeOutDuration: Duration.zero,
       progressIndicatorBuilder: (context, url, progress) => Container(
@@ -926,7 +959,10 @@ class _DmImageViewer extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.28),
                     ),
                   ),
-                  child: const Icon(Icons.close_rounded, color: Colors.white),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -937,7 +973,8 @@ class _DmImageViewer extends StatelessWidget {
   }
 }
 
-/// Renders the repository's "uploads unavailable" and "too large" signals verbatim.
+/// Renders the repository's "uploads unavailable" and "too large"
+/// signals verbatim; every other photo failure keeps the generic copy.
 String _photoErrorMessage(Object e) {
   const unavailable = 'Photo uploads are unavailable right now';
   if (e is ImageTooLargeException) return e.message;
@@ -953,7 +990,8 @@ String _dmTime(DateTime dt) {
   return '$h:$m ${h24 < 12 ? 'AM' : 'PM'}';
 }
 
-/// Message composer mirroring the group chat.
+/// Message composer mirroring the group chat [_InputBar]: pill field
+/// + circular send button that only lights up when there is text.
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
@@ -999,7 +1037,10 @@ class _Composer extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.transparent,
                   shape: BoxShape.circle,
-                  border: Border.all(color: context.colors.border, width: 1.5),
+                  border: Border.all(
+                    color: context.colors.border,
+                    width: 1.5,
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
@@ -1031,16 +1072,18 @@ class _Composer extends StatelessWidget {
                 onSubmitted: (_) => onSend(),
                 cursorColor: AppColors.primary,
                 cursorWidth: 1.5,
-                style: AppTypography.bodyMedium(
-                  context,
-                ).copyWith(fontSize: 15, color: context.colors.textPrimary),
+                style: AppTypography.bodyMedium(context).copyWith(
+                  fontSize: 15,
+                  color: context.colors.textPrimary,
+                ),
                 decoration: InputDecoration(
                   isCollapsed: true,
                   isDense: true,
                   hintText: 'Type message...',
-                  hintStyle: AppTypography.bodyMedium(
-                    context,
-                  ).copyWith(fontSize: 15, color: context.colors.textTertiary),
+                  hintStyle: AppTypography.bodyMedium(context).copyWith(
+                    fontSize: 15,
+                    color: context.colors.textTertiary,
+                  ),
                   filled: true,
                   fillColor: Colors.transparent,
                   border: InputBorder.none,
@@ -1062,7 +1105,9 @@ class _Composer extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: canSend ? AppColors.primary : context.colors.border,
+                  color: canSend
+                      ? AppColors.primary
+                      : context.colors.border,
                   shape: BoxShape.circle,
                   boxShadow: canSend ? AppShadows.glowPrimary : null,
                 ),

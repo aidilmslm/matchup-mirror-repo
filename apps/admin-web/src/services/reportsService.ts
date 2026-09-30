@@ -1,4 +1,11 @@
-/** Reports / moderation service — database-backed (Firestore `reports`). */
+/**
+ * Reports / moderation service — database-backed (Firestore `reports`).
+ *
+ * Live endpoints (api-server):
+ *   GET  /api/reports?status=&limit=             → Report[]
+ *   POST /api/reports/:id/resolve  { note? }     → void
+ *   POST /api/reports/:id/dismiss  { note? }     → void
+ */
 import { apiFetch } from './api';
 import type { Report, ReportStatus } from '../types/reports';
 
@@ -14,7 +21,11 @@ export async function fetchReports(
   return res.data;
 }
 
-export async function reportAction(id: string, action: ReportAction, note?: string): Promise<void> {
+export async function reportAction(
+  id: string,
+  action: ReportAction,
+  note?: string,
+): Promise<void> {
   const res = await apiFetch<void>(`/api/reports/${id}/${action}`, {
     method: 'POST',
     body: JSON.stringify({ note }),

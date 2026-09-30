@@ -42,15 +42,11 @@ export function LoginPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#f8fafc]">
       {/* Radial gradient background */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, #eef2ff 0%, #f8fafc 100%)',
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, #eef2ff 0%, #f8fafc 100%)' }} />
 
       {/* Login card */}
       <div className="relative z-10 w-full max-w-[480px] rounded-3xl bg-white px-8 py-10 shadow-panel sm:px-10 sm:py-12">
+
         {/* Branding */}
         <div className="mb-7 flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 overflow-hidden rounded-2xl shadow-card">
@@ -58,9 +54,7 @@ export function LoginPage() {
           </div>
           <div className="text-center">
             <p className="text-2xl font-extrabold tracking-tight text-ink-900">MatchUp</p>
-            <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[1.5px] text-brand-400">
-              Admin Console
-            </p>
+            <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[1.5px] text-brand-400">Admin Console</p>
           </div>
         </div>
 
@@ -72,34 +66,18 @@ export function LoginPage() {
         {/* Session-expired notice (auto logout) */}
         {sessionExpired && !error && (
           <div className="mb-4 flex items-start gap-2 rounded-xl border border-warning-200 bg-warning-50 px-4 py-3">
-            <svg
-              className="mt-0.5 h-4 w-4 shrink-0 text-warning-500"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <circle cx="8" cy="8" r="7" />
-              <path d="M8 5v4M8 11v.5" strokeLinecap="round" />
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-warning-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="8" cy="8" r="7" /><path d="M8 5v4M8 11v.5" strokeLinecap="round" />
             </svg>
-            <p className="text-sm text-warning-700">
-              Your session has expired. Please sign in again.
-            </p>
+            <p className="text-sm text-warning-700">Your session has expired. Please sign in again.</p>
           </div>
         )}
 
         {/* Error banner */}
         {error && (
           <div className="mb-4 flex items-start gap-2 rounded-xl border border-danger-200 bg-danger-50 px-4 py-3">
-            <svg
-              className="mt-0.5 h-4 w-4 shrink-0 text-danger-500"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <circle cx="8" cy="8" r="7" />
-              <path d="M8 5v4M8 11v.5" strokeLinecap="round" />
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-danger-500" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="8" cy="8" r="7" /><path d="M8 5v4M8 11v.5" strokeLinecap="round" />
             </svg>
             <p className="text-sm text-danger-700">{error}</p>
           </div>
@@ -139,31 +117,13 @@ export function LoginPage() {
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      d="M10 4.5C5.75 4.5 2.27 7.36 1 10c1.27 2.64 4.75 5.5 9 5.5s7.73-2.86 9-5.5c-1.27-2.64-4.75-5.5-9-5.5z"
-                      strokeLinecap="round"
-                    />
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M10 4.5C5.75 4.5 2.27 7.36 1 10c1.27 2.64 4.75 5.5 9 5.5s7.73-2.86 9-5.5c-1.27-2.64-4.75-5.5-9-5.5z" strokeLinecap="round" />
                     <circle cx="10" cy="10" r="2.5" />
                   </svg>
                 ) : (
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      d="M3 3l14 14M8.3 8.35A2.5 2.5 0 0012.5 12M5.15 5.2C3.34 6.35 2 8 1 10c1.27 2.64 4.75 5.5 9 5.5a9.6 9.6 0 004.83-1.3M7.5 4.63A9.6 9.6 0 0110 4.5c4.25 0 7.73 2.86 9 5.5a10.1 10.1 0 01-2.16 3"
-                      strokeLinecap="round"
-                    />
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M3 3l14 14M8.3 8.35A2.5 2.5 0 0012.5 12M5.15 5.2C3.34 6.35 2 8 1 10c1.27 2.64 4.75 5.5 9 5.5a9.6 9.6 0 004.83-1.3M7.5 4.63A9.6 9.6 0 0110 4.5c4.25 0 7.73 2.86 9 5.5a10.1 10.1 0 01-2.16 3" strokeLinecap="round" />
                   </svg>
                 )}
               </button>
@@ -180,20 +140,12 @@ export function LoginPage() {
                 className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors ${remember ? 'border-brand-500 bg-brand-500' : 'border-ink-300 bg-white'}`}
               >
                 {remember && (
-                  <svg
-                    className="h-2.5 w-2.5 text-white"
-                    viewBox="0 0 10 10"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
+                  <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M1.5 5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
               </button>
-              <span className="text-sm font-medium text-ink-600">
-                Remember me <span className="text-ink-400">(30 days)</span>
-              </span>
+              <span className="text-sm font-medium text-ink-600">Remember me <span className="text-ink-400">(30 days)</span></span>
             </label>
           </div>
 
@@ -205,21 +157,14 @@ export function LoginPage() {
           >
             {submitting ? (
               <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2a10 10 0 0110 10" strokeLinecap="round" />
                 </svg>
                 Signing in…
               </span>
-            ) : (
-              'Sign In'
-            )}
+            ) : 'Sign In'}
           </button>
+
         </form>
       </div>
 

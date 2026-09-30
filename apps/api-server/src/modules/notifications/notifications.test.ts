@@ -18,17 +18,17 @@ vi.mock('../../middleware/auth.middleware.js', () => {
       next();
     }),
 
-    requireAuthAllowSuspended: vi.fn((req, _res, next) => {
+  requireAuthAllowSuspended: vi.fn((req, _res, next) => {
       req.auth = req.auth ?? {
-        uid: 'test-uid-1',
-        token: {} as never,
+          uid: 'test-uid-1',
+          token: {} as never,
       };
       next();
-    }),
+  }),
 
-    requireAdmin: vi.fn((_req, _res, next) => {
+  requireAdmin: vi.fn((_req, _res, next) => {
       next();
-    }),
+  }),
   };
 });
 
@@ -107,7 +107,9 @@ describe('notifications routes', () => {
     it('when authenticated user marks own notification read => expected 200', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/notifications/me/notification-1/read');
+      const response = await request(app).patch(
+        '/api/notifications/me/notification-1/read',
+      );
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -125,7 +127,9 @@ describe('notifications routes', () => {
     });
 
     it('when notificationId is blank => expected 400 w/ INVALID_INPUT', async () => {
-      // Blank path params are now rejected by `validateParams` with the unified INVALID_INPUT envelope.
+      // Blank path params are now rejected by `validateParams` with the
+      // unified INVALID_INPUT envelope (+ field details) instead of the
+      // legacy EMPTY_INPUT shape.
       const app = createApp();
 
       const response = await request(app).patch('/api/notifications/me/%20%20/read');
@@ -148,7 +152,9 @@ describe('notifications routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/notifications/me/missing-notification/read');
+      const response = await request(app).patch(
+        '/api/notifications/me/missing-notification/read',
+      );
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({
@@ -167,7 +173,9 @@ describe('notifications routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/notifications/me/notification-1/read');
+      const response = await request(app).patch(
+        '/api/notifications/me/notification-1/read',
+      );
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -179,4 +187,5 @@ describe('notifications routes', () => {
       });
     });
   });
+
 });

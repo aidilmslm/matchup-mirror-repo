@@ -8,11 +8,33 @@ import '../theme/dark_colors.dart';
 enum _FieldVariant { pill, form }
 
 /// Single entry point for every text input in the app.
+///
 /// Two variants, because the app legitimately needs both shapes:
-/// [AppTextField.pill] — radius `pill`, fill `surfaceSubtle`, no label.
-/// Both variants set `border` / `enabledBorder` / `focusedBorder` / `errorBorder` / `focusedErrorBorder` explicitly.
-/// dart AppTextField.pill( controller: _searchController, hint: 'Search chats, sports or matches...', leading:.
-/// AppTextField.form( label: 'FULL NAME', controller: _nameController, ) ```.
+///
+/// - [AppTextField.pill] — radius `pill`, fill `surfaceSubtle`, no label.
+///   Search bars, chat composers.
+/// - [AppTextField.form] — radius `input` (12), fill `surface`, hairline
+///   border, uppercase [AppTypography.metaSub(context)]-style label above the field.
+///   Every form field (Create Activity, Edit Profile, auth screens, …).
+///
+/// Both variants set `border` / `enabledBorder` / `focusedBorder` /
+/// `errorBorder` / `focusedErrorBorder` explicitly. The app's global
+/// `InputDecorationTheme` otherwise leaks a blue Material underline into any
+/// field that only overrides `border` — a real bug hit while building the
+/// chat composer (PRD Appendix B.4). Never rely on the global theme alone.
+///
+/// ```dart
+/// AppTextField.pill(
+///   controller: _searchController,
+///   hint: 'Search chats, sports or matches...',
+///   leading: AppIcon(AppIcons.compass, size: AppIconSize.sm),
+/// )
+///
+/// AppTextField.form(
+///   label: 'FULL NAME',
+///   controller: _nameController,
+/// )
+/// ```
 class AppTextField extends StatelessWidget {
   const AppTextField.pill({
     super.key,
@@ -74,7 +96,8 @@ class AppTextField extends StatelessWidget {
   final bool enabled;
   final String? errorText;
 
-  /// `.form()` only — `TextFormField` validator, if this field is wrapped in a `Form`.
+  /// `.form()` only — `TextFormField` validator, if this field is wrapped in
+  /// a `Form`.
   final String? Function(String?)? validator;
 
   @override

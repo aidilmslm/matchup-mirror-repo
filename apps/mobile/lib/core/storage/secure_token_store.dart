@@ -7,15 +7,21 @@ const _kAccessToken = 'auth_access_token';
 const _kRefreshToken = 'auth_refresh_token';
 const _kUserId = 'auth_user_id';
 
-/// Per-account "get-to-know onboarding done" prefs key.
+/// Per-account "get-to-know onboarding done" prefs key. Scoped by uid so
+/// a second user on a shared device never inherits the first user's
+/// completion flag. An empty uid means the account is unknown — callers
+/// treat that as done (legacy fail-open for pre-flag accounts).
 String gtkDoneKeyFor(String uid) => 'gtk_done_$uid';
 
-/// Stores and retrieves auth tokens using the platform secure enclave (Keychain on iOS, Keystore-backed.
+/// Stores and retrieves auth tokens using the platform secure enclave
+/// (Keychain on iOS, Keystore-backed EncryptedSharedPreferences on Android).
+///
 /// NEVER store tokens in [SharedPreferences] or Hive without encryption.
 class SecureTokenStore {
   SecureTokenStore._()
     : _storage = const FlutterSecureStorage(
-        // Usage: see the constructors below.
+        // v11 removed `encryptedSharedPreferences` — encrypted storage
+        // is now the default on Android, so plain const == old behavior.
         aOptions: AndroidOptions(),
         iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
       );
@@ -24,33 +30,37 @@ class SecureTokenStore {
 
   final FlutterSecureStorage _storage;
 
-  // Access token.
+  // ── Access token ────────────────────────────────────────────────────────
 
   Future<void> saveAccessToken(String token) =>
       _storage.write(key: _kAccessToken, value: token);
 
   Future<String?> readAccessToken() => _storage.read(key: _kAccessToken);
 
-  // Refresh token.
+  // ── Refresh token ───────────────────────────────────────────────────────
 
   Future<void> saveRefreshToken(String token) =>
       _storage.write(key: _kRefreshToken, value: token);
 
   Future<String?> readRefreshToken() => _storage.read(key: _kRefreshToken);
 
-  // User ID.
+  // ── User ID ─────────────────────────────────────────────────────────────
 
   Future<void> saveUserId(String id) =>
       _storage.write(key: _kUserId, value: id);
 
   Future<String?> readUserId() => _storage.read(key: _kUserId);
 
-  // Session helpers.
+  // ── Session helpers ─────────────────────────────────────────────────────
 
   Future<bool> get hasValidSession async {
     final token = await readAccessToken();
     if (token == null || token.isEmpty) return false;
-    // Client-side convenience check only (no signature verification.
+    // Client-side convenience check only (no signature verification —
+    // trust stays server-side): treat an expired Firebase JWT as no
+    // session so the app routes to login instead of 401-looping.
+    // Malformed/non-JWT tokens (e.g. test fakes) fail OPEN (valid) so
+    // tests and edge payloads aren't locked out by this hint.
     final expMs = _jwtExpiryMs(token);
     if (expMs == null) return true;
     const leewayMs = 60 * 1000;
@@ -58,6 +68,7 @@ class SecureTokenStore {
   }
 
   /// Epoch-millis `exp` of a JWT payload without verifying its signature.
+  /// Null when the token isn't a parseable JWT or carries no numeric exp.
   static int? _jwtExpiryMs(String token) {
     try {
       final parts = token.split('.');

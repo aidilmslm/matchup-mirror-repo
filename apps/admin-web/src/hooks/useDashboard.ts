@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useReducer } from 'react';
-import { fetchDashboard, moderationAction, type ModAction } from '../services/dashboardService';
+import {
+  fetchDashboard,
+  moderationAction,
+  type ModAction,
+} from '../services/dashboardService';
 import type { DashboardData, ModerationItem } from '../types/dashboard';
 
-// State & reducer.
+// ─── State & reducer ──────────────────────────────────────────────────────────
 
 type State =
   | { status: 'idle' }
@@ -40,7 +44,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-// Hook.
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useDashboard() {
   const [state, dispatch] = useReducer(reducer, { status: 'idle' });

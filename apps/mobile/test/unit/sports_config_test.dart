@@ -59,9 +59,10 @@ void main() {
     const fallback = ['Fallback'];
 
     test('selects per surface', () {
-      expect(pickSportNames([_tennis, _golf], (s) => s.canHost, fallback), [
-        'Tennis',
-      ]);
+      expect(
+        pickSportNames([_tennis, _golf], (s) => s.canHost, fallback),
+        ['Tennis'],
+      );
       expect(
         pickSportNames([_tennis, _golf], (s) => s.showInFilter, fallback),
         ['Tennis', 'Golf'],
@@ -70,7 +71,10 @@ void main() {
 
     test('falls back on empty configs or empty selection', () {
       expect(pickSportNames([], (s) => true, fallback), fallback);
-      expect(pickSportNames([_golf], (s) => s.canHost, fallback), fallback);
+      expect(
+        pickSportNames([_golf], (s) => s.canHost, fallback),
+        fallback,
+      );
     });
   });
 }

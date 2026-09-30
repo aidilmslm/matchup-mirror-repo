@@ -1,4 +1,7 @@
-/// One venue suggestion from the places autocomplete proxy (`GET /api/places/autocomplete`).
+/// One venue suggestion from the places autocomplete proxy
+/// (`GET /api/places/autocomplete`). Carries the venue's coordinates so
+/// the create wizard can store an accurate geohash instead of falling
+/// back to the device's position.
 class PlaceSuggestion {
   const PlaceSuggestion({
     required this.placeId,

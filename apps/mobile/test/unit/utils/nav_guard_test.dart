@@ -31,7 +31,9 @@ void main() {
     NavGuard.onceFor('activity-details-1', () => runs++, cooldown: window);
     NavGuard.onceFor('activity-details-1', () => runs++, cooldown: window);
     expect(runs, 1);
-    await Future<void>.delayed(window + const Duration(milliseconds: 10));
+    await Future<void>.delayed(
+      window + const Duration(milliseconds: 10),
+    );
     NavGuard.onceFor('activity-details-1', () => runs++, cooldown: window);
     expect(runs, 2);
   });
@@ -42,7 +44,9 @@ void main() {
     NavGuard.once(() => runs++, cooldown: window);
     NavGuard.once(() => runs++, cooldown: window);
     expect(runs, 1);
-    await Future<void>.delayed(window + const Duration(milliseconds: 10));
+    await Future<void>.delayed(
+      window + const Duration(milliseconds: 10),
+    );
     NavGuard.once(() => runs++, cooldown: window);
     expect(runs, 2);
   });

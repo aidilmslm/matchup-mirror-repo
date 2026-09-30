@@ -6,12 +6,22 @@ import 'device_repository.dart';
 import 'local_device_repository.dart';
 
 /// HTTP-backed [DeviceRepository] for the live MatchUp API.
-/// Endpoints used: `POST /api/devices` — register or refresh a device `GET /api/devices/me` — list the user's devices.
-/// All operations fall back to [LocalDeviceRepository] on failure so the app stays functional offline.
+///
+/// Endpoints used:
+///   - `POST   /api/devices`               — register or refresh a device
+///   - `GET    /api/devices/me`            — list the user's devices
+///   - `DELETE /api/devices/me/:deviceId`  — remove a device
+///
+/// All operations fall back to [LocalDeviceRepository] on failure so the
+/// app stays functional offline. Push-notification registration must
+/// never block the UI on a transient network glitch — losing one
+/// registration is much less bad than freezing the splash screen.
 class RemoteDeviceRepository implements DeviceRepository {
-  RemoteDeviceRepository({ApiClient? client, DeviceRepository? fallback})
-    : _client = client ?? ApiClient.instance,
-      _fallback = fallback ?? LocalDeviceRepository();
+  RemoteDeviceRepository({
+    ApiClient? client,
+    DeviceRepository? fallback,
+  })  : _client = client ?? ApiClient.instance,
+        _fallback = fallback ?? LocalDeviceRepository();
 
   final ApiClient _client;
   final DeviceRepository _fallback;

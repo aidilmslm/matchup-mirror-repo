@@ -126,8 +126,9 @@ void main() {
         ),
         GoRoute(
           path: '/request-sent/:id',
-          builder: (_, state) =>
-              Scaffold(body: Text('Pending ${state.pathParameters['id']}')),
+          builder: (_, state) => Scaffold(
+            body: Text('Pending ${state.pathParameters['id']}'),
+          ),
         ),
         GoRoute(
           path: '/match/:id',
@@ -168,7 +169,9 @@ void main() {
       expect(find.text('Saturday Basketball'), findsOneWidget);
     });
 
-    testWidgets('should never deal games that already started', (tester) async {
+    testWidgets('should never deal games that already started', (
+      tester,
+    ) async {
       // Stale `open` rows slip past the eventual backend sweep — the
       // deck must drop them locally, since the join would 409 anyway.
       when(
@@ -238,14 +241,14 @@ void main() {
     testWidgets('should show an empty state once the deck is exhausted', (
       tester,
     ) async {
-      when(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).thenAnswer((_) async => [_fixtures().first]);
+        when(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
+          ),
+        ).thenAnswer((_) async => [_fixtures().first]);
 
       await pumpDiscovery(tester);
 
@@ -255,43 +258,44 @@ void main() {
       expect(find.text("You're all caught up"), findsOneWidget);
     });
 
-    testWidgets('should re-deal swiped cards when Start over is tapped', (
-      tester,
-    ) async {
-      // Every card arrives already swiped → the swipe filter empties
-      // the deck on first load (regression: "Start over" used to only
-      // rewind the index, a visible no-op on an empty list).
-      final swiped = _fixtures()
-          .map((a) => a.copyWith(mySwipeDecision: 'pass'))
-          .toList();
-      when(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-        // Small delay so the in-between loading frame is observable:
-        // with an instant mock the reload resolves before the next
-        // frame and the skeleton never paints.
-      ).thenAnswer((_) async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        return swiped;
-      });
+    testWidgets(
+      'should re-deal swiped cards when Start over is tapped',
+      (tester) async {
+        // Every card arrives already swiped → the swipe filter empties
+        // the deck on first load (regression: "Start over" used to only
+        // rewind the index, a visible no-op on an empty list).
+        final swiped = _fixtures()
+            .map((a) => a.copyWith(mySwipeDecision: 'pass'))
+            .toList();
+        when(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
+          ),
+          // Small delay so the in-between loading frame is observable:
+          // with an instant mock the reload resolves before the next
+          // frame and the skeleton never paints.
+        ).thenAnswer((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          return swiped;
+        });
 
-      await pumpDiscovery(tester);
-      expect(find.text("You're all caught up"), findsOneWidget);
+        await pumpDiscovery(tester);
+        expect(find.text("You're all caught up"), findsOneWidget);
 
-      await tester.tap(find.text('Start over'));
-      // Loading state first: the skeleton shows while the feed
-      // reloads so the tap never looks dead on slow networks…
-      await tester.pump();
-      expect(find.byType(ActivityCardSkeleton), findsOneWidget);
+        await tester.tap(find.text('Start over'));
+        // Loading state first: the skeleton shows while the feed
+        // reloads so the tap never looks dead on slow networks…
+        await tester.pump();
+        expect(find.byType(ActivityCardSkeleton), findsOneWidget);
 
-      // …then the re-dealt deck.
-      await tester.pumpAndSettle();
-      expect(find.text('Saturday Basketball'), findsOneWidget);
-    });
+        // …then the re-dealt deck.
+        await tester.pumpAndSettle();
+        expect(find.text('Saturday Basketball'), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'should keep the full deck after leaving and returning to Discover',
@@ -414,180 +418,177 @@ void main() {
       },
     );
 
-    testWidgets('should render no phantom cards behind the last deck card', (
-      tester,
-    ) async {
-      // Regression: the peek layers used `.clamp()`, aliasing them to
-      // the top card itself on the final index — swiping the last card
-      // away revealed a ghost copy behind it. With one activity the
-      // deck must render exactly one card.
-      when(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).thenAnswer((_) async => [_fixtures().first]);
-
-      await pumpDiscovery(tester);
-
-      expect(find.byType(DiscoveryCard), findsOneWidget);
-    });
-
-    testWidgets('should never re-deal right-swiped cards, even on Start over', (
-      tester,
-    ) async {
-      // A right-swipe (join) is permanent: the game lives on in My
-      // Games, so "Start over" must not resurrect it — only passes
-      // come back.
-      final joined = _fixtures()
-          .map((a) => a.copyWith(mySwipeDecision: 'join'))
-          .toList();
-      when(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).thenAnswer((_) async => joined);
-
-      await pumpDiscovery(tester);
-      expect(find.text("You're all caught up"), findsOneWidget);
-
-      await tester.tap(find.text('Start over'));
-      await tester.pumpAndSettle();
-
-      // Still empty — joins never re-enter the deck.
-      expect(find.text("You're all caught up"), findsOneWidget);
-      expect(find.text('Saturday Basketball'), findsNothing);
-    });
-
-    testWidgets('should never deal activities the viewer hosts', (
-      tester,
-    ) async {
-      // Regression: the legacy feed path didn't drop hosted games
-      // client-side, so a host could see (and "join") their own card.
-      when(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          _fixtures().first.copyWith(isHost: true, mySwipeDecision: null),
-          _fixtures().last.copyWith(isHost: false, mySwipeDecision: null),
-        ],
-      );
-
-      await pumpDiscovery(tester);
-
-      expect(find.text('Saturday Basketball'), findsNothing);
-      expect(find.text('Tennis Doubles'), findsOneWidget);
-    });
-
-    testWidgets('should hide cards clashing with already-joined games', (
-      tester,
-    ) async {
-      // My Game runs [base+2h, base+4h]. The 3pm tennis overlaps and
-      // must be hidden; the evening run does not and must stay. The
-      // joined game itself is hidden too — it lives in My Games,
-      // never in the Discover deck.
-      final base = DateTime.now();
-      ActivityModel game({
-        required String id,
-        required String title,
-        required Duration startsIn,
-        bool mine = false,
-      }) => ActivityModel(
-        id: id,
-        title: title,
-        sportType: 'Tennis',
-        description: 'd',
-        location: 'l',
-        distanceKm: 1.0,
-        dateTime: base.add(startsIn),
-        skillLevel: 'Beginner',
-        capacity: 4,
-        participantCount: 2,
-        hostName: 'Sam',
-        isParticipant: mine,
-      );
-      when(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).thenAnswer(
-        (_) async => [
-          game(
-            id: 'm',
-            title: 'My Game',
-            startsIn: const Duration(hours: 2),
-            mine: true,
+    testWidgets(
+      'should render no phantom cards behind the last deck card',
+      (tester) async {
+        // Regression: the peek layers used `.clamp()`, aliasing them to
+        // the top card itself on the final index — swiping the last card
+        // away revealed a ghost copy behind it. With one activity the
+        // deck must render exactly one card.
+        when(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
           ),
-          game(
-            id: 'c',
-            title: 'Clash Tennis',
-            startsIn: const Duration(hours: 3),
+        ).thenAnswer((_) async => [_fixtures().first]);
+
+        await pumpDiscovery(tester);
+
+        expect(find.byType(DiscoveryCard), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'should never re-deal right-swiped cards, even on Start over',
+      (tester) async {
+        // A right-swipe (join) is permanent: the game lives on in My
+        // Games, so "Start over" must not resurrect it — only passes
+        // come back.
+        final joined = _fixtures()
+            .map((a) => a.copyWith(mySwipeDecision: 'join'))
+            .toList();
+        when(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
           ),
-          game(id: 'l', title: 'Late Run', startsIn: const Duration(hours: 6)),
-        ],
-      );
+        ).thenAnswer((_) async => joined);
 
-      await pumpDiscovery(tester);
+        await pumpDiscovery(tester);
+        expect(find.text("You're all caught up"), findsOneWidget);
 
-      expect(find.text('My Game'), findsNothing);
-      expect(find.text('Late Run'), findsOneWidget);
-      expect(find.text('Clash Tennis'), findsNothing);
-    });
+        await tester.tap(find.text('Start over'));
+        await tester.pumpAndSettle();
 
-    testWidgets('should reload when discoveryFilterProvider changes', (
-      tester,
-    ) async {
-      // Default-empty filter loads once; the first call from
-      // setUp is the empty filter path. After the screen settles,
-      // writing a new filter should trigger a second call with
-      // the new shape — that's the wiring FilterScreen relies on.
-      await pumpDiscovery(tester);
-      verify(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).called(1);
+        // Still empty — joins never re-enter the deck.
+        expect(find.text("You're all caught up"), findsOneWidget);
+        expect(find.text('Saturday Basketball'), findsNothing);
+      },
+    );
 
-      final newFilter = DiscoveryFilter(
-        sportSkills: const [
-          DiscoverySportSkill(
-            sport: 'Basketball',
-            skill: DiscoverySkillLevel.intermediate,
+    testWidgets(
+      'should never deal activities the viewer hosts',
+      (tester) async {
+        // Regression: the legacy feed path didn't drop hosted games
+        // client-side, so a host could see (and "join") their own card.
+        when(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
           ),
-        ],
-        maxDistanceKm: 5,
-      );
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(DiscoveryScreen)),
-      );
-      container.read(discoveryFilterProvider.notifier).state = newFilter;
-      await tester.pumpAndSettle();
+        ).thenAnswer(
+          (_) async => [
+            _fixtures().first.copyWith(isHost: true, mySwipeDecision: null),
+            _fixtures().last.copyWith(isHost: false, mySwipeDecision: null),
+          ],
+        );
 
-      verify(
-        () => activityRepo.feed(
-          limit: any(named: 'limit'),
-          offset: any(named: 'offset'),
-          filter: newFilter,
-          forceRefresh: any(named: 'forceRefresh'),
-        ),
-      ).called(1);
-    });
+        await pumpDiscovery(tester);
+
+        expect(find.text('Saturday Basketball'), findsNothing);
+        expect(find.text('Tennis Doubles'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'should hide cards clashing with already-joined games',
+      (tester) async {
+        // My Game runs [base+2h, base+4h]. The 3pm tennis overlaps and
+        // must be hidden; the evening run does not and must stay. The
+        // joined game itself is hidden too — it lives in My Games,
+        // never in the Discover deck.
+        final base = DateTime.now();
+        ActivityModel game({
+          required String id,
+          required String title,
+          required Duration startsIn,
+          bool mine = false,
+        }) =>
+            ActivityModel(
+              id: id,
+              title: title,
+              sportType: 'Tennis',
+              description: 'd',
+              location: 'l',
+              distanceKm: 1.0,
+              dateTime: base.add(startsIn),
+              skillLevel: 'Beginner',
+              capacity: 4,
+              participantCount: 2,
+              hostName: 'Sam',
+              isParticipant: mine,
+            );
+        when(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            game(id: 'm', title: 'My Game', startsIn: const Duration(hours: 2), mine: true),
+            game(id: 'c', title: 'Clash Tennis', startsIn: const Duration(hours: 3)),
+            game(id: 'l', title: 'Late Run', startsIn: const Duration(hours: 6)),
+          ],
+        );
+
+        await pumpDiscovery(tester);
+
+        expect(find.text('My Game'), findsNothing);
+        expect(find.text('Late Run'), findsOneWidget);
+        expect(find.text('Clash Tennis'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'should reload when discoveryFilterProvider changes',
+      (tester) async {
+        // Default-empty filter loads once; the first call from
+        // setUp is the empty filter path. After the screen settles,
+        // writing a new filter should trigger a second call with
+        // the new shape — that's the wiring FilterScreen relies on.
+        await pumpDiscovery(tester);
+        verify(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: any(named: 'filter'),
+            forceRefresh: any(named: 'forceRefresh'),
+          ),
+        ).called(1);
+
+        final newFilter = DiscoveryFilter(
+          sportSkills: const [
+            DiscoverySportSkill(
+              sport: 'Basketball',
+              skill: DiscoverySkillLevel.intermediate,
+            ),
+          ],
+          maxDistanceKm: 5,
+        );
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(DiscoveryScreen)),
+        );
+        container.read(discoveryFilterProvider.notifier).state = newFilter;
+        await tester.pumpAndSettle();
+
+        verify(
+          () => activityRepo.feed(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            filter: newFilter,
+            forceRefresh: any(named: 'forceRefresh'),
+          ),
+        ).called(1);
+      },
+    );
 
     testWidgets(
       'should show the skeleton while reloading after a filter change',
@@ -613,9 +614,8 @@ void main() {
         final container = ProviderScope.containerOf(
           tester.element(find.byType(DiscoveryScreen)),
         );
-        container
-            .read(discoveryFilterProvider.notifier)
-            .state = const DiscoveryFilter(
+        container.read(discoveryFilterProvider.notifier).state =
+            const DiscoveryFilter(
           sportSkills: [
             DiscoverySportSkill(
               sport: 'Basketball',
@@ -712,7 +712,9 @@ void main() {
     testWidgets('should request join and open pending on approval swipe', (
       tester,
     ) async {
-      when(() => activityRepo.requestJoin(any())).thenAnswer((_) async {});
+      when(
+        () => activityRepo.requestJoin(any()),
+      ).thenAnswer((_) async {});
       when(
         () => activityRepo.feed(
           limit: any(named: 'limit'),

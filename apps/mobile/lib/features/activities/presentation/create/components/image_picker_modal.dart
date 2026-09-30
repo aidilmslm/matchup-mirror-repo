@@ -10,7 +10,11 @@ import '../../../../../core/widgets/pressable_scale.dart';
 enum ImageSourceChoice { gallery, camera }
 
 /// Image picker modal with Gallery and Camera options.
-/// Returns the chosen [ImageSourceChoice] through `Navigator.pop`, or `null` when the user cancels.
+///
+/// Returns the chosen [ImageSourceChoice] through `Navigator.pop`, or `null`
+/// when the user cancels. The modal owns its own dismissal so callers only
+/// need to await the result — this avoids the double-pop bug that closed the
+/// wizard route by accident.
 class ImagePickerModal extends StatelessWidget {
   const ImagePickerModal({super.key});
 

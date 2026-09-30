@@ -1,4 +1,3 @@
-// useNotifTemplates (hooks).
 import { useState, useCallback, useEffect } from 'react';
 import { fetchTemplates, updateTemplate } from '../services/templatesService';
 import type { NotifTemplate } from '../services/templatesService';
@@ -24,15 +23,18 @@ export function useNotifTemplates() {
     load();
   }, [load]);
 
-  const handleUpdate = useCallback(async (id: string, patch: Partial<NotifTemplate>) => {
-    const allowed = {
-      ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(patch.body !== undefined ? { body: patch.body } : {}),
-      ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
-    };
-    const updated = await updateTemplate(id, allowed);
-    setTemplates((prev) => prev.map((t) => (t.id === id ? updated : t)));
-  }, []);
+  const handleUpdate = useCallback(
+    async (id: string, patch: Partial<NotifTemplate>) => {
+      const allowed = {
+        ...(patch.title !== undefined ? { title: patch.title } : {}),
+        ...(patch.body !== undefined ? { body: patch.body } : {}),
+        ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
+      };
+      const updated = await updateTemplate(id, allowed);
+      setTemplates((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    },
+    [],
+  );
 
   const handleToggle = useCallback(
     async (id: string) => {

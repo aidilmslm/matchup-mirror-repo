@@ -77,22 +77,19 @@ void main() {
       expect(controller.state.current?.title, 'Step 2');
     });
 
-    test(
-      'should complete the tour when next is called on the last step',
-      () async {
-        final controller = buildController();
-        controller.start(tourId, steps);
-        controller.next(); // index 1
-        controller.next(); // index 2 (last)
+    test('should complete the tour when next is called on the last step', () async {
+      final controller = buildController();
+      controller.start(tourId, steps);
+      controller.next(); // index 1
+      controller.next(); // index 2 (last)
 
-        controller.next(); // should complete, not overflow
-        // complete() persists the seen flag BEFORE going idle — allow the
-        // async write to land.
-        await Future<void>.delayed(Duration.zero);
+      controller.next(); // should complete, not overflow
+      // complete() persists the seen flag BEFORE going idle — allow the
+      // async write to land.
+      await Future<void>.delayed(Duration.zero);
 
-        expect(controller.state.isActive, isFalse);
-      },
-    );
+      expect(controller.state.isActive, isFalse);
+    });
 
     test('should do nothing when back is called on the first step', () {
       final controller = buildController();
@@ -151,18 +148,15 @@ void main() {
       expect(controller.state.steps, isEmpty);
     });
 
-    test(
-      'should stay active and report false when persistence fails',
-      () async {
-        final controller = TourController(_FailingTourStore());
-        controller.start(tourId, steps);
+    test('should stay active and report false when persistence fails', () async {
+      final controller = TourController(_FailingTourStore());
+      controller.start(tourId, steps);
 
-        final ok = await controller.complete();
+      final ok = await controller.complete();
 
-        expect(ok, isFalse);
-        expect(controller.state.isActive, isTrue);
-      },
-    );
+      expect(ok, isFalse);
+      expect(controller.state.isActive, isTrue);
+    });
   });
 
   group('start (replay)', () {

@@ -21,7 +21,7 @@ function exportCsv(activities: ActivityRow[]) {
   );
 }
 
-// Loading skeleton.
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse rounded-lg bg-ink-200 ${className}`} />;
@@ -35,9 +35,7 @@ function DashboardSkeleton() {
         <Skeleton className="h-4 w-96 max-w-full" />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-36" />
-        ))}
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36" />)}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_380px]">
         <Skeleton className="h-80" />
@@ -48,57 +46,27 @@ function DashboardSkeleton() {
   );
 }
 
-// Icons.
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
 function IconUsers() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="7" cy="5.5" r="3" />
-      <path d="M1 16c0-3.314 2.686-5 6-5s6 1.686 6 5" />
-      <path d="M12 3a3 3 0 010 5" />
-      <path d="M17 16c0-2.5-1.5-4-3-4.5" />
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7" cy="5.5" r="3" /><path d="M1 16c0-3.314 2.686-5 6-5s6 1.686 6 5" />
+      <path d="M12 3a3 3 0 010 5" /><path d="M17 16c0-2.5-1.5-4-3-4.5" />
     </svg>
   );
 }
 function IconCalendar() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="1" y="3" width="16" height="14" rx="2" />
-      <path d="M1 7h16" />
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="16" height="14" rx="2" /><path d="M1 7h16" />
       <path d="M5 1v4M13 1v4" />
     </svg>
   );
 }
 function IconBell() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 1a5 5 0 015 5c0 5 2 6 2 6H2s2-1 2-6a5 5 0 015-5z" />
       <path d="M7.27 15.5a2 2 0 003.46 0" />
     </svg>
@@ -106,16 +74,7 @@ function IconBell() {
 }
 function IconAirplay() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 18 18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 14H2a1 1 0 01-1-1V3a1 1 0 011-1h14a1 1 0 011 1v10a1 1 0 01-1 1h-3" />
       <path d="M9 10l-4 7h8l-4-7z" />
     </svg>
@@ -129,7 +88,7 @@ const KPI_ICONS: Record<string, React.ReactNode> = {
   'New Users (7d)': <IconAirplay />,
 };
 
-// KPI Card.
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
 
 function KpiCard({ kpi }: { kpi: KpiData }) {
   const maxBar = Math.max(...kpi.sparkBars);
@@ -145,9 +104,7 @@ function KpiCard({ kpi }: { kpi: KpiData }) {
         <div className="min-w-0">
           <p className="text-2xl font-bold leading-none text-ink-900 sm:text-3xl">{kpi.value}</p>
           <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-            <span
-              className={`text-xs font-semibold ${kpi.dir === 'up' ? 'text-brand-400' : 'text-danger-500'}`}
-            >
+            <span className={`text-xs font-semibold ${kpi.dir === 'up' ? 'text-brand-400' : 'text-danger-500'}`}>
               {kpi.change}
             </span>
             <span className="text-xs text-ink-400">vs last week</span>
@@ -159,10 +116,7 @@ function KpiCard({ kpi }: { kpi: KpiData }) {
             <div
               key={i}
               className="w-[3px] rounded-sm"
-              style={{
-                height: `${Math.round((h / maxBar) * 32)}px`,
-                backgroundColor: kpi.sparkColor,
-              }}
+              style={{ height: `${Math.round((h / maxBar) * 32)}px`, backgroundColor: kpi.sparkColor }}
             />
           ))}
         </div>
@@ -171,7 +125,7 @@ function KpiCard({ kpi }: { kpi: KpiData }) {
   );
 }
 
-// Trend chart (responsive SVG).
+// ─── Trend chart (responsive SVG) ────────────────────────────────────────────
 
 function TrendChart({ trend }: { trend: TrendPoint[] }) {
   const { theme } = useTheme();
@@ -202,17 +156,7 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
       {/* Grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map((t) => {
         const y = pad.top + chartH * (1 - t);
-        return (
-          <line
-            key={t}
-            x1={pad.left}
-            y1={y}
-            x2={W - pad.right}
-            y2={y}
-            stroke={isDark ? '#334155' : '#e2e8f0'}
-            strokeWidth="1"
-          />
-        );
+        return <line key={t} x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke={isDark ? '#334155' : '#e2e8f0'} strokeWidth="1" />;
       })}
 
       {/* Signup bars (sky) */}
@@ -220,53 +164,21 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
         const bh = (pt.signups / maxVal) * chartH;
         const x = xOf(i) - barW / 2;
         return (
-          <rect
-            key={i}
-            x={x}
-            y={pad.top + chartH - bh}
-            width={barW}
-            height={bh}
-            fill="#ff6b00"
-            opacity="0.75"
-            rx="2"
-          />
+          <rect key={i} x={x} y={pad.top + chartH - bh} width={barW} height={bh} fill="#ff6b00" opacity="0.75" rx="2" />
         );
       })}
 
       {/* Activities polyline (navy) */}
-      <polyline
-        points={actPts}
-        fill="none"
-        stroke="#0b1f8a"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
+      <polyline points={actPts} fill="none" stroke="#0b1f8a" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
 
       {/* Dots */}
       {trend.map((pt, i) => (
-        <circle
-          key={i}
-          cx={xOf(i)}
-          cy={yOf(pt.activities)}
-          r="4"
-          fill={isDark ? '#1e293b' : '#fff'}
-          stroke="#0b1f8a"
-          strokeWidth="2"
-        />
+        <circle key={i} cx={xOf(i)} cy={yOf(pt.activities)} r="4" fill={isDark ? '#1e293b' : '#fff'} stroke="#0b1f8a" strokeWidth="2" />
       ))}
 
       {/* X labels */}
       {trend.map((pt, i) => (
-        <text
-          key={pt.day}
-          x={xOf(i)}
-          y={H - 4}
-          textAnchor="middle"
-          fill="#94a3b8"
-          fontSize="11"
-          fontFamily="Figtree, sans-serif"
-        >
+        <text key={pt.day} x={xOf(i)} y={H - 4} textAnchor="middle" fill="#94a3b8" fontSize="11" fontFamily="Figtree, sans-serif">
           {pt.day}
         </text>
       ))}
@@ -274,7 +186,7 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
   );
 }
 
-// Moderation card.
+// ─── Moderation card ──────────────────────────────────────────────────────────
 
 function ModCard({
   item,
@@ -288,7 +200,9 @@ function ModCard({
   const [note, setNote] = useState('');
 
   function request(action: 'resolve' | 'dismiss') {
-    // Collect a moderator note/reason before resolve/dismiss and forward it to moderationAction (POST.
+    // Collect a moderator note/reason before resolve/dismiss and forward it
+    // to moderationAction (POST /api/reports/:id/{resolve,dismiss} { note }).
+    // Keep it lightweight: small inline modal; empty note is allowed.
     setPendingAction(action);
     setNote('');
     setNoteOpen(true);
@@ -309,23 +223,14 @@ function ModCard({
           <span className="font-semibold text-ink-900">{item.reporter}</span>{' '}
           <span className="text-ink-400">reported</span>{' '}
           <span className="font-semibold text-ink-900">{item.target}</span>
-          <span className="ml-1.5 rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500">
-            {item.targetType}
-          </span>
+          <span className="ml-1.5 rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500">{item.targetType}</span>
         </p>
       </div>
       <p className="text-[13px] text-ink-600">"{item.reason}"</p>
-      <p className="text-xs text-ink-400">
-        {item.activityTitle} ({item.sport})
-      </p>
+      <p className="text-xs text-ink-400">{item.activityTitle} ({item.sport})</p>
       <div className="flex flex-wrap gap-2 pt-1">
-        <button onClick={() => request('resolve')} className="btn-primary btn-sm">
-          Resolve
-        </button>
-        <button
-          onClick={() => request('dismiss')}
-          className="inline-flex items-center rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-600 hover:bg-ink-50 transition-colors"
-        >
+        <button onClick={() => request('resolve')} className="btn-primary btn-sm">Resolve</button>
+        <button onClick={() => request('dismiss')} className="inline-flex items-center rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-600 hover:bg-ink-50 transition-colors">
           Dismiss
         </button>
       </div>
@@ -335,9 +240,7 @@ function ModCard({
             <h3 className="text-sm font-semibold text-ink-900">
               {pendingAction === 'resolve' ? 'Resolve report' : 'Dismiss report'} — add a note
             </h3>
-            <p className="mt-1 text-xs text-ink-500">
-              Optional reason recorded with the moderation action.
-            </p>
+            <p className="mt-1 text-xs text-ink-500">Optional reason recorded with the moderation action.</p>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -349,13 +252,7 @@ function ModCard({
               <button onClick={confirm} className="btn-primary flex-1 rounded-xl py-2 text-sm">
                 {pendingAction === 'resolve' ? 'Resolve' : 'Dismiss'}
               </button>
-              <button
-                onClick={() => {
-                  setNoteOpen(false);
-                  setPendingAction(null);
-                }}
-                className="btn-outline rounded-xl px-4 py-2 text-sm"
-              >
+              <button onClick={() => { setNoteOpen(false); setPendingAction(null); }} className="btn-outline rounded-xl px-4 py-2 text-sm">
                 Cancel
               </button>
             </div>
@@ -366,14 +263,14 @@ function ModCard({
   );
 }
 
-// Status badge.
+// ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ActivityRow['status'] }) {
   const styles: Record<ActivityRow['status'], { cls: string; dot: string }> = {
-    Active: { cls: 'badge-blue', dot: 'bg-brand-700' },
-    Full: { cls: 'badge-yellow', dot: 'bg-warning-700' },
+    Active:    { cls: 'badge-blue',    dot: 'bg-brand-700' },
+    Full:      { cls: 'badge-yellow',  dot: 'bg-warning-700' },
     Completed: { cls: 'badge-neutral', dot: 'bg-ink-500' },
-    Flagged: { cls: 'badge-red', dot: 'bg-danger-700' },
+    Flagged:   { cls: 'badge-red',     dot: 'bg-danger-700' },
   };
   const { cls, dot } = styles[status];
   return (
@@ -404,17 +301,8 @@ function ActivitiesTable({
           <p className="mt-0.5 text-xs text-ink-600">Moderator oversight list</p>
         </div>
         <div className="flex items-center gap-2 rounded-full bg-ink-50 px-3 py-1.5 w-full sm:w-auto">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          >
-            <circle cx="6" cy="6" r="4" />
-            <path d="M11 11l-2.5-2.5" />
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <circle cx="6" cy="6" r="4" /><path d="M11 11l-2.5-2.5" />
           </svg>
           <input
             type="text"
@@ -447,31 +335,18 @@ function ActivitiesTable({
                   <p className="mt-0.5 text-xs text-ink-400">ID: {row.matchId}</p>
                 </td>
                 <td className="tbl-td">
-                  <span className="inline-flex items-center rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-600">
-                    {row.sport}
-                  </span>
+                  <span className="inline-flex items-center rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-600">{row.sport}</span>
                 </td>
                 <td className="tbl-td">
                   <div className="flex items-center gap-2">
-                    <Avatar
-                      name={row.host}
-                      photoUrl={row.photoUrl}
-                      seed={row.hostAvatarSeed}
-                      className="h-6 w-6 shrink-0 rounded-full"
-                    />
-                    <span className="text-[13px] font-medium text-ink-700 truncate">
-                      {row.host}
-                    </span>
+                    <Avatar name={row.host} photoUrl={row.photoUrl} seed={row.hostAvatarSeed} className="h-6 w-6 shrink-0 rounded-full" />
+                    <span className="text-[13px] font-medium text-ink-700 truncate">{row.host}</span>
                   </div>
                 </td>
                 <td className="tbl-td">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-ink-700">
-                      {row.participants}/{row.capacity}
-                    </span>
-                    <span className="text-ink-400">
-                      {row.participants >= row.capacity ? 'Full' : 'Joining'}
-                    </span>
+                    <span className="font-semibold text-ink-700">{row.participants}/{row.capacity}</span>
+                    <span className="text-ink-400">{row.participants >= row.capacity ? 'Full' : 'Joining'}</span>
                   </div>
                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-200">
                     <div
@@ -483,9 +358,7 @@ function ActivitiesTable({
                     />
                   </div>
                 </td>
-                <td className="tbl-td">
-                  <StatusBadge status={row.status} />
-                </td>
+                <td className="tbl-td"><StatusBadge status={row.status} /></td>
                 <td className="tbl-td text-[13px] text-ink-700">{row.scheduledDate}</td>
               </tr>
             ))}
@@ -500,28 +373,19 @@ function ActivitiesTable({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-semibold text-ink-900">{row.name}</p>
-                <p className="text-xs text-ink-400">
-                  {row.matchId} · {row.sport}
-                </p>
+                <p className="text-xs text-ink-400">{row.matchId} · {row.sport}</p>
               </div>
               <StatusBadge status={row.status} />
             </div>
             <div className="flex items-center justify-between text-xs text-ink-600">
               <span className="flex items-center gap-1.5">
-                <Avatar
-                  name={row.host}
-                  photoUrl={row.photoUrl}
-                  seed={row.hostAvatarSeed}
-                  className="h-5 w-5 rounded-full"
-                />
+                <Avatar name={row.host} photoUrl={row.photoUrl} seed={row.hostAvatarSeed} className="h-5 w-5 rounded-full" />
                 {row.host}
               </span>
               <span>{row.scheduledDate}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-ink-700">
-                {row.participants}/{row.capacity}
-              </span>
+              <span className="font-medium text-ink-700">{row.participants}/{row.capacity}</span>
               <div className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-200">
                 <div
                   className="h-full rounded-full"
@@ -543,7 +407,7 @@ function ActivitiesTable({
   );
 }
 
-// Dashboard page.
+// ─── Dashboard page ───────────────────────────────────────────────────────────
 
 export function DashboardPage() {
   const { loading, error, data, reload, handleModAction } = useDashboard();
@@ -555,9 +419,7 @@ export function DashboardPage() {
     return (
       <div className="page-container flex flex-col items-center justify-center gap-4 py-24">
         <p className="text-sm text-danger-500">Failed to load dashboard: {error}</p>
-        <button onClick={reload} className="btn-primary px-4 py-2 text-sm rounded-xl">
-          Retry
-        </button>
+        <button onClick={reload} className="btn-primary px-4 py-2 text-sm rounded-xl">Retry</button>
       </div>
     );
   }
@@ -573,6 +435,7 @@ export function DashboardPage() {
 
   return (
     <div className="page-container space-y-5">
+
       {/* ── Page header ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -586,17 +449,8 @@ export function DashboardPage() {
             onClick={() => exportCsv(data.activities)}
             className="btn-primary flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            >
-              <path d="M7 1v8M4 6l3 3 3-3" />
-              <path d="M1 11v1a1 1 0 001 1h10a1 1 0 001-1v-1" />
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M7 1v8M4 6l3 3 3-3" /><path d="M1 11v1a1 1 0 001 1h10a1 1 0 001-1v-1" />
             </svg>
             <span className="hidden sm:inline">Export CSV</span>
           </button>
@@ -605,13 +459,12 @@ export function DashboardPage() {
 
       {/* ── KPI cards ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {data.kpis.map((k) => (
-          <KpiCard key={k.title} kpi={k} />
-        ))}
+        {data.kpis.map((k) => <KpiCard key={k.title} kpi={k} />)}
       </div>
 
       {/* ── Middle: trend chart + moderation queue ──────────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_380px]">
+
         {/* Chart panel */}
         <div className="panel p-5">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -664,7 +517,11 @@ export function DashboardPage() {
       </div>
 
       {/* ── Activities table ─────────────────────────────────────── */}
-      <ActivitiesTable rows={filteredActivities} search={search} onSearch={setSearch} />
+      <ActivitiesTable
+        rows={filteredActivities}
+        search={search}
+        onSearch={setSearch}
+      />
     </div>
   );
 }

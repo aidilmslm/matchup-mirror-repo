@@ -8,9 +8,6 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-
-// Admin session: Firebase sign-in, token refresh, single-flight auto-logout on 401.
-// Admin rights are proven server-side (GET /api/admin/me) — this context only holds the session.
 import {
   loadSession,
   refreshStoredToken,
@@ -21,7 +18,7 @@ import {
 import type { AdminUser } from '../services/authService';
 import { onUnauthorized } from '../services/api';
 
-// Types.
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthState {
   /** null while checking session; AdminUser when signed in; false when signed out. */
@@ -37,7 +34,7 @@ interface AuthContextValue extends AuthState {
   isAuthenticated: boolean;
 }
 
-// Context.
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -47,7 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false);
   // Prevents concurrent 401s from interleaving duplicate sign-outs.
   const autoLogoutInFlight = useRef(false);
-  // Suppresses auto-logout while a sign-in attempt is in flight.
+  // Suppresses auto-logout while a sign-in attempt is in flight, so a
+  // rejected /me check during sign-in surfaces its own error instead of
+  // flipping the "session expired" banner.
   const signingIn = useRef(false);
 
   // Restore session from storage on mount.
@@ -56,25 +55,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session ? session.user : false);
   }, []);
 
-  // Keep the stored Firebase ID token fresh.
+  // H2 fix: keep the stored Firebase ID token fresh. The subscription
+  // persists hourly SDK refreshes; the one-shot rehydrates the token
+  // after a reload (SDK session survives in browser persistence while
+  // our stored copy may be hours old). Runs once — independent of the
+  // user state above so a refreshed token lands before first use.
   useEffect(() => {
     const unsubscribe = subscribeSessionRefresh();
     void refreshStoredToken();
     return unsubscribe;
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string, remember: boolean) => {
-    signingIn.current = true;
-    setLoading(true);
-    try {
-      const session = await authSignIn(email, password, remember);
-      setSessionExpired(false);
-      setUser(session.user);
-    } finally {
-      signingIn.current = false;
-      setLoading(false);
-    }
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string, remember: boolean) => {
+      signingIn.current = true;
+      setLoading(true);
+      try {
+        const session = await authSignIn(email, password, remember);
+        setSessionExpired(false);
+        setUser(session.user);
+      } finally {
+        signingIn.current = false;
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   const signOut = useCallback(async () => {
     await authSignOut();
@@ -82,7 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(false);
   }, []);
 
-  // Unconditional auto logout — marks the session as expired so the login page can explain why the user was signed out.
+  // Unconditional auto logout — marks the session as expired so the
+  // login page can explain why the user was signed out. Idempotent:
+  // concurrent triggers collapse into a single sign-out.
   const performAutoLogout = useCallback(async () => {
     if (autoLogoutInFlight.current) return;
     autoLogoutInFlight.current = true;
@@ -95,7 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Guarded variant for external triggers (401 responses, storage events).
+  // Guarded variant for external triggers (401 responses, storage
+  // events). No-ops when there is no active session (e.g. already
+  // signed out) or while a sign-in attempt is in flight, so a rejected
+  // /me check during sign-in surfaces its own error instead of
+  // flipping the "session expired" banner.
   const autoLogoutIfSession = useCallback(async () => {
     if (signingIn.current) return;
     if (!loadSession()) return;
@@ -103,9 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [performAutoLogout]);
 
   // Any 401/UNAUTHORIZED from apiFetch → auto logout.
-  useEffect(() => onUnauthorized(() => void autoLogoutIfSession()), [autoLogoutIfSession]);
+  useEffect(
+    () => onUnauthorized(() => void autoLogoutIfSession()),
+    [autoLogoutIfSession],
+  );
 
-  // Local session TTL (8h / 30d remember) → auto logout even with no API traffic.
+  // Local session TTL (8h / 30d remember) → auto logout even with no
+  // API traffic (e.g. tab left open overnight).
   useEffect(() => {
     if (!user) return;
     const session = loadSession();
@@ -149,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// Hook.
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {

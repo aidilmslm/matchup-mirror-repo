@@ -21,20 +21,21 @@ void main() {
           // Local-only repo so this test does not depend on the
           // network and produces no suggestions.
           overrides: [
-            placesRepositoryProvider.overrideWith(
-              (_) => LocalPlacesRepository(),
-            ),
+            placesRepositoryProvider.overrideWith((_) => LocalPlacesRepository()),
           ],
-          child: MaterialApp(
-            home: Material(
-              child: Scaffold(
-                body: SizedBox(
-                  width: 360,
-                  child: VenueField(value: null, onSuggestionSelected: (_) {}),
+        child: MaterialApp(
+              home: Material(
+                child: Scaffold(
+                  body: SizedBox(
+                    width: 360,
+                    child: VenueField(
+                      value: null,
+                      onSuggestionSelected: (_) {},
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -43,38 +44,42 @@ void main() {
     },
   );
 
-  testWidgets('VenueField shows the picked venue address under its name', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          placesRepositoryProvider.overrideWith((_) => LocalPlacesRepository()),
-        ],
-        child: MaterialApp(
-          home: Material(
-            child: Scaffold(
-              body: SizedBox(
-                width: 360,
-                child: VenueField(
-                  value: const PlaceSuggestion(
-                    placeId: 'p1',
-                    label: 'Eden Park',
-                    secondary: 'Reimers Ave, Kingsland, Auckland',
-                    latitude: -36.875,
-                    longitude: 174.745,
+  testWidgets(
+    'VenueField shows the picked venue address under its name',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            placesRepositoryProvider.overrideWith((_) => LocalPlacesRepository()),
+          ],
+          child: MaterialApp(
+            home: Material(
+              child: Scaffold(
+                body: SizedBox(
+                  width: 360,
+                  child: VenueField(
+                    value: const PlaceSuggestion(
+                      placeId: 'p1',
+                      label: 'Eden Park',
+                      secondary: 'Reimers Ave, Kingsland, Auckland',
+                      latitude: -36.875,
+                      longitude: 174.745,
+                    ),
+                    onSuggestionSelected: (_) {},
                   ),
-                  onSuggestionSelected: (_) {},
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Eden Park'), findsOneWidget);
-    expect(find.text('Reimers Ave, Kingsland, Auckland'), findsOneWidget);
-  });
+      expect(find.text('Eden Park'), findsOneWidget);
+      expect(
+        find.text('Reimers Ave, Kingsland, Auckland'),
+        findsOneWidget,
+      );
+    },
+  );
 }

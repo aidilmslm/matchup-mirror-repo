@@ -18,9 +18,9 @@ import { requireAuth, requireAuthAllowSuspended } from './auth.middleware.js';
 
 /** Default user-doc lookup: doc missing → active (backwards compatible). */
 function mockUserStatus(status: unknown, exists = true) {
-  const get = vi
-    .fn()
-    .mockResolvedValue(exists ? { exists: true, data: () => ({ status }) } : { exists: false });
+  const get = vi.fn().mockResolvedValue(
+    exists ? { exists: true, data: () => ({ status }) } : { exists: false },
+  );
   const doc = vi.fn().mockReturnValue({ get });
   vi.mocked(firestore.collection).mockReturnValue({ doc } as never);
 }
@@ -69,7 +69,9 @@ describe('requireAuth middleware', () => {
   it('when Authorization header is not Bearer token => expected 401 w/ UNAUTHORIZED', async () => {
     const app = createProtectedApp();
 
-    const response = await request(app).get('/protected').set('Authorization', 'Token abc');
+    const response = await request(app)
+      .get('/protected')
+      .set('Authorization', 'Token abc');
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({
@@ -85,7 +87,9 @@ describe('requireAuth middleware', () => {
   it('when Bearer token is blank => expected 401 w/ UNAUTHORIZED', async () => {
     const app = createProtectedApp();
 
-    const response = await request(app).get('/protected').set('Authorization', 'Bearer ');
+    const response = await request(app)
+      .get('/protected')
+      .set('Authorization', 'Bearer ');
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({
@@ -192,9 +196,13 @@ describe('requireAuthAllowSuspended', () => {
     mockUserStatus('suspended');
 
     const app = express();
-    app.get('/appeals-gate', requireAuthAllowSuspended, (req, res) => {
-      res.status(200).json({ ok: true, data: { uid: req.auth?.uid } });
-    });
+    app.get(
+      '/appeals-gate',
+      requireAuthAllowSuspended,
+      (req, res) => {
+        res.status(200).json({ ok: true, data: { uid: req.auth?.uid } });
+      },
+    );
 
     const response = await request(app)
       .get('/appeals-gate')

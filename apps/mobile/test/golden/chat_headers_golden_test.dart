@@ -89,7 +89,8 @@ class _TolerantGoldenComparator extends LocalFileComparator {
       imageBytes,
       await getGoldenBytes(golden),
     );
-    final bool passed = result.passed || result.diffPercent <= _tolerance;
+    final bool passed =
+        result.passed || result.diffPercent <= _tolerance;
     if (passed) {
       result.dispose();
       return true;
@@ -109,7 +110,8 @@ class _MockTypingRepository extends Mock implements TypingRepository {}
 class _MockUserRepository extends Mock implements UserRepository {}
 
 class _FakeDmRepo implements DmRepository {
-  final _controller = StreamController<List<ChatMessage>>.broadcast();
+  final _controller =
+      StreamController<List<ChatMessage>>.broadcast();
 
   @override
   Stream<List<ChatMessage>> watchMessages(String otherUid) =>
@@ -147,6 +149,7 @@ class _FakeDmRepo implements DmRepository {
     throw UnimplementedError();
   }
 
+
   @override
   Future<ChatMessage> send({
     required String otherUid,
@@ -157,18 +160,18 @@ class _FakeDmRepo implements DmRepository {
 }
 
 ActivityModel _testActivity() => ActivityModel(
-  id: 'a-1',
-  title: 'Friday Night 5-a-side Football',
-  sportType: 'Football',
-  description: 'Weekly run',
-  location: 'Eden Park Outer Oval',
-  distanceKm: 1.2,
-  dateTime: DateTime(2026, 9, 18, 6, 30),
-  skillLevel: 'Intermediate',
-  capacity: 10,
-  participantCount: 2,
-  hostName: 'Host',
-);
+      id: 'a-1',
+      title: 'Friday Night 5-a-side Football',
+      sportType: 'Football',
+      description: 'Weekly run',
+      location: 'Eden Park Outer Oval',
+      distanceKm: 1.2,
+      dateTime: DateTime(2026, 9, 18, 6, 30),
+      skillLevel: 'Intermediate',
+      capacity: 10,
+      participantCount: 2,
+      hostName: 'Host',
+    );
 
 void main() {
   setUpAll(() async {
@@ -190,9 +193,9 @@ void main() {
       when(
         () => repo.watchMessages(any()),
       ).thenAnswer((_) => Stream.value(const <ChatMessage>[]));
-      when(() => repo.watchReactions(any())).thenAnswer(
-        (_) => Stream.value(const <String, Map<String, List<String>>>{}),
-      );
+      when(
+        () => repo.watchReactions(any()),
+      ).thenAnswer((_) => Stream.value(const <String, Map<String, List<String>>>{}));
       when(
         () => repo.watchPolls(any()),
       ).thenAnswer((_) => Stream.value(const <ChatPoll>[]));
@@ -237,7 +240,9 @@ void main() {
 
     testWidgets('DM navy header', (tester) async {
       final userRepo = _MockUserRepository();
-      when(() => userRepo.byId(any())).thenAnswer((_) async => null);
+      when(
+        () => userRepo.byId(any()),
+      ).thenAnswer((_) async => null);
 
       await _expectGolden(
         tester,
@@ -246,7 +251,9 @@ void main() {
             dmRepositoryProvider.overrideWithValue(_FakeDmRepo()),
             userRepositoryProvider.overrideWithValue(userRepo),
           ],
-          child: _wrap(const DmScreen(otherUid: 'u-9', peerName: 'Sam Rivera')),
+          child: _wrap(
+            const DmScreen(otherUid: 'u-9', peerName: 'Sam Rivera'),
+          ),
         ),
         'dm_header_navy',
       );

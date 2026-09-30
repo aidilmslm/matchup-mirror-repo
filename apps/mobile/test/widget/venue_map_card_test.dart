@@ -4,27 +4,29 @@ import 'package:matchup_mobile/features/activities/domain/activity_model.dart';
 import 'package:matchup_mobile/features/discovery/presentation/widgets/venue_map_card.dart';
 
 ActivityModel _activity({double? lat, double? lng}) => ActivityModel(
-  id: 'a-1',
-  title: 'Saturday Basketball',
-  sportType: 'Basketball',
-  description: 'Runs',
-  location: 'Auckland Domain',
-  distanceKm: 1.2,
-  dateTime: DateTime.now().add(const Duration(days: 1)),
-  skillLevel: 'Intermediate',
-  capacity: 10,
-  participantCount: 3,
-  hostName: 'Sam',
-  latitude: lat,
-  longitude: lng,
-);
+      id: 'a-1',
+      title: 'Saturday Basketball',
+      sportType: 'Basketball',
+      description: 'Runs',
+      location: 'Auckland Domain',
+      distanceKm: 1.2,
+      dateTime: DateTime.now().add(const Duration(days: 1)),
+      skillLevel: 'Intermediate',
+      capacity: 10,
+      participantCount: 3,
+      hostName: 'Sam',
+      latitude: lat,
+      longitude: lng,
+    );
 
 void main() {
   testWidgets('renders map preview when coordinates exist', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: VenueMapCard(activity: _activity(lat: -36.8558, lng: 174.7764)),
+          body: VenueMapCard(
+            activity: _activity(lat: -36.8558, lng: 174.7764),
+          ),
         ),
       ),
     );
@@ -34,10 +36,13 @@ void main() {
     expect(find.text('Auckland Domain'), findsOneWidget);
   });
 
-  testWidgets('renders nothing when coordinates are missing', (tester) async {
+  testWidgets('renders nothing when coordinates are missing',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: VenueMapCard(activity: _activity())),
+        home: Scaffold(
+          body: VenueMapCard(activity: _activity()),
+        ),
       ),
     );
     await tester.pump();
@@ -56,7 +61,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: VenueMapCard(activity: _activity(lat: -36.8558, lng: 174.7764)),
+          body: VenueMapCard(
+            activity: _activity(lat: -36.8558, lng: 174.7764),
+          ),
         ),
       ),
     );
@@ -77,7 +84,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: VenueMapCard(activity: _activity(lat: -36.8558, lng: 174.7764)),
+          body: VenueMapCard(
+            activity: _activity(lat: -36.8558, lng: 174.7764),
+          ),
         ),
       ),
     );
@@ -93,7 +102,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: VenueMapCard(activity: _activity(lat: -36.8558, lng: 174.7764)),
+          body: VenueMapCard(
+            activity: _activity(lat: -36.8558, lng: 174.7764),
+          ),
         ),
       ),
     );

@@ -127,7 +127,9 @@ void main() {
         // the raw 'System' text is flaky (small hit target, and the label
         // text is duplicated once the sheet opens).
         final appearanceRow = find.byWidgetPredicate(
-          (w) => w is Semantics && w.properties.label == 'Appearance: System',
+          (w) =>
+              w is Semantics &&
+              w.properties.label == 'Appearance: System',
         );
         // The Appearance row sits below the fold — scroll it into view
         // first, otherwise the tap misses (row is off-screen at 800x600).

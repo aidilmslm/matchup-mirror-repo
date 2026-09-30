@@ -1,1445 +1,1427 @@
 import type { Request, Response } from 'express';
 import {
-  attachViewerActivityContext,
-  createActivity,
-  enrichActivityWithHostProfile,
-  getActivityById,
-  listMyActivities,
-  listPublicActivityTeasers,
-  listActivities,
-  updateActivity,
-  updateActivityCover,
-  updateActivityStatus,
+    attachViewerActivityContext,
+    createActivity,
+    enrichActivityWithHostProfile,
+    getActivityById,
+    listMyActivities,
+    listPublicActivityTeasers,
+    listActivities,
+    updateActivity,
+    updateActivityCover,
+    updateActivityStatus,
 } from './activities.service.js';
 import { listDiscoverActivities } from './discover.service.js';
-import type {
-  ActivitySkillLevel,
-  ListActivitiesFilters,
-  SportSkillFilter,
-} from './activities.service.js';
+import type { ActivitySkillLevel, ListActivitiesFilters, SportSkillFilter } from './activities.service.js';
 import { getParticipants } from './activity-participants.service.js';
 import {
-  createNotification,
-  displayNameOf,
-  renderTemplate,
+    createNotification,
+    displayNameOf,
+    renderTemplate,
 } from '../notifications/notifications.service.js';
 
 const LIMIT_VALUE = 20;
 
 type UpdateActivityStatusParams = {
-  activityId: string;
+    activityId: string;
 };
 
 type UpdateActivityParams = {
-  activityId: string;
+    activityId: string;
 };
 
 type UpdateActivityCoverParams = {
-  activityId: string;
+    activityId: string;
 };
 
 type GetActivityParams = {
-  activityId: string;
+    activityId: string;
 };
 
 export async function createActivityHandler(req: Request, res: Response) {
-  try {
-    const hostId = req.auth?.uid;
-    const {
-      title,
-      sportType,
-      description,
-      locationName,
-      address,
-      latitude,
-      longitude,
-      geohash,
-      startTime,
-      endTime,
-      skillLevel,
-      capacity,
-      coverImageUrl,
-      joinPolicy,
-      isPaid,
-      fee,
-      feeMode,
-      totalCost,
-      minPlayers,
-      weatherTemp,
-      weatherCode,
-      weatherDesc,
-      weatherRain,
-    } = req.body as {
-      title?: unknown;
-      sportType?: unknown;
-      description?: unknown;
-      locationName?: unknown;
-      address?: unknown;
-      latitude?: unknown;
-      longitude?: unknown;
-      geohash?: unknown;
-      startTime?: unknown;
-      endTime?: unknown;
-      skillLevel?: unknown;
-      capacity?: unknown;
-      coverImageUrl?: unknown;
-      joinPolicy?: unknown;
-      isPaid?: unknown;
-      fee?: unknown;
-      feeMode?: unknown;
-      totalCost?: unknown;
-      minPlayers?: unknown;
-      weatherTemp?: unknown;
-      weatherCode?: unknown;
-      weatherDesc?: unknown;
-      weatherRain?: unknown;
-    };
+    try {
+        const hostId = req.auth?.uid;
+        const {
+            title,
+            sportType,
+            description,
+            locationName,
+            address,
+            latitude,
+            longitude,
+            geohash,
+            startTime,
+            endTime,
+            skillLevel,
+            capacity,
+            coverImageUrl,
+            joinPolicy,
+            isPaid,
+            fee,
+            feeMode,
+            totalCost,
+            minPlayers,
+            weatherTemp,
+            weatherCode,
+            weatherDesc,
+            weatherRain,
+        } = req.body as {
+            title?: unknown;
+            sportType?: unknown;
+            description?: unknown;
+            locationName?: unknown;
+            address?: unknown;
+            latitude?: unknown;
+            longitude?: unknown;
+            geohash?: unknown;
+            startTime?: unknown;
+            endTime?: unknown;
+            skillLevel?: unknown;
+            capacity?: unknown;
+            coverImageUrl?: unknown;
+            joinPolicy?: unknown;
+            isPaid?: unknown;
+            fee?: unknown;
+            feeMode?: unknown;
+            totalCost?: unknown;
+            minPlayers?: unknown;
+            weatherTemp?: unknown;
+            weatherCode?: unknown;
+            weatherDesc?: unknown;
+            weatherRain?: unknown;
+        };
 
-    if (!hostId) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
+        if (!hostId) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
+
+        if (typeof title !== 'string' ||
+            typeof sportType !== 'string' ||
+            typeof description !== 'string' ||
+            typeof locationName !== 'string' ||
+            typeof geohash !== 'string' ||
+            typeof startTime !== 'string'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'title, sportType, description, locationName, geohash, and startTime must be strings',
+                },
+            });
+        }
+        if (
+            (address !== undefined && typeof address !== 'string') ||
+            (endTime !== undefined && typeof endTime !== 'string')
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'address and endTime must be strings when provided',
+                },
+            });
+        }
+
+        if (
+            skillLevel !== 'beginner' &&
+            skillLevel !== 'intermediate' &&
+            skillLevel !== 'advanced' &&
+            skillLevel !== 'any'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'skillLevel must be beginner, intermediate, advanced, or any',
+                },
+            });
+        }
+
+        if (joinPolicy !== undefined && joinPolicy !== 'open' && joinPolicy !== 'approval') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'joinPolicy must be open or approval',
+                },
+            });
+        }
+
+        if (isPaid !== undefined && typeof isPaid !== 'boolean') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'isPaid must be a boolean',
+                },
+            });
+        }
+
+        if (fee !== undefined && (typeof fee !== 'number' || !Number.isFinite(fee) || fee <= 0)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'fee must be a positive number for paid activities',
+                },
+            });
+        }
+
+        if (isPaid === true && fee === undefined) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'fee is required when isPaid is true',
+                },
+            });
+        }
+
+        if (feeMode !== undefined && feeMode !== 'fixed' && feeMode !== 'split') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'feeMode must be fixed or split',
+                },
+            });
+        }
+
+        if (totalCost !== undefined && (typeof totalCost !== 'number' || !Number.isFinite(totalCost) || totalCost <= 0)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'totalCost must be a positive number for split mode',
+                },
+            });
+        }
+
+        if (minPlayers !== undefined && (typeof minPlayers !== 'number' || !Number.isInteger(minPlayers) || minPlayers < 2)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'minPlayers must be an integer >= 2',
+                },
+            });
+        }
+
+        if (feeMode === 'split' && totalCost === undefined) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'totalCost is required when feeMode is split',
+                },
+            });
+        }
+
+        if (typeof capacity !== 'number' || !Number.isInteger(capacity) || capacity <= 0) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'capacity must be a positive integer',
+                },
+            });
+        }
+
+        if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'latitude must be a number between -90 and 90',
+                },
+            });
+        }
+
+        if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'longitude must be a number between -180 and 180',
+                },
+            });
+        }
+
+        if (
+            !title.trim() ||
+            !sportType.trim() ||
+            !description.trim() ||
+            !locationName.trim() ||
+            !geohash.trim() ||
+            !startTime.trim()
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'title, sportType, description, locationName, geohash, and startTime are required',
+                },
+            });
+        }
+
+        const result = await createActivity({
+            hostId,
+            title,
+            sportType,
+            description,
+            locationName,
+            latitude,
+            longitude,
+            geohash,
+            startTime,
+            skillLevel,
+            capacity,
+            ...(typeof address === 'string' ? { address } : {}),
+            ...(typeof endTime === 'string' ? { endTime } : {}),
+            ...(typeof coverImageUrl === 'string' ? { coverImageUrl } : {}),
+            ...(joinPolicy === 'open' || joinPolicy === 'approval' ? { joinPolicy } : {}),
+            ...(typeof isPaid === 'boolean' ? { isPaid } : {}),
+            ...(typeof fee === 'number' ? { fee } : {}),
+            ...(feeMode === 'fixed' || feeMode === 'split' ? { feeMode } : {}),
+            ...(typeof totalCost === 'number' ? { totalCost } : {}),
+            ...(typeof minPlayers === 'number' ? { minPlayers } : {}),
+            ...(typeof weatherTemp === 'number' ? { weatherTemp } : {}),
+            ...(typeof weatherCode === 'number' ? { weatherCode } : {}),
+            ...(typeof weatherDesc === 'string' ? { weatherDesc } : {}),
+            ...(typeof weatherRain === 'number' ? { weatherRain } : {}),
+        });
+
+        return res.status(201).json({
+            ok: true,
+            data: {
+                activityId: result.activityId,
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        if (
+            message === 'isPaid must be a boolean' ||
+            message === 'fee must be a positive number for paid activities' ||
+            message === 'feeMode must be fixed or split' ||
+            message === 'totalCost must be a positive number for split mode' ||
+            message === 'minPlayers must be an integer between 2 and capacity'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message,
+                },
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    if (
-      typeof title !== 'string' ||
-      typeof sportType !== 'string' ||
-      typeof description !== 'string' ||
-      typeof locationName !== 'string' ||
-      typeof geohash !== 'string' ||
-      typeof startTime !== 'string'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message:
-            'title, sportType, description, locationName, geohash, and startTime must be strings',
-        },
-      });
-    }
-    if (
-      (address !== undefined && typeof address !== 'string') ||
-      (endTime !== undefined && typeof endTime !== 'string')
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'address and endTime must be strings when provided',
-        },
-      });
-    }
-
-    if (
-      skillLevel !== 'beginner' &&
-      skillLevel !== 'intermediate' &&
-      skillLevel !== 'advanced' &&
-      skillLevel !== 'any'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'skillLevel must be beginner, intermediate, advanced, or any',
-        },
-      });
-    }
-
-    if (joinPolicy !== undefined && joinPolicy !== 'open' && joinPolicy !== 'approval') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'joinPolicy must be open or approval',
-        },
-      });
-    }
-
-    if (isPaid !== undefined && typeof isPaid !== 'boolean') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'isPaid must be a boolean',
-        },
-      });
-    }
-
-    if (fee !== undefined && (typeof fee !== 'number' || !Number.isFinite(fee) || fee <= 0)) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'fee must be a positive number for paid activities',
-        },
-      });
-    }
-
-    if (isPaid === true && fee === undefined) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'fee is required when isPaid is true',
-        },
-      });
-    }
-
-    if (feeMode !== undefined && feeMode !== 'fixed' && feeMode !== 'split') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'feeMode must be fixed or split',
-        },
-      });
-    }
-
-    if (
-      totalCost !== undefined &&
-      (typeof totalCost !== 'number' || !Number.isFinite(totalCost) || totalCost <= 0)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'totalCost must be a positive number for split mode',
-        },
-      });
-    }
-
-    if (
-      minPlayers !== undefined &&
-      (typeof minPlayers !== 'number' || !Number.isInteger(minPlayers) || minPlayers < 2)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'minPlayers must be an integer >= 2',
-        },
-      });
-    }
-
-    if (feeMode === 'split' && totalCost === undefined) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'totalCost is required when feeMode is split',
-        },
-      });
-    }
-
-    if (typeof capacity !== 'number' || !Number.isInteger(capacity) || capacity <= 0) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'capacity must be a positive integer',
-        },
-      });
-    }
-
-    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'latitude must be a number between -90 and 90',
-        },
-      });
-    }
-
-    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'longitude must be a number between -180 and 180',
-        },
-      });
-    }
-
-    if (
-      !title.trim() ||
-      !sportType.trim() ||
-      !description.trim() ||
-      !locationName.trim() ||
-      !geohash.trim() ||
-      !startTime.trim()
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message:
-            'title, sportType, description, locationName, geohash, and startTime are required',
-        },
-      });
-    }
-
-    const result = await createActivity({
-      hostId,
-      title,
-      sportType,
-      description,
-      locationName,
-      latitude,
-      longitude,
-      geohash,
-      startTime,
-      skillLevel,
-      capacity,
-      ...(typeof address === 'string' ? { address } : {}),
-      ...(typeof endTime === 'string' ? { endTime } : {}),
-      ...(typeof coverImageUrl === 'string' ? { coverImageUrl } : {}),
-      ...(joinPolicy === 'open' || joinPolicy === 'approval' ? { joinPolicy } : {}),
-      ...(typeof isPaid === 'boolean' ? { isPaid } : {}),
-      ...(typeof fee === 'number' ? { fee } : {}),
-      ...(feeMode === 'fixed' || feeMode === 'split' ? { feeMode } : {}),
-      ...(typeof totalCost === 'number' ? { totalCost } : {}),
-      ...(typeof minPlayers === 'number' ? { minPlayers } : {}),
-      ...(typeof weatherTemp === 'number' ? { weatherTemp } : {}),
-      ...(typeof weatherCode === 'number' ? { weatherCode } : {}),
-      ...(typeof weatherDesc === 'string' ? { weatherDesc } : {}),
-      ...(typeof weatherRain === 'number' ? { weatherRain } : {}),
-    });
-
-    return res.status(201).json({
-      ok: true,
-      data: {
-        activityId: result.activityId,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    if (
-      message === 'isPaid must be a boolean' ||
-      message === 'fee must be a positive number for paid activities' ||
-      message === 'feeMode must be fixed or split' ||
-      message === 'totalCost must be a positive number for split mode' ||
-      message === 'minPlayers must be an integer between 2 and capacity'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message,
-        },
-      });
-    }
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }
 
 export async function updateActivityHandler(req: Request<UpdateActivityParams>, res: Response) {
-  try {
-    const hostId = req.auth?.uid;
-    const { activityId } = req.params;
-    const {
-      title,
-      sportType,
-      description,
-      locationName,
-      address,
-      latitude,
-      longitude,
-      geohash,
-      startTime,
-      endTime,
-      skillLevel,
-      capacity,
-      coverImageUrl,
-      joinPolicy,
-      isPaid,
-      fee,
-      feeMode,
-      totalCost,
-      minPlayers,
-      weatherTemp,
-      weatherCode,
-      weatherDesc,
-      weatherRain,
-    } = req.body as {
-      title?: unknown;
-      sportType?: unknown;
-      description?: unknown;
-      locationName?: unknown;
-      address?: unknown;
-      latitude?: unknown;
-      longitude?: unknown;
-      geohash?: unknown;
-      startTime?: unknown;
-      endTime?: unknown;
-      skillLevel?: unknown;
-      capacity?: unknown;
-      coverImageUrl?: unknown;
-      joinPolicy?: unknown;
-      isPaid?: unknown;
-      fee?: unknown;
-      feeMode?: unknown;
-      totalCost?: unknown;
-      minPlayers?: unknown;
-      weatherTemp?: unknown;
-      weatherCode?: unknown;
-      weatherDesc?: unknown;
-      weatherRain?: unknown;
-    };
+    try {
+        const hostId = req.auth?.uid;
+        const { activityId } = req.params;
+        const {
+            title,
+            sportType,
+            description,
+            locationName,
+            address,
+            latitude,
+            longitude,
+            geohash,
+            startTime,
+            endTime,
+            skillLevel,
+            capacity,
+            coverImageUrl,
+            joinPolicy,
+            isPaid,
+            fee,
+            feeMode,
+            totalCost,
+            minPlayers,
+            weatherTemp,
+            weatherCode,
+            weatherDesc,
+            weatherRain,
+        } = req.body as {
+            title?: unknown;
+            sportType?: unknown;
+            description?: unknown;
+            locationName?: unknown;
+            address?: unknown;
+            latitude?: unknown;
+            longitude?: unknown;
+            geohash?: unknown;
+            startTime?: unknown;
+            endTime?: unknown;
+            skillLevel?: unknown;
+            capacity?: unknown;
+            coverImageUrl?: unknown;
+            joinPolicy?: unknown;
+            isPaid?: unknown;
+            fee?: unknown;
+            feeMode?: unknown;
+            totalCost?: unknown;
+            minPlayers?: unknown;
+            weatherTemp?: unknown;
+            weatherCode?: unknown;
+            weatherDesc?: unknown;
+            weatherRain?: unknown;
+        };
 
-    if (!hostId) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
+        if (!hostId) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
+
+        if (!activityId.trim()) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'activityId is required',
+                },
+            });
+        }
+
+        const stringFields = {
+            title,
+            sportType,
+            description,
+            locationName,
+            address,
+            geohash,
+            startTime,
+            endTime,
+        };
+
+        if (Object.values(stringFields).some((value) => value !== undefined && typeof value !== 'string',)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'updated string fields must be strings',
+                },
+            });
+        }
+
+        if (
+            skillLevel !== undefined &&
+            skillLevel !== 'beginner' &&
+            skillLevel !== 'intermediate' &&
+            skillLevel !== 'advanced' &&
+            skillLevel !== 'any'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'skillLevel must be beginner, intermediate, advanced, or any',
+                },
+            });
+        }
+
+        if (joinPolicy !== undefined && joinPolicy !== 'open' && joinPolicy !== 'approval') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'joinPolicy must be open or approval',
+                },
+            });
+        }
+
+        if (isPaid !== undefined && typeof isPaid !== 'boolean') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'isPaid must be a boolean',
+                },
+            });
+        }
+
+        if (fee !== undefined && (typeof fee !== 'number' || !Number.isFinite(fee) || fee <= 0)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'fee must be a positive number for paid activities',
+                },
+            });
+        }
+
+        if (feeMode !== undefined && feeMode !== 'fixed' && feeMode !== 'split') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'feeMode must be fixed or split',
+                },
+            });
+        }
+
+        if (totalCost !== undefined && (typeof totalCost !== 'number' || !Number.isFinite(totalCost) || totalCost <= 0)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'totalCost must be a positive number for split mode',
+                },
+            });
+        }
+
+        if (minPlayers !== undefined && (typeof minPlayers !== 'number' || !Number.isInteger(minPlayers) || minPlayers < 2)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'minPlayers must be an integer >= 2',
+                },
+            });
+        }
+
+        if (capacity !== undefined && (typeof capacity !== 'number' || !Number.isInteger(capacity) || capacity <= 0)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'capacity must be a positive integer',
+                },
+            });
+        }
+
+        if (latitude !== undefined && (typeof latitude !== 'number' || latitude < -90 || latitude > 90)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'latitude must be a number between -90 and 90',
+                },
+            });
+        }
+
+        if (longitude !== undefined && (typeof longitude !== 'number' || longitude < -180 || longitude > 180)) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'longitude must be a number between -180 and 180',
+                },
+            });
+        }
+
+        await updateActivity({
+            activityId,
+            hostId,
+            ...(typeof title === 'string' ? { title } : {}),
+            ...(typeof sportType === 'string' ? { sportType } : {}),
+            ...(typeof description === 'string' ? { description } : {}),
+            ...(typeof locationName === 'string' ? { locationName } : {}),
+            ...(typeof address === 'string' ? { address } : {}),
+            ...(typeof latitude === 'number' ? { latitude } : {}),
+            ...(typeof longitude === 'number' ? { longitude } : {}),
+            ...(typeof geohash === 'string' ? { geohash } : {}),
+            ...(typeof startTime === 'string' ? { startTime } : {}),
+            ...(typeof endTime === 'string' ? { endTime } : {}),
+            ...(typeof skillLevel === 'string' ? { skillLevel } : {}),
+            ...(typeof capacity === 'number' ? { capacity } : {}),
+            ...(typeof coverImageUrl === 'string' ? { coverImageUrl } : {}),
+            ...(joinPolicy === 'open' || joinPolicy === 'approval' ? { joinPolicy } : {}),
+            ...(typeof isPaid === 'boolean' ? { isPaid } : {}),
+            ...(typeof fee === 'number' ? { fee } : {}),
+            ...(feeMode === 'fixed' || feeMode === 'split' ? { feeMode } : {}),
+            ...(typeof totalCost === 'number' ? { totalCost } : {}),
+            ...(typeof minPlayers === 'number' ? { minPlayers } : {}),
+            ...(typeof weatherTemp === 'number' ? { weatherTemp } : {}),
+            ...(typeof weatherCode === 'number' ? { weatherCode } : {}),
+            ...(typeof weatherDesc === 'string' ? { weatherDesc } : {}),
+            ...(typeof weatherRain === 'number' ? { weatherRain } : {}),
+        });
+
+        return res.status(200).json({
+            ok: true,
+            data: {
+                activityId,
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        if (message === 'Activity not found') {
+            return res.status(404).json({
+                ok: false,
+                error: {
+                    code: 'NOT_FOUND',
+                    message,
+                },
+            });
+        }
+
+        if (message === 'Only the activity host can update this activity') {
+            return res.status(403).json({
+                ok: false,
+                error: {
+                    code: 'FORBIDDEN',
+                    message,
+                },
+            });
+        }
+
+        if (message === 'updated string fields cannot be blank') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message,
+                },
+            });
+        }
+
+        if (
+            message === 'isPaid must be a boolean' ||
+            message === 'fee must be a positive number for paid activities' ||
+            message === 'feeMode must be fixed or split' ||
+            message === 'totalCost must be a positive number for split mode' ||
+            message === 'minPlayers must be an integer >= 2' ||
+            message === 'minPlayers must be an integer between 2 and capacity'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message,
+                },
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    if (!activityId.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message: 'activityId is required',
-        },
-      });
-    }
-
-    const stringFields = {
-      title,
-      sportType,
-      description,
-      locationName,
-      address,
-      geohash,
-      startTime,
-      endTime,
-    };
-
-    if (
-      Object.values(stringFields).some((value) => value !== undefined && typeof value !== 'string')
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'updated string fields must be strings',
-        },
-      });
-    }
-
-    if (
-      skillLevel !== undefined &&
-      skillLevel !== 'beginner' &&
-      skillLevel !== 'intermediate' &&
-      skillLevel !== 'advanced' &&
-      skillLevel !== 'any'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'skillLevel must be beginner, intermediate, advanced, or any',
-        },
-      });
-    }
-
-    if (joinPolicy !== undefined && joinPolicy !== 'open' && joinPolicy !== 'approval') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'joinPolicy must be open or approval',
-        },
-      });
-    }
-
-    if (isPaid !== undefined && typeof isPaid !== 'boolean') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'isPaid must be a boolean',
-        },
-      });
-    }
-
-    if (fee !== undefined && (typeof fee !== 'number' || !Number.isFinite(fee) || fee <= 0)) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'fee must be a positive number for paid activities',
-        },
-      });
-    }
-
-    if (feeMode !== undefined && feeMode !== 'fixed' && feeMode !== 'split') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'feeMode must be fixed or split',
-        },
-      });
-    }
-
-    if (
-      totalCost !== undefined &&
-      (typeof totalCost !== 'number' || !Number.isFinite(totalCost) || totalCost <= 0)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'totalCost must be a positive number for split mode',
-        },
-      });
-    }
-
-    if (
-      minPlayers !== undefined &&
-      (typeof minPlayers !== 'number' || !Number.isInteger(minPlayers) || minPlayers < 2)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'minPlayers must be an integer >= 2',
-        },
-      });
-    }
-
-    if (
-      capacity !== undefined &&
-      (typeof capacity !== 'number' || !Number.isInteger(capacity) || capacity <= 0)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'capacity must be a positive integer',
-        },
-      });
-    }
-
-    if (
-      latitude !== undefined &&
-      (typeof latitude !== 'number' || latitude < -90 || latitude > 90)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'latitude must be a number between -90 and 90',
-        },
-      });
-    }
-
-    if (
-      longitude !== undefined &&
-      (typeof longitude !== 'number' || longitude < -180 || longitude > 180)
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'longitude must be a number between -180 and 180',
-        },
-      });
-    }
-
-    await updateActivity({
-      activityId,
-      hostId,
-      ...(typeof title === 'string' ? { title } : {}),
-      ...(typeof sportType === 'string' ? { sportType } : {}),
-      ...(typeof description === 'string' ? { description } : {}),
-      ...(typeof locationName === 'string' ? { locationName } : {}),
-      ...(typeof address === 'string' ? { address } : {}),
-      ...(typeof latitude === 'number' ? { latitude } : {}),
-      ...(typeof longitude === 'number' ? { longitude } : {}),
-      ...(typeof geohash === 'string' ? { geohash } : {}),
-      ...(typeof startTime === 'string' ? { startTime } : {}),
-      ...(typeof endTime === 'string' ? { endTime } : {}),
-      ...(typeof skillLevel === 'string' ? { skillLevel } : {}),
-      ...(typeof capacity === 'number' ? { capacity } : {}),
-      ...(typeof coverImageUrl === 'string' ? { coverImageUrl } : {}),
-      ...(joinPolicy === 'open' || joinPolicy === 'approval' ? { joinPolicy } : {}),
-      ...(typeof isPaid === 'boolean' ? { isPaid } : {}),
-      ...(typeof fee === 'number' ? { fee } : {}),
-      ...(feeMode === 'fixed' || feeMode === 'split' ? { feeMode } : {}),
-      ...(typeof totalCost === 'number' ? { totalCost } : {}),
-      ...(typeof minPlayers === 'number' ? { minPlayers } : {}),
-      ...(typeof weatherTemp === 'number' ? { weatherTemp } : {}),
-      ...(typeof weatherCode === 'number' ? { weatherCode } : {}),
-      ...(typeof weatherDesc === 'string' ? { weatherDesc } : {}),
-      ...(typeof weatherRain === 'number' ? { weatherRain } : {}),
-    });
-
-    return res.status(200).json({
-      ok: true,
-      data: {
-        activityId,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    if (message === 'Activity not found') {
-      return res.status(404).json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message,
-        },
-      });
-    }
-
-    if (message === 'Only the activity host can update this activity') {
-      return res.status(403).json({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message,
-        },
-      });
-    }
-
-    if (message === 'updated string fields cannot be blank') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message,
-        },
-      });
-    }
-
-    if (
-      message === 'isPaid must be a boolean' ||
-      message === 'fee must be a positive number for paid activities' ||
-      message === 'feeMode must be fixed or split' ||
-      message === 'totalCost must be a positive number for split mode' ||
-      message === 'minPlayers must be an integer >= 2' ||
-      message === 'minPlayers must be an integer between 2 and capacity'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message,
-        },
-      });
-    }
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }
 
-export async function updateActivityStatusHandler(
-  req: Request<UpdateActivityStatusParams>,
-  res: Response,
-) {
-  try {
-    const hostId = req.auth?.uid;
-    const { activityId } = req.params;
-    const { status } = req.body as {
-      status?: unknown;
-    };
+export async function updateActivityStatusHandler(req: Request<UpdateActivityStatusParams>, res: Response) {
+    try {
+        const hostId = req.auth?.uid;
+        const { activityId } = req.params;
+        const { status } = req.body as {
+            status?: unknown;
+        };
 
-    if (!hostId) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
+        if (!hostId) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
+
+        if (typeof status !== 'string') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'status must be a string',
+                },
+            });
+        }
+
+        if (!activityId.trim() || !status.trim()) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'activityId and status are required',
+                },
+            });
+        }
+
+        if (
+            status !== 'open' &&
+            status !== 'cancelled' &&
+            status !== 'completed' &&
+            status !== 'removed'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'status must be open, cancelled, completed, or removed',
+                },
+            });
+        }
+
+        const previous = await getActivityById(activityId);
+
+        await updateActivityStatus({
+            activityId,
+            hostId,
+            status,
+        });
+
+        // Members must hear about cancellations (UAT): fan out an
+        // `activity_cancelled` push to every participant except the
+        // host. Only on the transition INTO cancelled (repeat calls
+        // stay silent), fire-and-forget so a notification failure
+        // never fails the status update itself.
+        if (status === 'cancelled' && previous?.status !== 'cancelled') {
+            notifyCancelledMembers(activityId, hostId).catch(() => undefined);
+        }
+
+        return res.status(200).json({
+            ok: true,
+            data: {
+                activityId,
+                status,
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        if (message === 'Activity not found') {
+            return res.status(404).json({
+                ok: false,
+                error: {
+                    code: 'NOT_FOUND',
+                    message,
+                },
+            });
+        }
+
+        if (message === 'Only the activity host can update this activity') {
+            return res.status(403).json({
+                ok: false,
+                error: {
+                    code: 'FORBIDDEN',
+                    message,
+                },
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    if (typeof status !== 'string') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'status must be a string',
-        },
-      });
-    }
-
-    if (!activityId.trim() || !status.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message: 'activityId and status are required',
-        },
-      });
-    }
-
-    if (
-      status !== 'open' &&
-      status !== 'cancelled' &&
-      status !== 'completed' &&
-      status !== 'removed'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'status must be open, cancelled, completed, or removed',
-        },
-      });
-    }
-
-    const previous = await getActivityById(activityId);
-
-    await updateActivityStatus({
-      activityId,
-      hostId,
-      status,
-    });
-
-    // Members must hear about cancellations (UAT): fan out an `activity_cancelled` push to every participant except.
-    if (status === 'cancelled' && previous?.status !== 'cancelled') {
-      notifyCancelledMembers(activityId, hostId).catch(() => undefined);
-    }
-
-    return res.status(200).json({
-      ok: true,
-      data: {
-        activityId,
-        status,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    if (message === 'Activity not found') {
-      return res.status(404).json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message,
-        },
-      });
-    }
-
-    if (message === 'Only the activity host can update this activity') {
-      return res.status(403).json({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message,
-        },
-      });
-    }
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }
 
-/** Fans an `activity_cancelled` notification out to every participant except the acting host. */
-async function notifyCancelledMembers(activityId: string, hostId: string): Promise<void> {
-  try {
-    const [activity, participants] = await Promise.all([
-      getActivityById(activityId),
-      getParticipants(activityId).catch(() => []),
-    ]);
-    if (!activity) return;
-    const recipients = participants
-      .map((p) => p.uid)
-      .filter((uid) => typeof uid === 'string' && uid && uid !== hostId);
-    if (recipients.length === 0) return;
-    const template = await renderTemplate('activity.cancelled', {
-      activityName: activity.title,
-      activityDate: activity.startTime,
-      hostName: (await displayNameOf(hostId)) || 'The host',
-    });
-    const title = template?.title ?? 'Activity cancelled';
-    const body = template?.body ?? `${activity.title} has been cancelled by the host.`;
-    await Promise.all(
-      recipients.map((recipientUid) =>
-        createNotification({
-          recipientUid,
-          type: 'activity_cancelled',
-          title,
-          body,
-          activityId,
-          senderUid: hostId,
-        }).catch(() => undefined),
-      ),
-    );
-  } catch {
-    // Swallowed by design — the status update already succeeded.
-  }
+/**
+ * Fans an `activity_cancelled` notification out to every participant
+ * except the acting host. Best-effort: resolves void, never throws.
+ */
+async function notifyCancelledMembers(
+    activityId: string,
+    hostId: string,
+): Promise<void> {
+    try {
+        const [activity, participants] = await Promise.all([
+            getActivityById(activityId),
+            getParticipants(activityId).catch(() => []),
+        ]);
+        if (!activity) return;
+        const recipients = participants
+            .map((p) => p.uid)
+            .filter((uid) => typeof uid === 'string' && uid && uid !== hostId);
+        if (recipients.length === 0) return;
+        const template = await renderTemplate('activity.cancelled', {
+            activityName: activity.title,
+            activityDate: activity.startTime,
+            hostName: (await displayNameOf(hostId)) || 'The host',
+        });
+        const title = template?.title ?? 'Activity cancelled';
+        const body = template?.body ??
+            `${activity.title} has been cancelled by the host.`;
+        await Promise.all(
+            recipients.map((recipientUid) =>
+                createNotification({
+                    recipientUid,
+                    type: 'activity_cancelled',
+                    title,
+                    body,
+                    activityId,
+                    senderUid: hostId,
+                }).catch(() => undefined),
+            ),
+        );
+    } catch {
+        // Swallowed by design — the status update already succeeded.
+    }
 }
 
-export async function updateActivityCoverHandler(
-  req: Request<UpdateActivityCoverParams>,
-  res: Response,
-) {
-  try {
-    const hostId = req.auth?.uid;
-    const { activityId } = req.params;
-    const { coverImagePath, coverImageUrl } = req.body as {
-      coverImagePath?: unknown;
-      coverImageUrl?: unknown;
-    };
+export async function updateActivityCoverHandler(req: Request<UpdateActivityCoverParams>, res: Response) {
+    try {
+        const hostId = req.auth?.uid;
+        const { activityId } = req.params;
+        const { coverImagePath, coverImageUrl } = req.body as {
+            coverImagePath?: unknown;
+            coverImageUrl?: unknown;
+        };
 
-    if (!hostId) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
+        if (!hostId) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
+
+        if (!activityId.trim()) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'activityId is required',
+                },
+            });
+        }
+
+        if (typeof coverImagePath !== 'string' || typeof coverImageUrl !== 'string') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'coverImagePath and coverImageUrl must be strings',
+                },
+            });
+        }
+
+        if (!coverImagePath.trim() || !coverImageUrl.trim()) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'coverImagePath and coverImageUrl are required',
+                },
+            });
+        }
+
+        if (!coverImagePath.trim().startsWith(`activities/${activityId}/cover/`)) {
+            return res.status(403).json({
+                ok: false,
+                error: {
+                    code: 'FORBIDDEN',
+                    message: 'coverImagePath must belong to the activity',
+                },
+            });
+        }
+
+        await updateActivityCover({
+            activityId,
+            hostId,
+            coverImagePath,
+            coverImageUrl,
+        });
+
+        return res.status(200).json({
+            ok: true,
+            data: {
+                activityId,
+                coverImagePath,
+                coverImageUrl,
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        if (message === 'Activity not found') {
+            return res.status(404).json({
+                ok: false,
+                error: {
+                    code: 'NOT_FOUND',
+                    message,
+                },
+            });
+        }
+
+        if (message === 'Only the activity host can update this activity') {
+            return res.status(403).json({
+                ok: false,
+                error: {
+                    code: 'FORBIDDEN',
+                    message,
+                },
+            });
+        }
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    if (!activityId.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message: 'activityId is required',
-        },
-      });
-    }
-
-    if (typeof coverImagePath !== 'string' || typeof coverImageUrl !== 'string') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'coverImagePath and coverImageUrl must be strings',
-        },
-      });
-    }
-
-    if (!coverImagePath.trim() || !coverImageUrl.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message: 'coverImagePath and coverImageUrl are required',
-        },
-      });
-    }
-
-    if (!coverImagePath.trim().startsWith(`activities/${activityId}/cover/`)) {
-      return res.status(403).json({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'coverImagePath must belong to the activity',
-        },
-      });
-    }
-
-    await updateActivityCover({
-      activityId,
-      hostId,
-      coverImagePath,
-      coverImageUrl,
-    });
-
-    return res.status(200).json({
-      ok: true,
-      data: {
-        activityId,
-        coverImagePath,
-        coverImageUrl,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    if (message === 'Activity not found') {
-      return res.status(404).json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message,
-        },
-      });
-    }
-
-    if (message === 'Only the activity host can update this activity') {
-      return res.status(403).json({
-        ok: false,
-        error: {
-          code: 'FORBIDDEN',
-          message,
-        },
-      });
-    }
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }
 
 export async function listActivitiesHandler(req: Request, res: Response) {
-  try {
-    const { status, sportType, skillLevel, limit, mine, offset } = req.query;
+    try {
+        const { status, sportType, skillLevel, limit, mine, offset } = req.query;
 
-    if (
-      status !== undefined &&
-      status !== 'open' &&
-      status !== 'full' &&
-      status !== 'cancelled' &&
-      status !== 'completed' &&
-      status !== 'removed'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'status must be open, full, cancelled, completed, or removed',
-        },
-      });
-    }
+        if (status !== undefined &&
+            status !== 'open' &&
+            status !== 'full' &&
+            status !== 'cancelled' &&
+            status !== 'completed' &&
+            status !== 'removed'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'status must be open, full, cancelled, completed, or removed',
+                },
+            });
+        }
 
-    if (
-      skillLevel !== undefined &&
-      skillLevel !== 'beginner' &&
-      skillLevel !== 'intermediate' &&
-      skillLevel !== 'advanced' &&
-      skillLevel !== 'any'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'skillLevel must be beginner, intermediate, advanced, or any',
-        },
-      });
-    }
+        if (skillLevel !== undefined &&
+            skillLevel !== 'beginner' &&
+            skillLevel !== 'intermediate' &&
+            skillLevel !== 'advanced' &&
+            skillLevel !== 'any'
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'skillLevel must be beginner, intermediate, advanced, or any',
+                },
+            });
+        }
 
-    if (sportType !== undefined && typeof sportType !== 'string') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'sportType must be a string',
-        },
-      });
-    }
+        if (sportType !== undefined && typeof sportType !== 'string') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'sportType must be a string',
+                },
+            });
+        }
 
-    if (sportType !== undefined && !sportType.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message: 'sportType is required when provided',
-        },
-      });
-    }
+        if (sportType !== undefined && !sportType.trim()) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'sportType is required when provided',
+                },
+            });
+        }
 
-    if (limit !== undefined && typeof limit !== 'string') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'limit must be an integer between 1 and 50',
-        },
-      });
-    }
+        if (limit !== undefined && typeof limit !== 'string') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'limit must be an integer between 1 and 50',
+                },
+            });
+        }
 
-    const parsedLimit = limit === undefined ? LIMIT_VALUE : Number(limit);
+        const parsedLimit = limit === undefined ? LIMIT_VALUE : Number(limit);
 
-    if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > 50) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'limit must be an integer between 1 and 50',
-        },
-      });
-    }
+        if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > 50) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'limit must be an integer between 1 and 50',
+                },
+            });
+        }
 
-    if (mine !== undefined && mine !== 'hosted' && mine !== 'joined') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'mine must be hosted or joined',
-        },
-      });
-    }
+        if (mine !== undefined && mine !== 'hosted' && mine !== 'joined') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'mine must be hosted or joined',
+                },
+            });
+        }
 
-    const parsedOffset = offset === undefined ? 0 : Number(offset);
-    if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'offset must be a non-negative integer',
-        },
-      });
-    }
+        const parsedOffset = offset === undefined ? 0 : Number(offset);
+        if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'offset must be a non-negative integer',
+                },
+            });
+        }
 
-    const viewerUid = req.auth?.uid;
-    if (!viewerUid) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
-    }
+        const viewerUid = req.auth?.uid;
+        if (!viewerUid) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
 
-    // `?mine=hosted|joined` — paginated My Games reads.
-    if (mine === 'hosted' || mine === 'joined') {
-      const activities = await listMyActivities(viewerUid, mine, parsedLimit, parsedOffset);
-      const data = await Promise.all(
-        activities.map((activity) => attachViewerActivityContext(activity, viewerUid)),
-      );
-      return res.status(200).json({ ok: true, data });
-    }
+        // `?mine=hosted|joined` — paginated My Games reads. Dedicated path
+        // so mobile never filters a capped feed client-side.
+        if (mine === 'hosted' || mine === 'joined') {
+            const activities = await listMyActivities(
+                viewerUid,
+                mine,
+                parsedLimit,
+                parsedOffset,
+            );
+            const data = await Promise.all(
+                activities.map((activity) =>
+                    attachViewerActivityContext(activity, viewerUid),
+                ),
+            );
+            return res.status(200).json({ ok: true, data });
+        }
 
-    // `discover=1` opts the feed into the ranked discovery pipeline (sport/skill + date + geo + swipe-exclude).
-    if (req.query.discover === '1') {
-      const discover = parseDiscoverQuery(req);
-      if ('error' in discover) {
-        return res.status(400).json({
-          ok: false,
-          error: discover.error,
+        // `discover=1` opts the feed into the ranked discovery pipeline
+        // (sport/skill + date + geo + swipe-exclude). The legacy path is
+        // kept for the unfiltered call shape used elsewhere.
+        if (req.query.discover === '1') {
+            const discover = parseDiscoverQuery(req);
+            if ('error' in discover) {
+                return res.status(400).json({
+                    ok: false,
+                    error: discover.error,
+                });
+            }
+            const ranked = await listDiscoverActivities({
+                limit: parsedLimit,
+                viewerUid,
+                discover: discover.filters,
+            });
+            const data = await Promise.all(
+                ranked.map(async (activity) =>
+                    attachViewerActivityContext(
+                        await enrichActivityWithHostProfile(activity),
+                        viewerUid,
+                    ),
+                ),
+            );
+            return res.status(200).json({ ok: true, data });
+        }
+
+        const activities = await listActivities({
+            status: status === undefined ? 'open' : status,
+            ...(sportType !== undefined ? { sportType } : {}),
+            ...(skillLevel !== undefined ? { skillLevel } : {}),
+            limit: parsedLimit,
         });
-      }
-      const ranked = await listDiscoverActivities({
-        limit: parsedLimit,
-        viewerUid,
-        discover: discover.filters,
-      });
-      const data = await Promise.all(
-        ranked.map(async (activity) =>
-          attachViewerActivityContext(await enrichActivityWithHostProfile(activity), viewerUid),
-        ),
-      );
-      return res.status(200).json({ ok: true, data });
+
+        const data = await Promise.all(
+            activities.map((activity) => attachViewerActivityContext(activity, viewerUid)),
+        );
+
+        return res.status(200).json({
+            ok: true,
+            data,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    const activities = await listActivities({
-      status: status === undefined ? 'open' : status,
-      ...(sportType !== undefined ? { sportType } : {}),
-      ...(skillLevel !== undefined ? { skillLevel } : {}),
-      limit: parsedLimit,
-    });
-
-    const data = await Promise.all(
-      activities.map((activity) => attachViewerActivityContext(activity, viewerUid)),
-    );
-
-    return res.status(200).json({
-      ok: true,
-      data,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }
 
-/** Parse the `?discover=1` query into a typed filter. */
+/** Parse the `?discover=1` query into a typed filter. Returns an
+ *  `error` shape on any malformed input — the controller maps that to
+ *  400. */
 function parseDiscoverQuery(
-  req: Request,
+    req: Request,
 ):
-  | { filters: NonNullable<ListActivitiesFilters['discover']> }
-  | { error: { code: string; message: string } } {
-  const { nearLat, nearLng, radiusKm, startAfter, startBefore, sportFilters, excludeActivityIds } =
-    req.query;
+    | { filters: NonNullable<ListActivitiesFilters['discover']> }
+    | { error: { code: string; message: string } } {
+    const {
+        nearLat,
+        nearLng,
+        radiusKm,
+        startAfter,
+        startBefore,
+        sportFilters,
+        excludeActivityIds,
+    } = req.query;
 
-  const discover: NonNullable<ListActivitiesFilters['discover']> = {
-    sportFilters: [],
-  };
+    const discover: NonNullable<ListActivitiesFilters['discover']> = {
+        sportFilters: [],
+    };
 
-  if (nearLat !== undefined || nearLng !== undefined || radiusKm !== undefined) {
-    if (
-      typeof nearLat !== 'string' ||
-      typeof nearLng !== 'string' ||
-      typeof radiusKm !== 'string'
-    ) {
-      return {
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'nearLat, nearLng, and radiusKm must all be provided together',
-        },
-      };
-    }
-    const lat = Number(nearLat);
-    const lng = Number(nearLng);
-    const rad = Number(radiusKm);
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng) ||
-      !Number.isFinite(rad) ||
-      lat < -90 ||
-      lat > 90 ||
-      lng < -180 ||
-      lng > 180 ||
-      rad <= 0 ||
-      rad > 5000
-    ) {
-      return {
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'nearLat must be in [-90,90], nearLng in [-180,180], radiusKm in (0,5000]',
-        },
-      };
-    }
-    discover.near = { latitude: lat, longitude: lng, radiusKm: rad };
-  }
-
-  if (startAfter !== undefined) {
-    if (typeof startAfter !== 'string' || Number.isNaN(Date.parse(startAfter))) {
-      return { error: { code: 'INVALID_INPUT', message: 'startAfter must be an ISO date string' } };
-    }
-    discover.startAfter = startAfter;
-  }
-
-  if (startBefore !== undefined) {
-    if (typeof startBefore !== 'string' || Number.isNaN(Date.parse(startBefore))) {
-      return {
-        error: { code: 'INVALID_INPUT', message: 'startBefore must be an ISO date string' },
-      };
-    }
-    discover.startBefore = startBefore;
-  }
-
-  if (sportFilters !== undefined) {
-    if (typeof sportFilters !== 'string' || sportFilters.trim() === '') {
-      discover.sportFilters = [];
-    } else {
-      const parsed: SportSkillFilter[] = [];
-      for (const part of sportFilters.split(',')) {
-        const trimmed = part.trim();
-        if (trimmed === '') continue;
-        const colon = trimmed.indexOf(':');
-        if (colon <= 0 || colon === trimmed.length - 1) {
-          return {
-            error: {
-              code: 'INVALID_INPUT',
-              message: 'sportFilters entries must be Sport:skill',
-            },
-          };
-        }
-        const sport = trimmed.slice(0, colon).trim();
-        const skill = trimmed.slice(colon + 1).trim() as ActivitySkillLevel | 'any';
+    if (nearLat !== undefined || nearLng !== undefined || radiusKm !== undefined) {
         if (
-          skill !== 'any' &&
-          skill !== 'beginner' &&
-          skill !== 'intermediate' &&
-          skill !== 'advanced'
+            typeof nearLat !== 'string' ||
+            typeof nearLng !== 'string' ||
+            typeof radiusKm !== 'string'
         ) {
-          return {
-            error: {
-              code: 'INVALID_INPUT',
-              message: `sportFilters skill must be any/beginner/intermediate/advanced (got ${skill})`,
-            },
-          };
+            return {
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'nearLat, nearLng, and radiusKm must all be provided together',
+                },
+            };
         }
-        parsed.push({ sport, skill });
-      }
-      discover.sportFilters = parsed;
+        const lat = Number(nearLat);
+        const lng = Number(nearLng);
+        const rad = Number(radiusKm);
+        if (
+            !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(rad) ||
+            lat < -90 || lat > 90 || lng < -180 || lng > 180 || rad <= 0 || rad > 5000
+        ) {
+            return {
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'nearLat must be in [-90,90], nearLng in [-180,180], radiusKm in (0,5000]',
+                },
+            };
+        }
+        discover.near = { latitude: lat, longitude: lng, radiusKm: rad };
     }
-  }
 
-  if (excludeActivityIds !== undefined) {
-    if (typeof excludeActivityIds !== 'string') {
-      return {
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'excludeActivityIds must be a comma-separated string',
-        },
-      };
+    if (startAfter !== undefined) {
+        if (typeof startAfter !== 'string' || Number.isNaN(Date.parse(startAfter))) {
+            return { error: { code: 'INVALID_INPUT', message: 'startAfter must be an ISO date string' } };
+        }
+        discover.startAfter = startAfter;
     }
-    discover.excludeActivityIds = excludeActivityIds
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-  }
 
-  const { includeSwiped } = req.query;
-  if (includeSwiped !== undefined) {
-    if (includeSwiped !== 'true' && includeSwiped !== 'false') {
-      return {
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'includeSwiped must be true or false',
-        },
-      };
+    if (startBefore !== undefined) {
+        if (typeof startBefore !== 'string' || Number.isNaN(Date.parse(startBefore))) {
+            return { error: { code: 'INVALID_INPUT', message: 'startBefore must be an ISO date string' } };
+        }
+        discover.startBefore = startBefore;
     }
-    discover.includeSwiped = includeSwiped === 'true';
-  }
 
-  return { filters: discover };
+    if (sportFilters !== undefined) {
+        if (typeof sportFilters !== 'string' || sportFilters.trim() === '') {
+            discover.sportFilters = [];
+        } else {
+            const parsed: SportSkillFilter[] = [];
+            for (const part of sportFilters.split(',')) {
+                const trimmed = part.trim();
+                if (trimmed === '') continue;
+                const colon = trimmed.indexOf(':');
+                if (colon <= 0 || colon === trimmed.length - 1) {
+                    return {
+                        error: {
+                            code: 'INVALID_INPUT',
+                            message: 'sportFilters entries must be Sport:skill',
+                        },
+                    };
+                }
+                const sport = trimmed.slice(0, colon).trim();
+                const skill = trimmed.slice(colon + 1).trim() as ActivitySkillLevel | 'any';
+                if (skill !== 'any' && skill !== 'beginner' && skill !== 'intermediate' && skill !== 'advanced') {
+                    return {
+                        error: {
+                            code: 'INVALID_INPUT',
+                            message: `sportFilters skill must be any/beginner/intermediate/advanced (got ${skill})`,
+                        },
+                    };
+                }
+                parsed.push({ sport, skill });
+            }
+            discover.sportFilters = parsed;
+        }
+    }
+
+    if (excludeActivityIds !== undefined) {
+        if (typeof excludeActivityIds !== 'string') {
+            return {
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'excludeActivityIds must be a comma-separated string',
+                },
+            };
+        }
+        discover.excludeActivityIds = excludeActivityIds
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+    }
+
+    const { includeSwiped } = req.query;
+    if (includeSwiped !== undefined) {
+        if (includeSwiped !== 'true' && includeSwiped !== 'false') {
+            return {
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'includeSwiped must be true or false',
+                },
+            };
+        }
+        discover.includeSwiped = includeSwiped === 'true';
+    }
+
+    return { filters: discover };
 }
 
 export async function listPublicActivityTeasersHandler(req: Request, res: Response) {
-  try {
-    const { limit } = req.query;
+    try {
+        const { limit } = req.query;
 
-    if (limit !== undefined && typeof limit !== 'string') {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'limit must be an integer between 1 and 20',
-        },
-      });
+        if (limit !== undefined && typeof limit !== 'string') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'limit must be an integer between 1 and 20',
+                },
+            });
+        }
+
+        const parsedLimit = limit === undefined ? 10 : Number(limit);
+
+        if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > 20) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'limit must be an integer between 1 and 20',
+                },
+            });
+        }
+
+        const activities = await listPublicActivityTeasers(parsedLimit);
+
+        return res.status(200).json({
+            ok: true,
+            data: activities,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    const parsedLimit = limit === undefined ? 10 : Number(limit);
-
-    if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > 20) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'limit must be an integer between 1 and 20',
-        },
-      });
-    }
-
-    const activities = await listPublicActivityTeasers(parsedLimit);
-
-    return res.status(200).json({
-      ok: true,
-      data: activities,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }
 
-/** Great-circle distance in kilometres between two lat/lng points. Pure — unit-testable without Firestore. */
-export function haversineKm(latA: number, lngA: number, latB: number, lngB: number): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const earthKm = 6371;
-  const dLat = toRad(latB - latA);
-  const dLng = toRad(lngB - lngA);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(latA)) * Math.cos(toRad(latB)) * Math.sin(dLng / 2) ** 2;
-  return 2 * earthKm * Math.asin(Math.sqrt(a));
+/**
+ * Great-circle distance in kilometres between two lat/lng points.
+ * Pure — unit-testable without Firestore.
+ */
+export function haversineKm(
+    latA: number,
+    lngA: number,
+    latB: number,
+    lngB: number,
+): number {
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const earthKm = 6371;
+    const dLat = toRad(latB - latA);
+    const dLng = toRad(lngB - lngA);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(latA)) * Math.cos(toRad(latB)) * Math.sin(dLng / 2) ** 2;
+    return 2 * earthKm * Math.asin(Math.sqrt(a));
 }
 
 const SEARCH_LIMIT = 50;
 
-/** `GET /api/activities/search?sport=&skill=&max_km=&lat=&lng=` — filtered discovery over the existing `open` feed. */
+/**
+ * `GET /api/activities/search?sport=&skill=&max_km=&lat=&lng=` —
+ * filtered discovery over the existing `open` feed. Reuses
+ * [listActivities] (sport/skill pushed into the query) and applies the
+ * geo radius in memory, so no new composite index is needed. All params
+ * optional; `lat`/`lng`/`max_km` must be supplied together.
+ */
 export async function searchActivitiesHandler(req: Request, res: Response) {
-  try {
-    const viewerUid = req.auth?.uid;
-    if (!viewerUid) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
-    }
+    try {
+        const viewerUid = req.auth?.uid;
+        if (!viewerUid) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
 
-    // Shapes pre-checked by `validateQuery(searchActivitiesQuerySchema)` (enums, numeric strings).
-    const { sport, skill, max_km, lat, lng } = req.query as {
-      sport?: unknown;
-      skill?: unknown;
-      max_km?: unknown;
-      lat?: unknown;
-      lng?: unknown;
-    };
+        // Shapes pre-checked by `validateQuery(searchActivitiesQuerySchema)`
+        // (enums, numeric strings); re-validated here so the handler stays
+        // correct when called without the middleware.
+        const { sport, skill, max_km, lat, lng } = req.query as {
+            sport?: unknown;
+            skill?: unknown;
+            max_km?: unknown;
+            lat?: unknown;
+            lng?: unknown;
+        };
 
-    if (
-      skill !== undefined &&
-      skill !== 'beginner' &&
-      skill !== 'intermediate' &&
-      skill !== 'advanced' &&
-      skill !== 'any'
-    ) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'skill must be beginner, intermediate, advanced, or any',
-        },
-      });
-    }
+        if (skill !== undefined && skill !== 'beginner' && skill !== 'intermediate' && skill !== 'advanced' && skill !== 'any') {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'INVALID_INPUT',
+                    message: 'skill must be beginner, intermediate, advanced, or any',
+                },
+            });
+        }
 
-    let center: { latitude: number; longitude: number; radiusKm: number } | undefined;
-    if (lat !== undefined || lng !== undefined || max_km !== undefined) {
-      if (typeof lat !== 'string' || typeof lng !== 'string' || typeof max_km !== 'string') {
-        return res.status(400).json({
-          ok: false,
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'lat, lng, and max_km must be provided together as strings',
-          },
+        let center: { latitude: number; longitude: number; radiusKm: number } | undefined;
+        if (lat !== undefined || lng !== undefined || max_km !== undefined) {
+            if (typeof lat !== 'string' || typeof lng !== 'string' || typeof max_km !== 'string') {
+                return res.status(400).json({
+                    ok: false,
+                    error: {
+                        code: 'INVALID_INPUT',
+                        message: 'lat, lng, and max_km must be provided together as strings',
+                    },
+                });
+            }
+            const latitude = Number(lat);
+            const longitude = Number(lng);
+            const radiusKm = Number(max_km);
+            if (
+                !Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusKm) ||
+                latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || radiusKm <= 0
+            ) {
+                return res.status(400).json({
+                    ok: false,
+                    error: {
+                        code: 'INVALID_INPUT',
+                        message: 'lat must be in [-90,90], lng in [-180,180], max_km must be positive',
+                    },
+                });
+            }
+            center = { latitude, longitude, radiusKm };
+        }
+
+        const activities = await listActivities({
+            status: 'open',
+            ...(typeof sport === 'string' && sport.trim() ? { sportType: sport.trim() } : {}),
+            ...(skill === 'beginner' || skill === 'intermediate' || skill === 'advanced' || skill === 'any'
+                ? { skillLevel: skill }
+                : {}),
+            limit: SEARCH_LIMIT,
         });
-      }
-      const latitude = Number(lat);
-      const longitude = Number(lng);
-      const radiusKm = Number(max_km);
-      if (
-        !Number.isFinite(latitude) ||
-        !Number.isFinite(longitude) ||
-        !Number.isFinite(radiusKm) ||
-        latitude < -90 ||
-        latitude > 90 ||
-        longitude < -180 ||
-        longitude > 180 ||
-        radiusKm <= 0
-      ) {
-        return res.status(400).json({
-          ok: false,
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'lat must be in [-90,90], lng in [-180,180], max_km must be positive',
-          },
+
+        const filtered = center
+            ? activities.filter((a) => {
+                if (typeof a.latitude !== 'number' || typeof a.longitude !== 'number') return false;
+                return haversineKm(center.latitude, center.longitude, a.latitude, a.longitude) <= center.radiusKm;
+            })
+            : activities;
+
+        const data = await Promise.all(
+            filtered.map((activity) => attachViewerActivityContext(activity, viewerUid)),
+        );
+
+        return res.status(200).json({ ok: true, data });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return res.status(500).json({
+            ok: false,
+            error: { code: 'INTERNAL_ERROR', message },
         });
-      }
-      center = { latitude, longitude, radiusKm };
     }
-
-    const activities = await listActivities({
-      status: 'open',
-      ...(typeof sport === 'string' && sport.trim() ? { sportType: sport.trim() } : {}),
-      ...(skill === 'beginner' ||
-      skill === 'intermediate' ||
-      skill === 'advanced' ||
-      skill === 'any'
-        ? { skillLevel: skill }
-        : {}),
-      limit: SEARCH_LIMIT,
-    });
-
-    const filtered = center
-      ? activities.filter((a) => {
-          if (typeof a.latitude !== 'number' || typeof a.longitude !== 'number') return false;
-          return (
-            haversineKm(center.latitude, center.longitude, a.latitude, a.longitude) <=
-            center.radiusKm
-          );
-        })
-      : activities;
-
-    const data = await Promise.all(
-      filtered.map((activity) => attachViewerActivityContext(activity, viewerUid)),
-    );
-
-    return res.status(200).json({ ok: true, data });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({
-      ok: false,
-      error: { code: 'INTERNAL_ERROR', message },
-    });
-  }
 }
 
-export async function getActivityHandler(req: Request<GetActivityParams>, res: Response) {
-  try {
-    const { activityId } = req.params;
+export async function getActivityHandler(
+    req: Request<GetActivityParams>,
+    res: Response,
+) {
+    try {
+        const { activityId } = req.params;
 
-    if (!activityId.trim()) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: 'EMPTY_INPUT',
-          message: 'activityId is required',
-        },
-      });
+        if (!activityId.trim()) {
+            return res.status(400).json({
+                ok: false,
+                error: {
+                    code: 'EMPTY_INPUT',
+                    message: 'activityId is required',
+                },
+            });
+        }
+
+        const activity = await getActivityById(activityId);
+
+        if (!activity) {
+            return res.status(404).json({
+                ok: false,
+                error: {
+                    code: 'NOT_FOUND',
+                    message: 'Activity not found',
+                },
+            });
+        }
+
+        const viewerUid = req.auth?.uid;
+
+        if (!viewerUid) {
+            return res.status(401).json({
+                ok: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authenticated user is required',
+                },
+            });
+        }
+
+        const data = await attachViewerActivityContext(activity, viewerUid);
+
+        return res.status(200).json({
+            ok: true,
+            data,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+
+        return res.status(500).json({
+            ok: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message,
+            },
+        });
     }
-
-    const activity = await getActivityById(activityId);
-
-    if (!activity) {
-      return res.status(404).json({
-        ok: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Activity not found',
-        },
-      });
-    }
-
-    const viewerUid = req.auth?.uid;
-
-    if (!viewerUid) {
-      return res.status(401).json({
-        ok: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Authenticated user is required',
-        },
-      });
-    }
-
-    const data = await attachViewerActivityContext(activity, viewerUid);
-
-    return res.status(200).json({
-      ok: true,
-      data,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-
-    return res.status(500).json({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message,
-      },
-    });
-  }
 }

@@ -1,4 +1,3 @@
-// activities.
 export type ActivityStatus = 'Active' | 'Full' | 'Completed' | 'Cancelled' | 'Flagged';
 
 export interface AdminActivity {

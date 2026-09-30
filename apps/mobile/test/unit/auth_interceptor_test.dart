@@ -37,9 +37,9 @@ void _json(HttpRequest req, int status, Map<String, Object?> body) {
 }
 
 Map<String, Object?> _unauthorized() => {
-  'ok': false,
-  'error': {'code': 'UNAUTHORIZED', 'message': 'expired'},
-};
+      'ok': false,
+      'error': {'code': 'UNAUTHORIZED', 'message': 'expired'},
+    };
 
 void main() {
   late HttpServer server;
@@ -98,125 +98,126 @@ void main() {
     );
   }
 
-  test(
-    '401 with valid-exp token refreshes and retries with the new token',
-    () async {
-      final store = _MemStore()
-        // Still valid for 10 min (proactive path stays quiet) but the
-        // server rejects it — e.g. revoked server-side.
-        ..access = _jwt(
-          exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600,
-        )
-        ..refresh = 'refresh-r';
-      var exchanges = 0;
-      late final Dio dio;
-      final auth = buildAuth(
-        store,
-        exchange: (r) async {
-          exchanges++;
-          expect(r, 'refresh-r');
-          return SecureTokenPair(
-            idToken: _jwt(
-              exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
-            ),
-            refreshToken: 'refresh-r2',
-          );
-        },
-        retryFetch: (opts) => dio.fetch(opts),
-      );
-      dio = dioFor(auth, (req) async {
-        if (hits == 1) {
-          _json(req, 401, _unauthorized());
-        } else {
-          _json(req, 200, {
-            'ok': true,
-            'data': {'hello': 1},
-          });
-        }
-      });
-
-      final oldToken = store.access;
-      final res = await dio.get('/me');
-
-      expect(res.statusCode, 200);
-      expect(res.data, {
-        'ok': true,
-        'data': {'hello': 1},
-      });
-      expect(exchanges, 1, reason: 'exactly one refresh');
-      expect(hits, 2, reason: 'original + one retry');
-      expect(seenAuth[0], 'Bearer $oldToken');
-      expect(seenAuth[1], 'Bearer ${store.access}');
-      expect(store.access, isNot(oldToken));
-      expect(store.refresh, 'refresh-r2');
-    },
-  );
-
-  test(
-    'expiring token is refreshed proactively before the first send',
-    () async {
-      final store = _MemStore()
-        ..access = _jwt(exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 60)
-        ..refresh = 'refresh-r';
-      var exchanges = 0;
-      late final Dio dio;
-      final auth = buildAuth(
-        store,
-        exchange: (r) async {
-          exchanges++;
-          return SecureTokenPair(
-            idToken: _jwt(
-              exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
-            ),
-          );
-        },
-        retryFetch: (opts) => dio.fetch(opts),
-      );
-      dio = dioFor(auth, (req) async {
-        _json(req, 200, {'ok': true, 'data': {}});
-      });
-
-      final res = await dio.get('/me');
-
-      expect(res.statusCode, 200);
-      expect(exchanges, 1);
-      expect(hits, 1, reason: 'no 401, no retry needed');
-      expect(seenAuth.single, 'Bearer ${store.access}');
-    },
-  );
-
-  test(
-    'rejected refresh token clears storage and fires session-expired',
-    () async {
-      final store = _MemStore()
-        ..access = _jwt(
-          exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600,
-        )
-        ..refresh = 'dead-refresh';
-      late final Dio dio;
-      final auth = buildAuth(
-        store,
-        exchange: (_) async =>
-            throw const UnrecoverableRefreshException('INVALID_REFRESH_TOKEN'),
-        retryFetch: (opts) => dio.fetch(opts),
-      );
-      dio = dioFor(auth, (req) async {
+  test('401 with valid-exp token refreshes and retries with the new token',
+      () async {
+    final store = _MemStore()
+      // Still valid for 10 min (proactive path stays quiet) but the
+      // server rejects it — e.g. revoked server-side.
+      ..access = _jwt(
+        exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600,
+      )
+      ..refresh = 'refresh-r';
+    var exchanges = 0;
+    late final Dio dio;
+    final auth = buildAuth(
+      store,
+      exchange: (r) async {
+        exchanges++;
+        expect(r, 'refresh-r');
+        return SecureTokenPair(
+          idToken: _jwt(
+            exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
+          ),
+          refreshToken: 'refresh-r2',
+        );
+      },
+      retryFetch: (opts) => dio.fetch(opts),
+    );
+    dio = dioFor(auth, (req) async {
+      if (hits == 1) {
         _json(req, 401, _unauthorized());
+      } else {
+        _json(req, 200, {
+          'ok': true,
+          'data': {'hello': 1}
+        });
+      }
+    });
+
+    final oldToken = store.access;
+    final res = await dio.get('/me');
+
+    expect(res.statusCode, 200);
+    expect(res.data, {
+      'ok': true,
+      'data': {'hello': 1}
+    });
+    expect(exchanges, 1, reason: 'exactly one refresh');
+    expect(hits, 2, reason: 'original + one retry');
+    expect(seenAuth[0], 'Bearer $oldToken');
+    expect(seenAuth[1], 'Bearer ${store.access}');
+    expect(store.access, isNot(oldToken));
+    expect(store.refresh, 'refresh-r2');
+  });
+
+  test('expiring token is refreshed proactively before the first send',
+      () async {
+    final store = _MemStore()
+      ..access = _jwt(
+        exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 60,
+      )
+      ..refresh = 'refresh-r';
+    var exchanges = 0;
+    late final Dio dio;
+    final auth = buildAuth(
+      store,
+      exchange: (r) async {
+        exchanges++;
+        return SecureTokenPair(
+          idToken: _jwt(
+            exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 3600,
+          ),
+        );
+      },
+      retryFetch: (opts) => dio.fetch(opts),
+    );
+    dio = dioFor(auth, (req) async {
+      _json(req, 200, {
+        'ok': true,
+        'data': {}
       });
+    });
 
-      final expired = SessionEvents.instance.onSessionExpired.first;
-      await expectLater(dio.get('/me'), throwsA(isA<DioException>()));
-      await expired.timeout(const Duration(seconds: 2));
+    final res = await dio.get('/me');
 
-      expect(store.cleared, isTrue);
-      expect(store.access, isNull);
-      expect(hits, 1, reason: 'dead session is never retried');
-    },
-  );
+    expect(res.statusCode, 200);
+    expect(exchanges, 1);
+    expect(hits, 1, reason: 'no 401, no retry needed');
+    expect(seenAuth.single, 'Bearer ${store.access}');
+  });
+
+  test('rejected refresh token clears storage and fires session-expired',
+      () async {
+    final store = _MemStore()
+      ..access = _jwt(
+        exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600,
+      )
+      ..refresh = 'dead-refresh';
+    late final Dio dio;
+    final auth = buildAuth(
+      store,
+      exchange: (_) async =>
+          throw const UnrecoverableRefreshException('INVALID_REFRESH_TOKEN'),
+      retryFetch: (opts) => dio.fetch(opts),
+    );
+    dio = dioFor(auth, (req) async {
+      _json(req, 401, _unauthorized());
+    });
+
+    final expired = SessionEvents.instance.onSessionExpired.first;
+    await expectLater(dio.get('/me'), throwsA(isA<DioException>()));
+    await expired.timeout(const Duration(seconds: 2));
+
+    expect(store.cleared, isTrue);
+    expect(store.access, isNull);
+    expect(hits, 1, reason: 'dead session is never retried');
+  });
 
   test('still-401-after-refresh surfaces the error without looping', () async {
     final store = _MemStore()
-      ..access = _jwt(exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600)
+      ..access = _jwt(
+        exp: DateTime.now().millisecondsSinceEpoch ~/ 1000 + 600,
+      )
       ..refresh = 'refresh-r';
     var exchanges = 0;
     late final Dio dio;
@@ -246,7 +247,8 @@ void main() {
     expect(hits, 2, reason: 'original + exactly one retry');
   });
 
-  test('refresh request shape: map body is url-encoded as form data, '
+  test(
+      'refresh request shape: map body is url-encoded as form data, '
       'not JSON', () async {
     // Guards the exact request shape secureTokenExchange sends to
     // Google: a JSON body here would make every refresh fail with a
@@ -266,7 +268,10 @@ void main() {
     final dio = Dio();
     final res = await dio.post(
       'http://127.0.0.1:${server.port}/v1/token?key=test-key',
-      data: {'grant_type': 'refresh_token', 'refresh_token': 'refresh-r'},
+      data: {
+        'grant_type': 'refresh_token',
+        'refresh_token': 'refresh-r',
+      },
       options: Options(
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       ),

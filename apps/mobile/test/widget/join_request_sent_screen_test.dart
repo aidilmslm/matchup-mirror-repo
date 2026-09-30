@@ -12,19 +12,19 @@ import 'package:matchup_mobile/features/discovery/domain/activity_model.dart';
 class _MockActivityRepository extends Mock implements ActivityRepository {}
 
 ActivityModel _activity() => ActivityModel(
-  id: '7',
-  title: 'Sunday Run Club',
-  sportType: 'Running',
-  description: 'Easy laps.',
-  location: 'Auckland Domain',
-  distanceKm: 1.2,
-  dateTime: DateTime.now().add(const Duration(days: 1)),
-  skillLevel: 'Beginner',
-  capacity: 12,
-  participantCount: 5,
-  hostName: 'Sam',
-  joinPolicy: 'approval',
-);
+      id: '7',
+      title: 'Sunday Run Club',
+      sportType: 'Running',
+      description: 'Easy laps.',
+      location: 'Auckland Domain',
+      distanceKm: 1.2,
+      dateTime: DateTime.now().add(const Duration(days: 1)),
+      skillLevel: 'Beginner',
+      capacity: 12,
+      participantCount: 5,
+      hostName: 'Sam',
+      joinPolicy: 'approval',
+    );
 
 void main() {
   late _MockActivityRepository repo;
@@ -40,8 +40,9 @@ void main() {
       routes: [
         GoRoute(
           path: '/request-sent/:id',
-          builder: (_, state) =>
-              JoinRequestSentScreen(activityId: state.pathParameters['id']!),
+          builder: (_, state) => JoinRequestSentScreen(
+            activityId: state.pathParameters['id']!,
+          ),
         ),
         GoRoute(
           path: '/discovery',
@@ -49,8 +50,9 @@ void main() {
         ),
         GoRoute(
           path: '/activity/:id',
-          builder: (_, state) =>
-              Scaffold(body: Text('Detail ${state.pathParameters['id']}')),
+          builder: (_, state) => Scaffold(
+            body: Text('Detail ${state.pathParameters['id']}'),
+          ),
         ),
         GoRoute(
           path: '/pending-request/:id',

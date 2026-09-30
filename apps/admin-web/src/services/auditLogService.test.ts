@@ -1,4 +1,3 @@
-// Tests for auditLogService.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const { apiFetchMock } = vi.hoisted(() => ({ apiFetchMock: vi.fn() }));
@@ -50,10 +49,7 @@ describe('fetchAuditLog', () => {
   });
 
   it('throws with the backend error message on failure', async () => {
-    apiFetchMock.mockResolvedValue({
-      ok: false,
-      error: { code: 'INVALID_INPUT', message: 'bad category' },
-    });
+    apiFetchMock.mockResolvedValue({ ok: false, error: { code: 'INVALID_INPUT', message: 'bad category' } });
     await expect(fetchAuditLog({ category: 'Sports' })).rejects.toThrow('bad category');
   });
 });

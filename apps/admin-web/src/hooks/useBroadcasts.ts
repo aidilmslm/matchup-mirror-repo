@@ -27,12 +27,9 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'FETCH_START':
-      return { status: 'loading' };
-    case 'FETCH_SUCCESS':
-      return { status: 'success', broadcasts: action.broadcasts };
-    case 'FETCH_ERROR':
-      return { status: 'error', message: action.message };
+    case 'FETCH_START':   return { status: 'loading' };
+    case 'FETCH_SUCCESS': return { status: 'success', broadcasts: action.broadcasts };
+    case 'FETCH_ERROR':   return { status: 'error', message: action.message };
     case 'PREPEND':
       if (state.status !== 'success') return state;
       return { ...state, broadcasts: [action.broadcast, ...state.broadcasts] };
@@ -47,8 +44,7 @@ function reducer(state: State, action: Action): State {
     case 'REMOVE':
       if (state.status !== 'success') return state;
       return { ...state, broadcasts: state.broadcasts.filter((b) => b.id !== action.id) };
-    default:
-      return state;
+    default: return state;
   }
 }
 
@@ -61,16 +57,11 @@ export function useBroadcasts() {
       const broadcasts = await fetchBroadcasts();
       dispatch({ type: 'FETCH_SUCCESS', broadcasts });
     } catch (err) {
-      dispatch({
-        type: 'FETCH_ERROR',
-        message: err instanceof Error ? err.message : 'Failed to load broadcasts',
-      });
+      dispatch({ type: 'FETCH_ERROR', message: err instanceof Error ? err.message : 'Failed to load broadcasts' });
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const handleCreate = useCallback(async (payload: CreateBroadcastPayload) => {
     const created = await createBroadcast(payload); // throws on error — let caller handle
@@ -78,17 +69,10 @@ export function useBroadcasts() {
     return created;
   }, []);
 
-  const handleDelete = useCallback(
-    async (id: string) => {
-      dispatch({ type: 'REMOVE', id }); // optimistic
-      try {
-        await deleteBroadcast(id);
-      } catch {
-        load();
-      }
-    },
-    [load],
-  );
+  const handleDelete = useCallback(async (id: string) => {
+    dispatch({ type: 'REMOVE', id }); // optimistic
+    try { await deleteBroadcast(id); } catch { load(); }
+  }, [load]);
 
   const handleSend = useCallback(async (id: string) => {
     const sent = await sendBroadcast(id); // throws on error — let caller handle

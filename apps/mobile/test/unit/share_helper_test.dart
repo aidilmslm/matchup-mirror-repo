@@ -16,19 +16,17 @@ void main() {
   });
 
   group('ShareHelper.shareText', () {
-    testWidgets('returns true when the platform handles it', (tester) async {
+    testWidgets('returns true when the platform handles it',
+        (tester) async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-            const MethodChannel('dev.fluttercommunity.plus/share'),
-            (call) async => 'success',
-          );
-      addTearDown(
-        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(
-              const MethodChannel('dev.fluttercommunity.plus/share'),
-              null,
-            ),
+        const MethodChannel('dev.fluttercommunity.plus/share'),
+        (call) async => 'success',
       );
+      addTearDown(() => TestDefaultBinaryMessengerBinding.instance
+          .defaultBinaryMessenger
+          .setMockMethodCallHandler(
+              const MethodChannel('dev.fluttercommunity.plus/share'), null));
       expect(await ShareHelper.shareText('hello'), isTrue);
     });
 

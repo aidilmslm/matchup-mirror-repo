@@ -82,51 +82,50 @@ void main() {
       expect(find.text('Next'), findsOneWidget);
     });
 
-    testWidgets(
-      'should navigate to get-to-know-1 after tapping through all pages',
-      (tester) async {
-        await _pumpRouter(
-          tester,
-          initialLocation: '/onboarding',
-          routes: [
-            GoRoute(
-              path: '/onboarding',
-              builder: (_, _) => const OnboardingScreen(),
-            ),
-            GoRoute(
-              path: '/get-to-know-1',
-              builder: (_, _) => const Scaffold(body: Text('Get To Know 1')),
-            ),
-            GoRoute(
-              path: '/welcome',
-              builder: (_, _) => const Scaffold(body: Text('Welcome')),
-            ),
-            GoRoute(
-              path: '/login',
-              builder: (_, _) => const Scaffold(body: Text('Login')),
-            ),
-          ],
-        );
-        await tester.pumpAndSettle();
+    testWidgets('should navigate to get-to-know-1 after tapping through all pages', (
+      tester,
+    ) async {
+      await _pumpRouter(
+        tester,
+        initialLocation: '/onboarding',
+        routes: [
+          GoRoute(
+            path: '/onboarding',
+            builder: (_, _) => const OnboardingScreen(),
+          ),
+          GoRoute(
+            path: '/get-to-know-1',
+            builder: (_, _) => const Scaffold(body: Text('Get To Know 1')),
+          ),
+          GoRoute(
+            path: '/welcome',
+            builder: (_, _) => const Scaffold(body: Text('Welcome')),
+          ),
+          GoRoute(
+            path: '/login',
+            builder: (_, _) => const Scaffold(body: Text('Login')),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
 
-        // Page 1 -> 2
-        await tester.tap(find.text('Next'));
-        await tester.pumpAndSettle();
-        expect(find.text('Swipe to Match With Activities'), findsOneWidget);
+      // Page 1 -> 2
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Swipe to Match With Activities'), findsOneWidget);
 
-        // Page 2 -> 3
-        await tester.tap(find.text('Next'));
-        await tester.pumpAndSettle();
-        expect(find.text('Join, Chat, and Play Together'), findsOneWidget);
-        expect(find.text('Get Started'), findsOneWidget);
+      // Page 2 -> 3
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('Join, Chat, and Play Together'), findsOneWidget);
+      expect(find.text('Get Started'), findsOneWidget);
 
-        // Page 3 -> get-to-know-1 (post-signup flow sits outside the shell;
-        // see lib/app/router.dart — onboarding no longer goes to /welcome).
-        await tester.tap(find.text('Get Started'));
-        await tester.pumpAndSettle();
-        expect(find.text('Get To Know 1'), findsOneWidget);
-      },
-    );
+      // Page 3 -> get-to-know-1 (post-signup flow sits outside the shell;
+      // see lib/app/router.dart — onboarding no longer goes to /welcome).
+      await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+      expect(find.text('Get To Know 1'), findsOneWidget);
+    });
   });
 
   group('WelcomeScreen', () {

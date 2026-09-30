@@ -22,11 +22,16 @@ class HomeHeaderAction {
   /// Shows the small red unread dot on the top-right of the button.
   final bool showDot;
 
-  /// Optional key applied to this action's tappable container.
+  /// Optional key applied to this action's tappable container — lets a
+  /// coach-mark tour (see `features/tour`) spotlight a specific header
+  /// action (e.g. the Discover screen's filter button) without HomeHeader
+  /// needing to know anything about tours.
   final Key? anchorKey;
 }
 
-/// The shared top-level tab header: a large title + subtitle on the left and circular action buttons on the right.
+/// The shared top-level tab header: a large title + subtitle on the left and
+/// circular action buttons on the right. Used by Discover, My Games, Chat and
+/// Profile so every tab root looks identical apart from its actions.
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
     super.key,

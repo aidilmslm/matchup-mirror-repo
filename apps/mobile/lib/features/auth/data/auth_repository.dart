@@ -9,15 +9,22 @@ class AuthResult {
   final String accessToken;
   final String refreshToken;
 
-  /// Server-side user ID — stored in [SecureTokenStore] and used as the `me` context for profile / activity queries.
+  /// Server-side user ID — stored in [SecureTokenStore] and used as the
+  /// `me` context for profile / activity queries.
   final String userId;
 }
 
 /// Abstract contract for every authentication operation the app performs.
-/// Implementations: [LocalAuthRepository] (local, always succeeds), [RemoteAuthRepository] (live API).
+///
+/// Implementations: [LocalAuthRepository] (local, always succeeds),
+/// [RemoteAuthRepository] (live API).
 abstract class AuthRepository {
-  /// Signs in with email + password.
-  Future<AuthResult> signIn({required String email, required String password});
+  /// Signs in with email + password. Returns [AuthResult] on success.
+  /// Throws [AuthException] on invalid credentials or network error.
+  Future<AuthResult> signIn({
+    required String email,
+    required String password,
+  });
 
   /// Creates a new account. Returns [AuthResult] on success (auto-login).
   Future<AuthResult> register({
@@ -26,7 +33,11 @@ abstract class AuthRepository {
     required String password,
   });
 
-  /// Sends a password-reset email to [email] via Firebase (`sendOobCode` with `PASSWORD_RESET`).
+  /// Sends a password-reset email to [email] via Firebase
+  /// (`sendOobCode` with `PASSWORD_RESET`). The email contains a link
+  /// that opens a Firebase-hosted page where the user sets a new
+  /// password — there is no in-app OTP step. Throws [AuthException]
+  /// when the send fails (unknown address, no connection, …).
   Future<void> forgotPassword({required String email});
 
   /// Invalidates the current session on the server.
@@ -34,6 +45,7 @@ abstract class AuthRepository {
 }
 
 /// Strongly-typed error for authentication failures.
+/// Screens catch this and show [userMessage] directly.
 class AuthException implements Exception {
   const AuthException(this.userMessage, {this.code});
 

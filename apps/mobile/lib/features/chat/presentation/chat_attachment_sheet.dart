@@ -9,7 +9,12 @@ import '../../../core/widgets/pressable_scale.dart';
 /// Result returned by [ChatAttachmentSheet] via `Navigator.pop`.
 enum ChatAttachmentChoice { photo, camera, location, poll }
 
-/// Bottom sheet for the chat composer's `+` button.
+/// Bottom sheet for the chat composer's `+` button — same drag-handle /
+/// option-row shape as [ImagePickerModal] (`create/components`), scoped to
+/// the attachment kinds `ChatScreen` supports: a gallery photo, a fresh
+/// camera shot, the sender's current location, or a group poll.
+/// Polls live under an activity chat, so 1-on-1 threads hide that row
+/// via [includePoll].
 class ChatAttachmentSheet extends StatelessWidget {
   const ChatAttachmentSheet({super.key, this.includePoll = true});
   final bool includePoll;

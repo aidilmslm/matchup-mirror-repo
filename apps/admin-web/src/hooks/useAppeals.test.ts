@@ -1,4 +1,3 @@
-// Tests for useAppeals.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
@@ -72,9 +71,7 @@ describe('useAppeals', () => {
     const { result } = renderHook(() => useAppeals());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    decideAppealMock.mockResolvedValue(
-      makeAppeal({ id: 'p1', status: 'Approved', adminResponse: 'ok' }),
-    );
+    decideAppealMock.mockResolvedValue(makeAppeal({ id: 'p1', status: 'Approved', adminResponse: 'ok' }));
 
     await act(async () => {
       await result.current.handleDecision('p1', 'approve', 'ok');

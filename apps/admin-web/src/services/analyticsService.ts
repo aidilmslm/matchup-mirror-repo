@@ -1,4 +1,9 @@
-/** Analytics service — database-backed (Firestore aggregates via api-server). */
+/**
+ * Analytics service — database-backed (Firestore aggregates via api-server).
+ *
+ * Live endpoint (api-server, admin-gated):
+ *   GET /api/admin/analytics?range=7d|30d|90d → AnalyticsData
+ */
 import { apiFetch } from './api';
 
 export interface WeeklyPoint {
@@ -41,8 +46,12 @@ export interface AnalyticsData {
 
 export type AnalyticsRange = '7d' | '30d' | '90d';
 
-export async function fetchAnalytics(range: AnalyticsRange = '7d'): Promise<AnalyticsData> {
-  const res = await apiFetch<AnalyticsData>(`/api/admin/analytics?range=${range}`);
+export async function fetchAnalytics(
+  range: AnalyticsRange = '7d',
+): Promise<AnalyticsData> {
+  const res = await apiFetch<AnalyticsData>(
+    `/api/admin/analytics?range=${range}`,
+  );
   if (!res.ok) throw new Error(res.error.message);
   return res.data;
 }

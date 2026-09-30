@@ -5,7 +5,10 @@ import '../theme/app_typography.dart';
 import '../theme/dark_colors.dart';
 import 'app_button.dart';
 
-/// Standardized empty state: an icon in a soft tinted circle, a title, an optional subtitle, and an optional primary.
+/// Standardized empty state: an icon in a soft tinted circle, a title, an
+/// optional subtitle, and an optional primary action. Keeps every screen's
+/// "nothing here" moment calm and consistent instead of a bare icon and two
+/// lines of text (PRD Section 0.7).
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,

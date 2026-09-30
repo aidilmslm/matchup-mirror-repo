@@ -6,8 +6,12 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/dark_colors.dart';
 import '../../../../core/widgets/pressable_scale.dart';
 
-/// The bubble shown alongside a spotlight cut-out: title, body copy, a "current/total" progress label, and Skip /.
-/// Pure presentation — every callback is handed in, nothing here touches.
+/// The bubble shown alongside a spotlight cut-out: title, body copy, a
+/// "current/total" progress label, and Skip / Next (or Done) actions.
+///
+/// Pure presentation — every callback is handed in, nothing here touches
+/// [TourController] or `SharedPreferences` directly, so it can be pumped and
+/// asserted on in isolation.
 class TourCalloutCard extends StatelessWidget {
   const TourCalloutCard({
     super.key,
@@ -32,7 +36,8 @@ class TourCalloutCard extends StatelessWidget {
   final VoidCallback onSkip;
   final VoidCallback onNext;
 
-  /// Wired to `TourController.back`.
+  /// Wired to `TourController.back`. Null on the first step (no Back
+  /// button rendered) — `back()` is a no-op at index 0 by design.
   final VoidCallback? onBack;
 
   /// Optional disclosure line under the body (e.g. auto-skipped tips).
@@ -61,7 +66,10 @@ class TourCalloutCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(title, style: AppTypography.titleSheet(context)),
+                  child: Text(
+                    title,
+                    style: AppTypography.titleSheet(context),
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.x2),
                 Text(
@@ -76,17 +84,17 @@ class TourCalloutCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.x2),
             Text(
               body,
-              style: AppTypography.bodyFormSecondary(
-                context,
-              ).copyWith(color: context.colors.textSecondary),
+              style: AppTypography.bodyFormSecondary(context).copyWith(
+                color: context.colors.textSecondary,
+              ),
             ),
             if (footnote case final note?) ...[
               const SizedBox(height: AppSpacing.x2),
               Text(
                 note,
-                style: AppTypography.metaSub(
-                  context,
-                ).copyWith(color: context.colors.textTertiary),
+                style: AppTypography.metaSub(context).copyWith(
+                  color: context.colors.textTertiary,
+                ),
               ),
             ],
             const SizedBox(height: AppSpacing.x4),

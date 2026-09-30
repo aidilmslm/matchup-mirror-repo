@@ -13,19 +13,19 @@ import 'package:matchup_mobile/core/utils/nav_guard.dart';
 class _MockActivityRepository extends Mock implements ActivityRepository {}
 
 ActivityModel _activity() => ActivityModel(
-  id: '9',
-  title: 'Evening Tennis',
-  sportType: 'Tennis',
-  description: 'Friendly sets.',
-  location: 'City Courts',
-  distanceKm: 2.0,
-  dateTime: DateTime.now().add(const Duration(days: 1)),
-  skillLevel: 'Intermediate',
-  capacity: 4,
-  participantCount: 2,
-  hostName: 'Sam',
-  joinPolicy: 'approval',
-);
+      id: '9',
+      title: 'Evening Tennis',
+      sportType: 'Tennis',
+      description: 'Friendly sets.',
+      location: 'City Courts',
+      distanceKm: 2.0,
+      dateTime: DateTime.now().add(const Duration(days: 1)),
+      skillLevel: 'Intermediate',
+      capacity: 4,
+      participantCount: 2,
+      hostName: 'Sam',
+      joinPolicy: 'approval',
+    );
 
 void main() {
   late _MockActivityRepository repo;

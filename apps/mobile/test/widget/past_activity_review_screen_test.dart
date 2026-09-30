@@ -139,7 +139,9 @@ void main() {
         expect(find.text('Past Activity'), findsOneWidget);
         expect(find.text('Morning Beach Volleyball'), findsOneWidget);
         expect(
-          find.text('This game was cancelled, so there is nothing to review.'),
+          find.text(
+            'This game was cancelled, so there is nothing to review.',
+          ),
           findsOneWidget,
         );
         // No rating form, no submit.
@@ -148,7 +150,9 @@ void main() {
       },
     );
 
-    testWidgets('should record a per-participant star rating', (tester) async {
+    testWidgets('should record a per-participant star rating', (
+      tester,
+    ) async {
       when(() => repo.byId('4')).thenAnswer((_) async => activity());
       when(
         () => repo.participants('4'),
@@ -170,7 +174,10 @@ void main() {
       // is untouched (still outlined).
       expect(
         find.byWidgetPredicate(
-          (w) => w is Icon && w.icon == Icons.star_rounded && w.size == 22,
+          (w) =>
+              w is Icon &&
+              w.icon == Icons.star_rounded &&
+              w.size == 22,
         ),
         findsNWidgets(5),
       );
@@ -189,7 +196,10 @@ void main() {
       // Activity starts at 4 stars: exactly one unfilled 36px star
       // (participant mini-stars are 22px, so they don't match).
       final unfilled = find.byWidgetPredicate(
-        (w) => w is Icon && w.icon == Icons.star_border_rounded && w.size == 36,
+        (w) =>
+            w is Icon &&
+            w.icon == Icons.star_border_rounded &&
+            w.size == 36,
       );
       expect(unfilled, findsOneWidget);
       await tester.tap(unfilled);
@@ -198,7 +208,8 @@ void main() {
       expect(unfilled, findsNothing);
       expect(
         find.byWidgetPredicate(
-          (w) => w is Icon && w.icon == Icons.star_rounded && w.size == 36,
+          (w) =>
+              w is Icon && w.icon == Icons.star_rounded && w.size == 36,
         ),
         findsNWidgets(5),
       );
@@ -214,7 +225,9 @@ void main() {
       // Submit requires stars>=1 AND (comment non-empty OR >=1
       // participant rated) — leave a comment so the button enables.
       await tester.enterText(
-        find.byWidgetPredicate((w) => w is TextField && w.maxLength == 500),
+        find.byWidgetPredicate(
+          (w) => w is TextField && w.maxLength == 500,
+        ),
         'Great game!',
       );
       await tester.pumpAndSettle();
@@ -225,49 +238,51 @@ void main() {
       expect(find.text('Activities'), findsOneWidget);
     });
 
-    testWidgets('should show Update wording when already rated', (
-      tester,
-    ) async {
-      when(() => repo.byId('4')).thenAnswer((_) async => activity());
-      when(
-        () => repo.participants('4'),
-      ).thenAnswer((_) async => participants());
+    testWidgets(
+      'should show Update wording when already rated',
+      (tester) async {
+        when(() => repo.byId('4')).thenAnswer((_) async => activity());
+        when(
+          () => repo.participants('4'),
+        ).thenAnswer((_) async => participants());
 
-      // Pre-seed a previous submission through the same in-memory repo
-      // the screen will read via the provider override below.
-      // runAsync: the repo simulates 220ms network latency with a
-      // real-timer delay, which would deadlock the fake-async test
-      // clock if awaited directly before any pump.
-      final ratings = LocalRatingsRepository();
-      await tester.runAsync(
-        () => ratings.submitActivityRating(
-          ActivityRatingSubmission(
-            activityId: '4',
-            activitySportType: 'Volleyball',
-            participants: const [],
+        // Pre-seed a previous submission through the same in-memory repo
+        // the screen will read via the provider override below.
+        // runAsync: the repo simulates 220ms network latency with a
+        // real-timer delay, which would deadlock the fake-async test
+        // clock if awaited directly before any pump.
+        final ratings = LocalRatingsRepository();
+        await tester.runAsync(
+          () => ratings.submitActivityRating(
+            ActivityRatingSubmission(
+              activityId: '4',
+              activitySportType: 'Volleyball',
+              participants: const [],
+            ),
           ),
-        ),
-      );
+        );
 
-      await pumpScreen(tester, pushed: true, ratingsOverride: ratings);
+        await pumpScreen(tester, pushed: true, ratingsOverride: ratings);
 
-      expect(find.text('Update Review'), findsOneWidget);
-      expect(find.textContaining('already reviewed'), findsOneWidget);
-      expect(find.text('Submit Review'), findsNothing);
-    });
+        expect(find.text('Update Review'), findsOneWidget);
+        expect(find.textContaining('already reviewed'), findsOneWidget);
+        expect(find.text('Submit Review'), findsNothing);
+      },
+    );
 
-    testWidgets('should show Submit wording for a fresh review', (
-      tester,
-    ) async {
-      when(() => repo.byId('4')).thenAnswer((_) async => activity());
-      when(
-        () => repo.participants('4'),
-      ).thenAnswer((_) async => participants());
+    testWidgets(
+      'should show Submit wording for a fresh review',
+      (tester) async {
+        when(() => repo.byId('4')).thenAnswer((_) async => activity());
+        when(
+          () => repo.participants('4'),
+        ).thenAnswer((_) async => participants());
 
-      await pumpScreen(tester, pushed: true);
+        await pumpScreen(tester, pushed: true);
 
-      expect(find.text('Submit Review'), findsOneWidget);
-      expect(find.textContaining('already reviewed'), findsNothing);
-    });
+        expect(find.text('Submit Review'), findsOneWidget);
+        expect(find.textContaining('already reviewed'), findsNothing);
+      },
+    );
   });
 }

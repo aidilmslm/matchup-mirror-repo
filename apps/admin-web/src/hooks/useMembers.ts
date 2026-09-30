@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useReducer } from 'react';
-import { fetchMembers, updateMemberStatus, deleteMember } from '../services/membersService';
+import {
+  fetchMembers,
+  updateMemberStatus,
+  deleteMember,
+} from '../services/membersService';
 import type { Member, MemberStatus } from '../services/membersService';
 
 type State =
@@ -57,9 +61,7 @@ export function useMembers() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const handleStatusChange = useCallback(
     async (id: string, memberStatus: MemberStatus) => {

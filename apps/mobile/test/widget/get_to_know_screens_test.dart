@@ -81,7 +81,9 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [userRepositoryProvider.overrideWithValue(userRepo)],
+        overrides: [
+          userRepositoryProvider.overrideWithValue(userRepo),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -168,13 +170,13 @@ void main() {
     testWidgets('should navigate to step 3 when the CTA is tapped', (
       tester,
     ) async {
-      await pumpRouter(tester);
-      await tester.tap(find.text('Meet new sports partners'));
-      await tester.pump();
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
+        await pumpRouter(tester);
+        await tester.tap(find.text('Meet new sports partners'));
+        await tester.pump();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
+        await tester.scrollUntilVisible(
         find.text('Skip for now'),
         200,
         scrollable: find.byType(Scrollable).first,
@@ -190,15 +192,15 @@ void main() {
     testWidgets('should persist selected sports with levels to the backend', (
       tester,
     ) async {
-      await pumpRouter(tester);
-      await tester.tap(find.text('Meet new sports partners'));
-      await tester.pump();
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
+        await pumpRouter(tester);
+        await tester.tap(find.text('Meet new sports partners'));
+        await tester.pump();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Basketball'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Intermediate'));
+        await tester.tap(find.text('Basketball'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Intermediate'));
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
@@ -220,36 +222,36 @@ void main() {
     testWidgets('should show height, weight and date-of-birth controls', (
       tester,
     ) async {
-      await pumpRouter(tester);
-      await tester.tap(find.text('Meet new sports partners'));
-      await tester.pump();
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Skip for now'));
-      await tester.pumpAndSettle();
+        await pumpRouter(tester);
+        await tester.tap(find.text('Meet new sports partners'));
+        await tester.pump();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Skip for now'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Height'), findsOneWidget);
+        expect(find.text('Height'), findsOneWidget);
       expect(find.text('Weight'), findsOneWidget);
       expect(find.text('Date of Birth'), findsOneWidget);
       expect(find.text('3/3'), findsOneWidget);
     });
 
     testWidgets('should increment the weight when + is tapped', (tester) async {
-      await pumpRouter(tester);
-      await tester.tap(find.text('Meet new sports partners'));
-      await tester.pump();
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Skip for now'));
-      await tester.pumpAndSettle();
+        await pumpRouter(tester);
+        await tester.tap(find.text('Meet new sports partners'));
+        await tester.pump();
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Skip for now'));
+        await tester.pumpAndSettle();
 
-      // Weight starts at the sensible default (70); + increments it.
-      expect(find.text('70'), findsOneWidget);
+        // Weight starts at the sensible default (70); + increments it.
+        expect(find.text('70'), findsOneWidget);
 
-      await tester.tap(find.bySemanticsLabel('Increase weight'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.bySemanticsLabel('Increase weight'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('71'), findsOneWidget);
+        expect(find.text('71'), findsOneWidget);
     });
   });
 }

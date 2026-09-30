@@ -6,9 +6,21 @@ import '../theme/app_typography.dart';
 import '../theme/dark_colors.dart';
 import 'pressable_scale.dart';
 
-/// Pill-style segmented control (like iOS UISegmentedControl) used for tabs that don't need full navigation.
-/// The selected thumb is a real sliding pill ([AnimatedPositioned] over a [LayoutBuilder] width).
-/// Usage: see the constructors below.
+/// Pill-style segmented control (like iOS UISegmentedControl) used for
+/// tabs that don't need full navigation (e.g. Fixed/Split pricing).
+///
+/// The selected thumb is a real sliding pill ([AnimatedPositioned] over
+/// a [LayoutBuilder] width) — not a per-segment colour fade — so the
+/// switch reads as movement, and labels cross-fade colour/weight via
+/// [AnimatedDefaultTextStyle].
+///
+/// ```dart
+/// AppSegmentedControl(
+///   labels: const ['Fixed · per person', 'Split · total'],
+///   selectedIndex: _tab,
+///   onChanged: (i) => setState(() => _tab = i),
+/// )
+/// ```
 class AppSegmentedControl extends StatelessWidget {
   const AppSegmentedControl({
     super.key,
@@ -24,7 +36,9 @@ class AppSegmentedControl extends StatelessWidget {
   final ValueChanged<int> onChanged;
   final double height;
 
-  /// Colour of the selected segment's label.
+  /// Colour of the selected segment's label. Defaults to
+  /// `primaryOnSurface`; pass `textPrimary` for a neutral high-contrast
+  /// treatment where the white pill alone carries the selected state.
   final Color? activeLabelColor;
 
   @override
@@ -42,7 +56,8 @@ class AppSegmentedControl extends StatelessWidget {
           final segW = constraints.maxWidth / labels.length;
           return Stack(
             children: [
-              // Sliding thumb — glides between segments instead of snapping.
+              // Sliding thumb — glides between segments instead of
+              // snapping. Position is pure layout math, no controller.
               AnimatedPositioned(
                 duration: AppDurations.base,
                 curve: Curves.easeOutCubic,
@@ -77,12 +92,11 @@ class AppSegmentedControl extends StatelessWidget {
                           curve: Curves.easeOut,
                           style: AppTypography.bodyMedium(context).copyWith(
                             fontSize: 13,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
                             color: selected
                                 ? (activeLabelColor ??
-                                      context.colors.primaryOnSurface)
+                                    context.colors.primaryOnSurface)
                                 : context.colors.textSecondary,
                           ),
                           maxLines: 1,

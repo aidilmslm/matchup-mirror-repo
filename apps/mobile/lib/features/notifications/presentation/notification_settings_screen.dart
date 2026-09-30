@@ -10,16 +10,18 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../../../core/widgets/pressable_scale.dart';
 
-// Provider.
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 /// Persists each toggle as `notif_<key>` in SharedPreferences.
+/// Default values mirror the mock (most on, a few off).
 final _notifSettingsProvider =
     StateNotifierProvider<_NotifSettingsNotifier, Map<String, bool>>((ref) {
-      return _NotifSettingsNotifier();
-    });
+  return _NotifSettingsNotifier();
+});
 
 class _NotifSettingsNotifier extends StateNotifier<Map<String, bool>> {
-  _NotifSettingsNotifier() : super(_defaults) {
+  _NotifSettingsNotifier()
+      : super(_defaults) {
     _load();
   }
 
@@ -43,11 +45,16 @@ class _NotifSettingsNotifier extends StateNotifier<Map<String, bool>> {
     state = {...state, key: next};
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notif_$key', next);
-    // TODO(push): subscribe/unsubscribe the matching FCM topic when a category is toggled.
+    // TODO(push): subscribe/unsubscribe the matching FCM topic when a
+    // category is toggled (e.g. `activity_cancelled`, `dm_message`) so
+    // the preference also gates push delivery, not just this device's
+    // local state. No per-category preference endpoint exists on the
+    // backend today — and `markAllRead` only clears already-delivered
+    // rows, so it must NOT be called here.
   }
 }
 
-// Screen.
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 class NotificationSettingsScreen extends ConsumerWidget {
   const NotificationSettingsScreen({super.key});
@@ -70,9 +77,9 @@ class NotificationSettingsScreen extends ConsumerWidget {
         children: [
           Text(
             'Choose what alerts you want to receive',
-            style: AppTypography.bodyMedium(
-              context,
-            ).copyWith(color: context.colors.textSecondary),
+            style: AppTypography.bodyMedium(context).copyWith(
+              color: context.colors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppSpacing.x2),
           Text(
@@ -81,7 +88,10 @@ class NotificationSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.x3),
 
-          // Best-effort badge count from the server's canonical feed (`GET /notifications/me` via the repository.
+          // Best-effort badge count from the server's canonical feed
+          // (`GET /notifications/me` via the repository — no dedicated
+          // `/unread` route exists on the backend). A failure shows a
+          // quiet notice and keeps the local toggles untouched.
           Semantics(
             button: true,
             label: 'Refresh from server',
@@ -120,7 +130,11 @@ class NotificationSettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.x6),
 
-          // Only categories the backend actually sends today: activity_cancelled + dm_message.
+          // Only categories the backend actually sends today:
+          // activity_cancelled + dm_message. Toggles for friend
+          // requests, invitations, summaries, ratings, milestones,
+          // promos, updates, nearby and reminders were removed — no
+          // sender or feature exists for them yet.
           _Section(
             label: 'GAME UPDATES',
             children: [
@@ -153,9 +167,10 @@ class NotificationSettingsScreen extends ConsumerWidget {
   }
 }
 
-// Server refresh.
+// ─── Server refresh ─────────────────────────────────────────────────────────
 
-/// Best-effort unread badge count from the live feed.
+/// Best-effort unread badge count from the live feed. Never throws into
+/// the UI: success and failure both surface as a short notice.
 Future<void> _refreshFromServer(BuildContext context, WidgetRef ref) async {
   try {
     final unread = await ref.read(notificationRepositoryProvider).unread();
@@ -175,6 +190,8 @@ Future<void> _refreshFromServer(BuildContext context, WidgetRef ref) async {
     );
   }
 }
+
+// ─── Section ──────────────────────────────────────────────────────────────────
 
 class _Section extends StatelessWidget {
   const _Section({required this.label, required this.children});
@@ -210,7 +227,7 @@ class _Section extends StatelessWidget {
   }
 }
 
-// Toggle row.
+// ─── Toggle row ───────────────────────────────────────────────────────────────
 
 class _ToggleRow extends StatelessWidget {
   const _ToggleRow({
@@ -252,9 +269,15 @@ class _ToggleRow extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: AppTypography.labelField(context)),
+                        Text(
+                          title,
+                          style: AppTypography.labelField(context),
+                        ),
                         const SizedBox(height: 2),
-                        Text(subtitle, style: AppTypography.metaSub(context)),
+                        Text(
+                          subtitle,
+                          style: AppTypography.metaSub(context),
+                        ),
                       ],
                     ),
                   ),

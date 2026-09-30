@@ -42,7 +42,7 @@ void main() {
         () => mock.feed(
           limit: any(named: 'limit'),
           offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
+        filter: any(named: 'filter'),
         ),
       ).thenAnswer((_) async => activities);
 
@@ -69,7 +69,7 @@ void main() {
         () => mock.feed(
           limit: any(named: 'limit'),
           offset: any(named: 'offset'),
-          filter: any(named: 'filter'),
+        filter: any(named: 'filter'),
         ),
       ).thenThrow(Exception('Network failure'));
 
@@ -96,7 +96,7 @@ void main() {
           () => mock.feed(
             limit: any(named: 'limit'),
             offset: any(named: 'offset'),
-            filter: any(named: 'filter'),
+          filter: any(named: 'filter'),
           ),
         ).thenAnswer((_) async => <ActivityModel>[]);
 

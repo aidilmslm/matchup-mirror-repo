@@ -6,8 +6,15 @@ import '../theme/app_typography.dart';
 import '../theme/dark_colors.dart';
 import 'app_button.dart';
 
-/// Full-page error state with retry CTA, tinted [AppColors.danger].
-/// Visually the same family as [EmptyState].
+/// Full-page error state with retry CTA.
+/// Drop into `AsyncValue.when(error: (e, _) => ErrorRetry(onRetry: ref.refresh))`.
+///
+/// Visually the same family as [EmptyState] — soft tinted icon circle,
+/// title, body copy, single action — but tinted [AppColors.danger] instead
+/// of [AppColors.primary] so an error reads as distinct from an empty list.
+/// The heading and copy avoid an exclamation mark and the word "Oops" on
+/// purpose: a calm, direct statement reads as more trustworthy than a
+/// startled one (PRD Appendix C.2).
 class ErrorRetry extends StatelessWidget {
   const ErrorRetry({
     super.key,

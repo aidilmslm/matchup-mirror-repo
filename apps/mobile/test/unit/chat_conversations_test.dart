@@ -16,16 +16,13 @@ class _MockActivities extends Mock implements RemoteActivityRepository {}
 /// network for this test (empty thread = empty preview, still a row).
 class _TestChatRepo extends RemoteChatRepository {
   _TestChatRepo({required RemoteActivityRepository activities})
-    : super(activities: activities);
+      : super(activities: activities);
 
   @override
   Future<List<ChatMessage>> messages(String activityId) async => [];
 }
 
-ActivityModel _game(
-  String id, {
-  ActivityStatus status = ActivityStatus.hosted,
-}) {
+ActivityModel _game(String id, {ActivityStatus status = ActivityStatus.hosted}) {
   return ActivityModel(
     id: id,
     title: 'Game $id',
@@ -50,9 +47,9 @@ void main() {
     dotenv.testLoad(fileInput: 'API_BASE_URL=http://localhost:4000');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-          (call) async => null,
-        );
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (call) async => null,
+    );
     SharedPreferences.setMockInitialValues({});
   });
 
@@ -76,7 +73,8 @@ void main() {
       () => activities.joinedByUser(any(), limit: any(named: 'limit')),
     ).thenAnswer((_) async => []);
 
-    final convos = await _TestChatRepo(activities: activities).conversations();
+    final convos =
+        await _TestChatRepo(activities: activities).conversations();
 
     expect(convos, hasLength(14));
     expect(
@@ -93,7 +91,8 @@ void main() {
       () => activities.joinedByUser(any(), limit: any(named: 'limit')),
     ).thenAnswer((_) async => [_game('b'), _game('c')]);
 
-    final convos = await _TestChatRepo(activities: activities).conversations();
+    final convos =
+        await _TestChatRepo(activities: activities).conversations();
 
     expect(convos.map((c) => c.id), ['a', 'b', 'c']);
   });
@@ -106,7 +105,8 @@ void main() {
       () => activities.joinedByUser(any(), limit: any(named: 'limit')),
     ).thenAnswer((_) async => []);
 
-    final convos = await _TestChatRepo(activities: activities).conversations();
+    final convos =
+        await _TestChatRepo(activities: activities).conversations();
 
     expect(convos, isEmpty);
   });

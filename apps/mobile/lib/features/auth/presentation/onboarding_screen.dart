@@ -10,7 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pressable_scale.dart';
 
-// Page data.
+// ─── Page data ────────────────────────────────────────────────────────────────
 
 class _OnboardingPage {
   const _OnboardingPage({
@@ -44,7 +44,7 @@ const _kPages = [
   ),
 ];
 
-// Screen.
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -75,7 +75,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  /// '/get-to-know-1' is protected — logged-out users bounce back to /welcome.
+  /// '/get-to-know-1' is a protected route — logged-out users who go there
+  /// bounce straight back to /welcome via the router guard. Route them to
+  /// /welcome directly instead of the dead-end round-trip.
   void _exitToAppFlow() {
     // Any Skip/Get Started tap counts as seen — persist best-effort.
     SharedPreferences.getInstance().then(
@@ -109,7 +111,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full bleed paged images.
+          // ── Full-bleed paged images ────────────────────────────────
           PageView.builder(
             controller: _pageController,
             itemCount: _kPages.length,
@@ -117,7 +119,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             itemBuilder: (_, i) => _PageImage(page: _kPages[i]),
           ),
 
-          // Top bar: MatchUp SKIP.
+          // ── Top bar: MatchUp + SKIP ────────────────────────────────
           Positioned(
             top: 0,
             left: 0,
@@ -156,7 +158,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.pill),
                           ),
                           child: Text(
                             'SKIP',
@@ -176,7 +179,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
 
-          // Bottom overlay: dots heading desc button link.
+          // ── Bottom overlay: dots + heading + desc + button + link ──
           Positioned(
             left: 0,
             right: 0,
@@ -205,14 +208,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Dots — left-aligned
-                  _Dots(current: _currentPage, total: _kPages.length),
+                  _Dots(
+                    current: _currentPage,
+                    total: _kPages.length,
+                  ),
                   const SizedBox(height: AppSpacing.x4),
 
                   // Heading — animated switch per page
                   AnimatedSwitcher(
                     duration: AppDurations.base,
-                    transitionBuilder: (child, anim) =>
-                        FadeTransition(opacity: anim, child: child),
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: child,
+                    ),
                     child: _PageContent(
                       key: ValueKey(_currentPage),
                       heading: _kPages[_currentPage].heading,
@@ -232,7 +240,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
                   // Sign in prompt
                   Center(
-                    child: _SignInPrompt(onTap: () => context.go('/login')),
+                    child: _SignInPrompt(
+                      onTap: () => context.go('/login'),
+                    ),
                   ),
                 ],
               ),
@@ -244,7 +254,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
-// Page image with scrim.
+// ─── Page image with scrim ────────────────────────────────────────────────────
 
 class _PageImage extends StatelessWidget {
   const _PageImage({required this.page});
@@ -267,7 +277,7 @@ class _PageImage extends StatelessWidget {
   }
 }
 
-// Dots.
+// ─── Dots ─────────────────────────────────────────────────────────────────────
 
 class _Dots extends StatelessWidget {
   const _Dots({required this.current, required this.total});
@@ -289,8 +299,7 @@ class _Dots extends StatelessWidget {
             height: 8,
             decoration: BoxDecoration(
               color: active
-                  ? AppColors
-                        .primary // Blue active dot
+                  ? AppColors.primary // Blue active dot
                   : Colors.white.withValues(alpha: 0.40),
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
@@ -301,7 +310,7 @@ class _Dots extends StatelessWidget {
   }
 }
 
-// Page content.
+// ─── Page content ─────────────────────────────────────────────────────────────
 
 class _PageContent extends StatelessWidget {
   const _PageContent({
@@ -342,7 +351,7 @@ class _PageContent extends StatelessWidget {
   }
 }
 
-// Next Get Started button.
+// ─── Next / Get Started button ────────────────────────────────────────────────
 
 class _NextButton extends StatelessWidget {
   const _NextButton({required this.label, required this.onTap});
@@ -389,7 +398,7 @@ class _NextButton extends StatelessWidget {
   }
 }
 
-// Sign in prompt.
+// ─── Sign-in prompt ───────────────────────────────────────────────────────────
 
 class _SignInPrompt extends StatelessWidget {
   const _SignInPrompt({required this.onTap});

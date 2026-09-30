@@ -29,9 +29,7 @@ export function SlidePanel({
       {/* Panel */}
       <div
         className="fixed inset-y-0 right-0 z-50 flex flex-col bg-white shadow-[−8px_0_32px_rgba(0,0,0,0.12)]"
-        style={{
-          width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth : width),
-        }}
+        style={{ width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth : width) }}
         role="dialog"
         aria-label={title}
       >
@@ -46,22 +44,16 @@ export function SlidePanel({
             className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-700 transition-colors"
             aria-label="Close"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M2 2l10 10M12 2L2 12" />
             </svg>
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {children}
+        </div>
       </div>
     </>
   );

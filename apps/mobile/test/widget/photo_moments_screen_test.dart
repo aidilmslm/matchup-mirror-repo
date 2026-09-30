@@ -14,21 +14,21 @@ void main() {
   late _MockChatRepository repo;
 
   ChatMessage photo(String id, String url) => ChatMessage(
-    id: id,
-    senderId: 'u1',
-    senderName: 'Ava',
-    text: url,
-    imageUrl: url,
-    sentAt: DateTime(2026, 8, 27, 19),
-  );
+        id: id,
+        senderId: 'u1',
+        senderName: 'Ava',
+        text: url,
+        imageUrl: url,
+        sentAt: DateTime(2026, 8, 27, 19),
+      );
 
   ChatMessage text(String id) => ChatMessage(
-    id: id,
-    senderId: 'u2',
-    senderName: 'Ben',
-    text: 'See you there!',
-    sentAt: DateTime(2026, 8, 27, 19, 5),
-  );
+        id: id,
+        senderId: 'u2',
+        senderName: 'Ben',
+        text: 'See you there!',
+        sentAt: DateTime(2026, 8, 27, 19, 5),
+      );
 
   setUp(() {
     repo = _MockChatRepository();
@@ -38,15 +38,16 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [chatRepositoryProvider.overrideWithValue(repo)],
-        child: const MaterialApp(home: PhotoMomentsScreen(activityId: 'a1')),
+        child: const MaterialApp(
+          home: PhotoMomentsScreen(activityId: 'a1'),
+        ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows a grid of photo messages with count in the title', (
-    tester,
-  ) async {
+  testWidgets('shows a grid of photo messages with count in the title',
+      (tester) async {
     when(() => repo.watchMessages(any())).thenAnswer(
       (_) => Stream.value([
         photo('m1', 'https://example.com/a.jpg'),
@@ -64,9 +65,8 @@ void main() {
     expect(find.text('No photos yet'), findsNothing);
   });
 
-  testWidgets('opens the full-screen viewer when a photo is tapped', (
-    tester,
-  ) async {
+  testWidgets('opens the full-screen viewer when a photo is tapped',
+      (tester) async {
     when(() => repo.watchMessages(any())).thenAnswer(
       (_) => Stream.value([
         photo('m1', 'https://example.com/a.jpg'),
@@ -82,12 +82,11 @@ void main() {
     expect(find.textContaining('Ava'), findsOneWidget);
   });
 
-  testWidgets('shows the empty state when no photos were shared', (
-    tester,
-  ) async {
-    when(
-      () => repo.watchMessages(any()),
-    ).thenAnswer((_) => Stream.value([text('m2')]));
+  testWidgets('shows the empty state when no photos were shared',
+      (tester) async {
+    when(() => repo.watchMessages(any())).thenAnswer(
+      (_) => Stream.value([text('m2')]),
+    );
 
     await pumpScreen(tester);
 

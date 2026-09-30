@@ -7,7 +7,11 @@ class UserModel {
   final String? avatarAsset;
   final String? avatarUrl;
 
-  /// Legacy single-score rating used by the pre-rating-system profile stat card.
+  /// Legacy single-score rating used by the pre-rating-system profile
+  /// stat card. New code should read `ratingBySport[activity.sportType]`
+  /// for host cards so the value tracks the same sport the user is
+  /// browsing. Kept nullable so existing screens that look up an unknown
+  /// host (`james`, `sarah`, `mike`, `lisa` from seed data) still render.
   final double? rating;
   final String? bio;
   final String? location;
@@ -21,24 +25,39 @@ class UserModel {
   /// Sports + skill level pairs (e.g. `[('Basketball', 'Intermediate')]`).
   final List<({String sport, String level})> sports;
 
-  /// General playing level (`beginner`/`intermediate`/`advanced`/`any`) from the user record.
+  /// General playing level (`beginner`/`intermediate`/`advanced`/`any`)
+  /// from the user record. Used as the fallback badge on sport chips
+  /// whose own level is empty (backend `preferredSports` carries names
+  /// only).
   final String? skillLevel;
 
-  /// Per-sport community rating aggregate.
+  /// Per-sport community rating aggregate. Keyed by sport type
+  /// (e.g. `Basketball`). Pulled from the API response
+  /// `users/{id}.ratingBySport` and exposed so discovery/host cards can
+  /// show "★ 4.8 (12)" *for the sport the user is browsing* rather than
+  /// a single blended average.
+  ///
   /// Empty when the user has fewer than one completed-activity rating.
   final Map<String, SportRatingSummary> ratingBySport;
 
-  /// Cumulative count across every sport — surfaced in profile screens as a single "(N ratings)" chip.
+  /// Cumulative count across every sport — surfaced in profile screens as
+  /// a single "(N ratings)" chip. Independent of [ratingBySport] keys so
+  /// it works even if the backend returns just a count, no breakdown.
   final int totalRatingCount;
 
-  /// Host-role rating aggregates (stars received while hosting), keyed by sport.
+  /// Host-role rating aggregates (stars received while hosting), keyed
+  /// by sport. Separate from [ratingBySport] (player role) so trust as
+  /// a host reads independently. Empty on legacy rows / until the
+  /// first host-role rating lands. Even one rating shows.
   final Map<String, SportRatingSummary> hostRatingBySport;
 
   /// Cumulative host-role count across sports.
   final int totalHostRatingCount;
 
-  // Fields editable from Edit Profile (PRD Section 2.3).
-  // These used to be string literals hardcoded in the screen's `_initFields`.
+  // ─── Fields editable from Edit Profile (PRD Section 2.3) ────────────────
+  // These used to be string literals hardcoded in the screen's
+  // `_initFields`. Now they live on the model so Edit Profile reads real
+  // data and persists real changes via `UserRepository.updateProfile`.
   final String? email;
   final String? phone;
   final DateTime? dateOfBirth;
@@ -108,7 +127,8 @@ class UserModel {
       ratingBySport: ratingBySport ?? this.ratingBySport,
       totalRatingCount: totalRatingCount ?? this.totalRatingCount,
       hostRatingBySport: hostRatingBySport ?? this.hostRatingBySport,
-      totalHostRatingCount: totalHostRatingCount ?? this.totalHostRatingCount,
+      totalHostRatingCount:
+          totalHostRatingCount ?? this.totalHostRatingCount,
       email: email ?? this.email,
       phone: phone ?? this.phone,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
@@ -118,7 +138,8 @@ class UserModel {
     );
   }
 
-  /// Whole years since [dateOfBirth]. Screens show this ("24") — never the raw birthdate.
+  /// Whole years since [dateOfBirth]. Null when unknown or in the
+  /// future. Screens show this ("24") — never the raw birthdate.
   int? get age {
     final dob = dateOfBirth;
     if (dob == null) return null;
@@ -131,7 +152,9 @@ class UserModel {
     return years < 0 ? null : years;
   }
 
-  /// Returns the rating summary for a given sport, falling back to the legacy.
+  /// Returns the rating summary for a given sport, falling back to the
+  /// legacy [rating] field for seed users that pre-date the rating system.
+  /// Returns `null` when there is genuinely no data to display.
   SportRatingSummary? ratingFor(String sportType) {
     final keyed = ratingBySport[sportType];
     if (keyed != null && keyed.hasRatings) return keyed;
@@ -141,7 +164,8 @@ class UserModel {
     return null;
   }
 
-  /// Host-role summary for a sport.
+  /// Host-role summary for a sport. Shows even a single rating —
+  /// no minimum count. Null when no host-role data yet.
   SportRatingSummary? hostRatingFor(String sportType) {
     final keyed = hostRatingBySport[sportType];
     if (keyed != null && keyed.hasRatings) return keyed;

@@ -1,4 +1,3 @@
-// Type augmentations for express.
 import type { DecodedIdToken } from 'firebase-admin/auth';
 
 declare global {

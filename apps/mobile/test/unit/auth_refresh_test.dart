@@ -8,8 +8,9 @@ import 'package:matchup_mobile/core/network/api_client.dart';
 /// Builds an unsigned JWT with the given `exp` (epoch seconds). The
 /// parser under test never verifies signatures — only the payload.
 String _jwt({required int exp}) {
-  String part(Object o) =>
-      base64Url.encode(utf8.encode(jsonEncode(o))).replaceAll('=', '');
+  String part(Object o) => base64Url
+      .encode(utf8.encode(jsonEncode(o)))
+      .replaceAll('=', '');
   return '${part({'alg': 'none'})}.${part({'exp': exp})}.sig';
 }
 
@@ -81,14 +82,12 @@ void main() {
         'INVALID_GRANT',
       ]) {
         expect(
-          isUnrecoverableRefreshError(
-            _dioError(
-              status: 400,
-              errorBody: {
-                'error': {'message': marker},
-              },
-            ),
-          ),
+          isUnrecoverableRefreshError(_dioError(
+            status: 400,
+            errorBody: {
+              'error': {'message': marker}
+            },
+          )),
           isTrue,
           reason: marker,
         );
@@ -100,26 +99,22 @@ void main() {
       expect(isUnrecoverableRefreshError(_dioError()), isFalse);
       // 5xx -> retryable.
       expect(
-        isUnrecoverableRefreshError(
-          _dioError(
-            status: 503,
-            errorBody: {
-              'error': {'message': 'BACKEND_DOWN'},
-            },
-          ),
-        ),
+        isUnrecoverableRefreshError(_dioError(
+          status: 503,
+          errorBody: {
+            'error': {'message': 'BACKEND_DOWN'}
+          },
+        )),
         isFalse,
       );
       // Unknown 4xx -> retryable (conservative).
       expect(
-        isUnrecoverableRefreshError(
-          _dioError(
-            status: 429,
-            errorBody: {
-              'error': {'message': 'RATE_LIMITED'},
-            },
-          ),
-        ),
+        isUnrecoverableRefreshError(_dioError(
+          status: 429,
+          errorBody: {
+            'error': {'message': 'RATE_LIMITED'}
+          },
+        )),
         isFalse,
       );
     });

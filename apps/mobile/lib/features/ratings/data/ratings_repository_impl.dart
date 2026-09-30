@@ -6,19 +6,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/rating_models.dart';
 import 'ratings_repository.dart';
 
-/// In-memory ratings repository used while the backend endpoint is in development.
+/// In-memory ratings repository used while the backend endpoint is in
+/// development. Submissions are also persisted to [SharedPreferences] so
+/// [hasRated] survives app restarts (previously in-memory only, which
+/// allowed duplicate submissions after a relaunch).
 class LocalRatingsRepository implements RatingsRepository {
-  /// activityId → set of rater UIDs that already submitted.
+  /// activityId → set of rater UIDs that already submitted (the dedup key
+  /// is the activity, since each user only submits once per past activity
+  /// in MVP).
   final Map<String, Set<String>> _submitted = {};
 
-  /// Records known rater uid from the auth state.
+  /// Records known rater uid from the auth state — injected at construction
+  /// so test overrides can pass a deterministic UID.
   LocalRatingsRepository({this._currentUserId = 'me'}) {
     _restorePersisted();
   }
 
   final String _currentUserId;
 
-  /// SharedPreferences key holding the list of rated activityIds for [_currentUserId].
+  /// SharedPreferences key holding the list of rated activityIds for
+  /// [_currentUserId]. Scoped per rater so account switches don't leak.
   String get _prefsKey => 'rated_activities_$_currentUserId';
 
   Future<void> _restorePersisted() async {
@@ -31,7 +38,8 @@ class LocalRatingsRepository implements RatingsRepository {
         _submitted.putIfAbsent(id, () => <String>{}).add(_currentUserId);
       }
     } catch (_) {
-      // No persisted state (e.g. widget tests without a prefs mock) — fall back to memory only.
+      // No persisted state (e.g. widget tests without a prefs mock) —
+      // fall back to memory only.
     }
   }
 
@@ -42,11 +50,12 @@ class LocalRatingsRepository implements RatingsRepository {
       );
       final ids = Set<String>.from(prefs.getStringList(_prefsKey) ?? <String>[])
         ..add(activityId);
-      await prefs
-          .setStringList(_prefsKey, ids.toList())
-          .timeout(const Duration(seconds: 2));
+      await prefs.setStringList(_prefsKey, ids.toList()).timeout(
+        const Duration(seconds: 2),
+      );
     } catch (_) {
-      // Persistence is best-effort; the in-memory entry above already covers the current session.
+      // Persistence is best-effort; the in-memory entry above already
+      // covers the current session.
     }
   }
 
@@ -60,7 +69,9 @@ class LocalRatingsRepository implements RatingsRepository {
     _submitted
         .putIfAbsent(submission.activityId, () => <String>{})
         .add(_currentUserId);
-    // Fire-and-forget: persistence must never block the submit result.
+    // Fire-and-forget: persistence must never block the submit result
+    // (notably under `tester.runAsync` without a prefs mock, where the
+    // platform channel may not resolve).
     unawaited(_persistRated(submission.activityId));
 
     if (kDebugMode) {
@@ -70,14 +81,18 @@ class LocalRatingsRepository implements RatingsRepository {
       );
     }
 
-    return RatingSubmissionResult(accepted: true, submittedAt: DateTime.now());
+    return RatingSubmissionResult(
+      accepted: true,
+      submittedAt: DateTime.now(),
+    );
   }
 
   @override
   Future<bool> hasRated(String activityId) async {
     final raters = _submitted[activityId];
     if (raters != null && raters.contains(_currentUserId)) return true;
-    // Fall back to persisted state (covers restarts before the constructor restore lands, or a fresh instance).
+    // Fall back to persisted state (covers restarts before the
+    // constructor restore lands, or a fresh instance).
     try {
       final prefs = await SharedPreferences.getInstance().timeout(
         const Duration(seconds: 2),

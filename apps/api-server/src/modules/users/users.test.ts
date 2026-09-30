@@ -34,17 +34,17 @@ vi.mock('../../middleware/auth.middleware.js', () => {
       next();
     }),
 
-    requireAuthAllowSuspended: vi.fn((req, _res, next) => {
+  requireAuthAllowSuspended: vi.fn((req, _res, next) => {
       req.auth = req.auth ?? {
-        uid: 'test-uid-1',
-        token: {} as never,
+          uid: 'test-uid-1',
+          token: {} as never,
       };
       next();
-    }),
+  }),
 
-    requireAdmin: vi.fn((_req, _res, next) => {
+  requireAdmin: vi.fn((_req, _res, next) => {
       next();
-    }),
+  }),
   };
 });
 
@@ -60,9 +60,11 @@ describe('users routes', () => {
     it('when authenticated request body is valid => expected 201', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/users/me').send({
-        email: 'user@example.com',
-      });
+      const response = await request(app)
+        .post('/api/users/me')
+        .send({
+          email: 'user@example.com',
+        });
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({
@@ -88,9 +90,11 @@ describe('users routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).post('/api/users/me').send({
-        email: 'user@example.com',
-      });
+      const response = await request(app)
+        .post('/api/users/me')
+        .send({
+          email: 'user@example.com',
+        });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -106,9 +110,11 @@ describe('users routes', () => {
     it('when email is not a string => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/users/me').send({
-        email: 123,
-      });
+      const response = await request(app)
+        .post('/api/users/me')
+        .send({
+          email: 123,
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -123,9 +129,11 @@ describe('users routes', () => {
     it('when email is blank => expected 400 w/ EMPTY_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).post('/api/users/me').send({
-        email: '   ',
-      });
+      const response = await request(app)
+        .post('/api/users/me')
+        .send({
+          email: '   ',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -144,9 +152,11 @@ describe('users routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).post('/api/users/me').send({
-        email: 'user@example.com',
-      });
+      const response = await request(app)
+        .post('/api/users/me')
+        .send({
+          email: 'user@example.com',
+        });
 
       expect(response.status).toBe(409);
       expect(response.body).toEqual({
@@ -159,13 +169,17 @@ describe('users routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(usersService.bootstrapUser).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(usersService.bootstrapUser).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).post('/api/users/me').send({
-        email: 'user@example.com',
-      });
+      const response = await request(app)
+        .post('/api/users/me')
+        .send({
+          email: 'user@example.com',
+        });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -221,7 +235,9 @@ describe('users routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(usersService.getUserByAuthUid).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(usersService.getUserByAuthUid).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
@@ -292,7 +308,9 @@ describe('users routes', () => {
       });
     });
 
-    // NOTE: profile photos use the dedicated `PATCH /api/users/me/photo` endpoint (photoPath + photoUrl).
+    // NOTE: profile photos use the dedicated `PATCH /api/users/me/photo`
+    // endpoint (photoPath + photoUrl) — generic PATCH /me no longer
+    // accepts photoUrl. Covered by the me/photo tests below.
 
     it('when request body is empty => expected 400 w/ EMPTY_INPUT', async () => {
       const app = createApp();
@@ -312,9 +330,11 @@ describe('users routes', () => {
     it('when request body contains unsupported field => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        email: 'new@example.com',
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          email: 'new@example.com',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -329,9 +349,11 @@ describe('users routes', () => {
     it('when request body contains photoUrl => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        photoUrl: 'https://example.com/avatar.png',
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          photoUrl: 'https://example.com/avatar.png',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -358,10 +380,15 @@ describe('users routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({ heightCm: 178 });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({ heightCm: 178 });
 
       expect(response.status).toBe(200);
-      expect(usersService.updateUserProfile).toHaveBeenCalledWith('test-uid-1', { heightCm: 178 });
+      expect(usersService.updateUserProfile).toHaveBeenCalledWith(
+        'test-uid-1',
+        { heightCm: 178 },
+      );
     });
 
     it.each([199.5, 20, 400, 'tall', true])(
@@ -369,7 +396,9 @@ describe('users routes', () => {
       async (heightCm) => {
         const app = createApp();
 
-        const response = await request(app).patch('/api/users/me').send({ heightCm });
+        const response = await request(app)
+          .patch('/api/users/me')
+          .send({ heightCm });
 
         expect(response.status).toBe(400);
         expect(response.body).toEqual({
@@ -397,10 +426,15 @@ describe('users routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({ weightKg: 73 });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({ weightKg: 73 });
 
       expect(response.status).toBe(200);
-      expect(usersService.updateUserProfile).toHaveBeenCalledWith('test-uid-1', { weightKg: 73 });
+      expect(usersService.updateUserProfile).toHaveBeenCalledWith(
+        'test-uid-1',
+        { weightKg: 73 },
+      );
     });
 
     it.each([72.5, 10, 400, 'heavy', true])(
@@ -408,7 +442,9 @@ describe('users routes', () => {
       async (weightKg) => {
         const app = createApp();
 
-        const response = await request(app).patch('/api/users/me').send({ weightKg });
+        const response = await request(app)
+          .patch('/api/users/me')
+          .send({ weightKg });
 
         expect(response.status).toBe(400);
         expect(response.body).toEqual({
@@ -441,15 +477,18 @@ describe('users routes', () => {
         .send({ goal: '  Run a half marathon  ' });
 
       expect(response.status).toBe(200);
-      expect(usersService.updateUserProfile).toHaveBeenCalledWith('test-uid-1', {
-        goal: 'Run a half marathon',
-      });
+      expect(usersService.updateUserProfile).toHaveBeenCalledWith(
+        'test-uid-1',
+        { goal: 'Run a half marathon' },
+      );
     });
 
     it('when goal is not a string => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({ goal: 123 });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({ goal: 123 });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -464,9 +503,11 @@ describe('users routes', () => {
     it('when displayName is not a string => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        displayName: 123,
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          displayName: 123,
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -481,9 +522,11 @@ describe('users routes', () => {
     it('when skillLevel is invalid => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        skillLevel: 'expert',
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          skillLevel: 'expert',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -537,9 +580,11 @@ describe('users routes', () => {
     it('when joinReason is not a string => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        joinReason: 123,
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          joinReason: 123,
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -579,13 +624,17 @@ describe('users routes', () => {
     });
 
     it('when user is not found => expected 404 w/ NOT_FOUND', async () => {
-      vi.mocked(usersService.updateUserProfile).mockRejectedValueOnce(new Error('User not found'));
+      vi.mocked(usersService.updateUserProfile).mockRejectedValueOnce(
+        new Error('User not found'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        displayName: 'Test User',
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          displayName: 'Test User',
+        });
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({
@@ -598,13 +647,17 @@ describe('users routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(usersService.updateUserProfile).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(usersService.updateUserProfile).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me').send({
-        displayName: 'Test User',
-      });
+      const response = await request(app)
+        .patch('/api/users/me')
+        .send({
+          displayName: 'Test User',
+        });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -623,8 +676,7 @@ describe('users routes', () => {
         authUid: 'test-uid-1',
         email: 'user@example.com',
         photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
-        photoUrl:
-          'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
+        photoUrl: 'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
         createdAt: {
           toDate: () => new Date('2026-08-18T00:00:00Z'),
         } as never,
@@ -635,11 +687,12 @@ describe('users routes', () => {
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me/photo').send({
-        photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
-        photoUrl:
-          'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
-      });
+      const response = await request(app)
+        .patch('/api/users/me/photo')
+        .send({
+          photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
+          photoUrl: 'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
+        });
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
@@ -648,24 +701,24 @@ describe('users routes', () => {
           authUid: 'test-uid-1',
           email: 'user@example.com',
           photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
-          photoUrl:
-            'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
+          photoUrl: 'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
         },
       });
       expect(usersService.updateUserPhoto).toHaveBeenCalledWith('test-uid-1', {
         photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
-        photoUrl:
-          'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
+        photoUrl: 'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
       });
     });
 
     it('when photo metadata is not string => expected 400 w/ INVALID_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me/photo').send({
-        photoPath: 123,
-        photoUrl: 'https://storage.googleapis.com/bucket/avatar.jpg',
-      });
+      const response = await request(app)
+        .patch('/api/users/me/photo')
+        .send({
+          photoPath: 123,
+          photoUrl: 'https://storage.googleapis.com/bucket/avatar.jpg',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -680,10 +733,12 @@ describe('users routes', () => {
     it('when photo metadata is blank => expected 400 w/ EMPTY_INPUT', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me/photo').send({
-        photoPath: '   ',
-        photoUrl: 'https://storage.googleapis.com/bucket/avatar.jpg',
-      });
+      const response = await request(app)
+        .patch('/api/users/me/photo')
+        .send({
+          photoPath: '   ',
+          photoUrl: 'https://storage.googleapis.com/bucket/avatar.jpg',
+        });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
@@ -698,11 +753,12 @@ describe('users routes', () => {
     it('when photoPath belongs to another user => expected 403 w/ FORBIDDEN', async () => {
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me/photo').send({
-        photoPath: 'users/other-uid/profile/avatar-1787200000000.jpg',
-        photoUrl:
-          'https://storage.googleapis.com/bucket/users/other-uid/profile/avatar-1787200000000.jpg',
-      });
+      const response = await request(app)
+        .patch('/api/users/me/photo')
+        .send({
+          photoPath: 'users/other-uid/profile/avatar-1787200000000.jpg',
+          photoUrl: 'https://storage.googleapis.com/bucket/users/other-uid/profile/avatar-1787200000000.jpg',
+        });
 
       expect(response.status).toBe(403);
       expect(response.body).toEqual({
@@ -716,15 +772,18 @@ describe('users routes', () => {
     });
 
     it('when user is not found => expected 404 w/ NOT_FOUND', async () => {
-      vi.mocked(usersService.updateUserPhoto).mockRejectedValueOnce(new Error('User not found'));
+      vi.mocked(usersService.updateUserPhoto).mockRejectedValueOnce(
+        new Error('User not found'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me/photo').send({
-        photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
-        photoUrl:
-          'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
-      });
+      const response = await request(app)
+        .patch('/api/users/me/photo')
+        .send({
+          photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
+          photoUrl: 'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
+        });
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({
@@ -737,15 +796,18 @@ describe('users routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(usersService.updateUserPhoto).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(usersService.updateUserPhoto).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
-      const response = await request(app).patch('/api/users/me/photo').send({
-        photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
-        photoUrl:
-          'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
-      });
+      const response = await request(app)
+        .patch('/api/users/me/photo')
+        .send({
+          photoPath: 'users/test-uid-1/profile/avatar-1787200000000.jpg',
+          photoUrl: 'https://storage.googleapis.com/bucket/users/test-uid-1/profile/avatar-1787200000000.jpg',
+        });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -861,7 +923,9 @@ describe('users routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(usersService.mintCustomToken).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(usersService.mintCustomToken).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
@@ -877,4 +941,5 @@ describe('users routes', () => {
       });
     });
   });
+
 });

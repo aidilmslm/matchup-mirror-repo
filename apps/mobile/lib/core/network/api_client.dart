@@ -11,7 +11,10 @@ import '../storage/secure_token_store.dart';
 /// Base path — matches the api-server route prefix.
 const String _apiBase = '/api';
 
-/// Production-ready Dio client with three interceptors: [AuthInterceptor].
+/// Production-ready Dio client with three interceptors:
+///   1. [AuthInterceptor]       — inject stored Firebase ID token; refresh on 401.
+///   2. [_ErrorInterceptor]   — normalise Dio errors into [ApiException].
+///   3. [_LoggingInterceptor] — debug-only, redacts sensitive headers.
 class ApiClient {
   ApiClient._() : _dio = _buildDio();
 
@@ -45,15 +48,22 @@ class ApiClient {
   }
 }
 
-// Interceptors.
+// ─── Interceptors ────────────────────────────────────────────────────────────
 
-/// Result of a refresh attempt, so callers can tell "try again later" apart from "session is dead.
+/// Result of a refresh attempt, so callers can tell "try again
+/// later" apart from "session is dead, send the user to login".
 enum RefreshOutcome { refreshed, transientFailure, deadSession }
 
 /// HTTP exchange with the Firebase securetoken endpoint.
+///
 /// Takes the stored refresh token, returns the fresh token pair.
-typedef SecureTokenExchange =
-    Future<SecureTokenPair> Function(String refreshToken);
+/// Throws [UnrecoverableRefreshException] when the session itself is
+/// dead (rejected/revoked refresh token, disabled user) and
+/// [TransientRefreshException] for anything worth retrying later
+/// (timeout, network, 5xx, unexpected shape).
+typedef SecureTokenExchange = Future<SecureTokenPair> Function(
+  String refreshToken,
+);
 
 /// Fresh tokens from a securetoken exchange.
 class SecureTokenPair {
@@ -79,10 +89,26 @@ class TransientRefreshException implements Exception {
 }
 
 /// Injects the stored Firebase ID token and keeps it alive.
-/// The ID token is a short-lived JWT issued by Firebase — expired after 1 hour.
-/// Proactive: [onRequest] decodes the token's `exp` claim (no verification.
-/// When the refresh token itself is rejected.
-/// Public (rather than private) so tests can drive the full 401 → refresh → retry flow with an in-memory token store.
+///
+/// The ID token is a short-lived JWT issued by Firebase — expired after
+/// 1 hour. Two mechanisms prevent the old "works for an hour, then 401
+/// forever" death spiral:
+///
+///   * Proactive: [onRequest] decodes the token's `exp` claim (no
+///     verification — expiry is not a trust decision) and refreshes
+///     up to 5 minutes before expiry, so most requests never 401.
+///   * Reactive: on 401, one shared refresh runs (concurrent requests
+///     join it instead of stampeding securetoken), then the failed
+///     request is retried exactly once (guarded by [_retriedHeader]).
+///
+/// When the refresh token itself is rejected, the session is
+/// unrecoverable: storage is cleared and [SessionEvents] fires so the
+/// app routes to login instead of sitting in a zombie session.
+///
+/// Public (rather than private) so tests can drive the full
+/// 401 → refresh → retry flow with an in-memory token store and a fake
+/// securetoken exchange. Production always uses the default constructor
+/// (secure storage + real Google endpoint).
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({
     Future<String?> Function()? readAccessToken,
@@ -92,21 +118,23 @@ class AuthInterceptor extends Interceptor {
     Future<void> Function()? clearTokens,
     String Function()? apiKeyProvider,
     SecureTokenExchange? exchange,
-    // Separated for tests: production retries through the shared singleton (same interceptors, same base URL).
+    // Separated for tests: production retries through the shared
+    // singleton (same interceptors, same base URL); tests route the
+    // retry through their own Dio pointed at a local fake backend.
     Future<Response<dynamic>> Function(RequestOptions)? retryFetch,
-  }) : _readAccessToken =
-           readAccessToken ?? SecureTokenStore.instance.readAccessToken,
-       _saveAccessToken =
-           saveAccessToken ?? SecureTokenStore.instance.saveAccessToken,
-       _readRefreshToken =
-           readRefreshToken ?? SecureTokenStore.instance.readRefreshToken,
-       _saveRefreshToken =
-           saveRefreshToken ?? SecureTokenStore.instance.saveRefreshToken,
-       _clearTokens = clearTokens ?? SecureTokenStore.instance.clearAll,
-       _apiKeyProvider = apiKeyProvider ?? (() => Env.firebaseWebApiKey),
-       _exchange = exchange ?? secureTokenExchange,
-       _retryFetch =
-           retryFetch ?? ((opts) => ApiClient.instance.dio.fetch(opts));
+  })  : _readAccessToken =
+            readAccessToken ?? SecureTokenStore.instance.readAccessToken,
+        _saveAccessToken =
+            saveAccessToken ?? SecureTokenStore.instance.saveAccessToken,
+        _readRefreshToken =
+            readRefreshToken ?? SecureTokenStore.instance.readRefreshToken,
+        _saveRefreshToken =
+            saveRefreshToken ?? SecureTokenStore.instance.saveRefreshToken,
+        _clearTokens = clearTokens ?? SecureTokenStore.instance.clearAll,
+        _apiKeyProvider = apiKeyProvider ?? (() => Env.firebaseWebApiKey),
+        _exchange = exchange ?? secureTokenExchange,
+        _retryFetch =
+            retryFetch ?? ((opts) => ApiClient.instance.dio.fetch(opts));
 
   final Future<String?> Function() _readAccessToken;
   final Future<void> Function(String) _saveAccessToken;
@@ -117,7 +145,9 @@ class AuthInterceptor extends Interceptor {
   final SecureTokenExchange _exchange;
   final Future<Response<dynamic>> Function(RequestOptions) _retryFetch;
 
-  /// Header marking a request that already went through one refresh-and-retry cycle.
+  /// Header marking a request that already went through one
+  /// refresh-and-retry cycle — prevents infinite 401 loops when the
+  /// server keeps rejecting even a fresh token.
   static const _retriedHeader = 'x-matchup-retried';
 
   /// Refreshes with a 5-minute expiry skew.
@@ -126,7 +156,11 @@ class AuthInterceptor extends Interceptor {
   /// Coalesces concurrent refreshes into one network call.
   Future<RefreshOutcome>? _refreshInFlight;
 
-  /// Cooldown after a failed refresh: when Google is unreachable.
+  /// Cooldown after a failed refresh: when Google is unreachable (dead
+  /// emulator DNS, airplane mode), every request would otherwise burn
+  /// ~30s on doomed refresh attempts before surfacing its 401. Skip
+  /// the network call while a recent failure is still fresh so errors
+  /// surface fast; the next attempt happens automatically afterwards.
   static const _failureCooldown = Duration(seconds: 60);
   DateTime? _lastRefreshFailureAt;
 
@@ -138,6 +172,8 @@ class AuthInterceptor extends Interceptor {
     var token = await _readAccessToken();
     if (token != null && token.isNotEmpty) {
       // Proactive refresh: never send a token that dies mid-flight.
+      // Best-effort — a failed proactive refresh still sends the old
+      // token and lets the reactive path handle a 401.
       if (isIdTokenExpiringSoon(token, skew: _refreshSkew)) {
         final outcome = await _sharedRefresh();
         if (outcome == RefreshOutcome.refreshed) {
@@ -156,7 +192,9 @@ class AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Suspension signal: never retried, never refreshed — broadcast so the UI gates to the suspended interstitial.
+    // Suspension signal: never retried, never refreshed — broadcast so
+    // the UI gates to the suspended interstitial. Tokens are kept (the
+    // user needs them to file and track an appeal).
     final body = err.response?.data;
     final errBody = body is Map ? body['error'] : null;
     final code = (errBody is Map ? errBody['code'] : null) as String?;
@@ -181,6 +219,10 @@ class AuthInterceptor extends Interceptor {
           return handler.resolve(response);
         } on DioException catch (e) {
           // Retry failed too — fall through to the original error.
+          // Logged (with status, never the token) because a 401 here
+          // after a successful refresh means the backend rejects even
+          // fresh tokens — check the backend `[auth] verifyIdToken
+          // rejected:` line for expired vs revoked vs invalid.
           debugPrint(
             '[ApiClient] retry after refresh failed: '
             'HTTP ${e.response?.statusCode} ${opts.path}',
@@ -196,7 +238,9 @@ class AuthInterceptor extends Interceptor {
     handler.next(err);
   }
 
-  /// Returns the in-flight refresh, or starts one.
+  /// Returns the in-flight refresh, or starts one. Guarantees at most
+  /// one securetoken call at a time no matter how many requests 401
+  /// together.
   Future<RefreshOutcome> _sharedRefresh() {
     return _refreshInFlight ??= _tryRefreshFirebaseToken().whenComplete(
       () => _refreshInFlight = null,
@@ -204,6 +248,8 @@ class AuthInterceptor extends Interceptor {
   }
 
   /// Exchanges the stored Firebase refresh token for a fresh ID token.
+  /// Transient failures are retried once inside [_exchange]; rejections
+  /// that mean the session itself is dead surface as [deadSession].
   Future<RefreshOutcome> _tryRefreshFirebaseToken() async {
     final lastFailure = _lastRefreshFailureAt;
     if (lastFailure != null &&
@@ -226,7 +272,10 @@ class AuthInterceptor extends Interceptor {
     }
 
     try {
-      // exp timestamps (not token contents) help diagnose skew.
+      // exp timestamps (not token contents) help diagnose skew: if the
+      // backend keeps 401ing a token whose exp is in the future, the
+      // device clock or revocation — not expiry — is the problem. See
+      // the backend `[auth] verifyIdToken rejected:` line for the cause.
       final now = DateTime.now().millisecondsSinceEpoch;
       final oldExp = await _readAccessToken().then(idTokenExpiryMs);
       final pair = await _exchange(refreshToken);
@@ -254,8 +303,15 @@ class AuthInterceptor extends Interceptor {
   }
 }
 
-/// Default [SecureTokenExchange]: the real Firebase securetoken REST endpoint.
-/// Budget: each attempt fails fast (~10s worst case).
+/// Default [SecureTokenExchange]: the real Firebase securetoken REST
+/// endpoint. Transient failures (timeout, network, 5xx) are retried
+/// once; rejections that mean the session itself is dead throw
+/// [UnrecoverableRefreshException].
+///
+/// Budget: each attempt fails fast (~10s worst case) so a blackholed
+/// route to Google stalls the app for seconds, not half a minute —
+/// the failure cooldown then lets 401s surface immediately until the
+/// network recovers.
 Future<SecureTokenPair> secureTokenExchange(String refreshToken) async {
   final apiKey = Env.firebaseWebApiKey;
   for (var attempt = 0; attempt < 2; attempt++) {
@@ -269,7 +325,9 @@ Future<SecureTokenPair> secureTokenExchange(String refreshToken) async {
               'refresh_token': refreshToken,
             },
             options: Options(
-              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
               sendTimeout: const Duration(seconds: 8),
               receiveTimeout: const Duration(seconds: 8),
             ),
@@ -277,10 +335,10 @@ Future<SecureTokenPair> secureTokenExchange(String refreshToken) async {
           .timeout(const Duration(seconds: 10));
 
       final data = res.data;
-      final newIdToken = data is Map ? data['id_token'] as String? : null;
-      final newRefreshToken = data is Map
-          ? data['refresh_token'] as String?
-          : null;
+      final newIdToken =
+          data is Map ? data['id_token'] as String? : null;
+      final newRefreshToken =
+          data is Map ? data['refresh_token'] as String? : null;
 
       if (newIdToken == null || newIdToken.isEmpty) {
         throw const TransientRefreshException('empty id_token in response');
@@ -299,9 +357,7 @@ Future<SecureTokenPair> secureTokenExchange(String refreshToken) async {
         );
       }
       final status = e.response?.statusCode;
-      debugPrint(
-        '[ApiClient] token refresh HTTP $status: ${_refreshErrorMessage(e)}',
-      );
+      debugPrint('[ApiClient] token refresh HTTP $status: ${_refreshErrorMessage(e)}');
       continue;
     } catch (e) {
       debugPrint('[ApiClient] token refresh failed: $e');
@@ -321,7 +377,9 @@ String? _refreshErrorMessage(DioException e) {
   return e.message;
 }
 
-/// True when the securetoken error means the session itself is dead.
+/// True when the securetoken error means the session itself is dead
+/// (bad/expired/revoked refresh token, disabled user) as opposed to a
+/// transient failure worth retrying.
 @visibleForTesting
 bool isUnrecoverableRefreshError(DioException e) {
   final status = e.response?.statusCode;
@@ -332,7 +390,8 @@ bool isUnrecoverableRefreshError(DioException e) {
   if (body is Map && body['error'] is Map) {
     errField = (body['error'] as Map)['message'];
   }
-  final message = errField?.toString() ?? e.message ?? '';
+  final message =
+      errField?.toString() ?? e.message ?? '';
   const deadMarkers = [
     'INVALID_REFRESH_TOKEN',
     'TOKEN_EXPIRED',
@@ -343,7 +402,9 @@ bool isUnrecoverableRefreshError(DioException e) {
   return deadMarkers.any(message.contains);
 }
 
-/// True when [idToken]'s `exp` claim is within [skew] of now.
+/// True when [idToken]'s `exp` claim is within [skew] of now (or the
+/// token is unparseable, in which case refreshing early is the safe
+/// move — the reactive 401 path remains as backstop).
 @visibleForTesting
 bool isIdTokenExpiringSoon(String idToken, {required Duration skew}) {
   final expMs = idTokenExpiryMs(idToken);
@@ -352,6 +413,8 @@ bool isIdTokenExpiringSoon(String idToken, {required Duration skew}) {
 }
 
 /// Epoch-millis `exp` of a JWT without verifying its signature.
+/// Expiry is a freshness hint, not a trust decision — verification
+/// stays server-side. Returns null when missing or unparseable.
 @visibleForTesting
 int? idTokenExpiryMs(String? idToken) {
   if (idToken == null) return null;
@@ -386,7 +449,9 @@ class _ErrorInterceptor extends Interceptor {
   }
 }
 
-/// Debug-only structured logger.
+/// Debug-only structured logger. Redacts the Authorization header value
+/// and logs the URI path only (never query parameters — tokens and PII
+/// travel there) so logs stay safe to paste into tickets.
 class _LoggingInterceptor extends Interceptor {
   static const _startKey = 'log_start_ms';
 
@@ -432,33 +497,43 @@ class _LoggingInterceptor extends Interceptor {
   }
 }
 
-// Response envelope.
-// Every api-server endpoint wraps its payload in `{ok: true, data: T}` on success and `{ok: false, error: {code.
+// ─── Response envelope ────────────────────────────────────────────────────────
+//
+// Every api-server endpoint wraps its payload in `{ok: true, data: T}` on
+// success and `{ok: false, error: {code, message}}` on failure. Dio
+// exposes the whole decoded body as `Response.data`, so repositories
+// must unwrap `.data` before parsing — parsing the envelope itself is
+// the #1 cause of "empty screen with a healthy backend".
 
 /// Returns the `data` payload of an api-server envelope.
-/// If [body] is already the raw payload (no `data` key —.
+///
+/// If [body] is already the raw payload (no `data` key — e.g. a hand-
+/// built mock in a test), it is returned as-is so callers stay
+/// agnostic.
 Object? apiData(Object? body) {
   if (body is Map && body['data'] != null) return body['data'];
   return body;
 }
 
-/// Unwraps an enveloped object payload into a JSON map, or `null` when the payload is missing / not a map.
+/// Unwraps an enveloped object payload into a JSON map, or `null` when
+/// the payload is missing / not a map.
 Map<String, dynamic>? apiDataMap(Object? body) {
   final data = apiData(body);
   return data is Map<String, dynamic>
       ? data
       : data is Map
-      ? Map<String, dynamic>.from(data)
-      : null;
+          ? Map<String, dynamic>.from(data)
+          : null;
 }
 
-/// Unwraps an enveloped list payload.
+/// Unwraps an enveloped list payload. Returns an empty list when the
+/// payload is missing / not a list.
 List<dynamic> apiDataList(Object? body) {
   final data = apiData(body);
   return data is List ? data : const [];
 }
 
-// Domain error types.
+// ─── Domain error types ───────────────────────────────────────────────────────
 
 class ApiException implements Exception {
   const ApiException({
@@ -471,20 +546,22 @@ class ApiException implements Exception {
   final String userMessage;
   final String? code;
 
-  /// True when the backend reports a suspended account (403 + `ACCOUNT_SUSPENDED`).
+  /// True when the backend reports a suspended account (403 +
+  /// `ACCOUNT_SUSPENDED`). Distinct from other 403s (e.g. host-only
+  /// actions) — drives the global suspended gate, not an error toast.
   bool get isAccountSuspended =>
       statusCode == 403 && code == 'ACCOUNT_SUSPENDED';
 
   factory ApiException.fromDio(DioException err) {
     final status = err.response?.statusCode;
-    // Error bodies are enveloped as `{ok: false, error: {code, message}}`.
+    // Error bodies are enveloped as `{ok: false, error: {code,
+    // message}}`; fall back to top-level `message`/`code` for
+    // non-enveloped payloads (e.g. Firebase REST errors).
     final body = err.response?.data;
     final errBody = body is Map ? body['error'] : null;
-    final serverMsg =
-        (errBody is Map ? errBody['message'] : null) as String? ??
+    final serverMsg = (errBody is Map ? errBody['message'] : null) as String? ??
         (body is Map ? body['message'] as String? : null);
-    final serverCode =
-        (errBody is Map ? errBody['code'] : null) as String? ??
+    final serverCode = (errBody is Map ? errBody['code'] : null) as String? ??
         (body is Map ? body['code'] as String? : null);
 
     return switch (err.type) {
@@ -506,18 +583,17 @@ class ApiException implements Exception {
     };
   }
 
-  static String _defaultMessage(int? status, {String? code}) =>
-      switch (status) {
-        400 => 'Invalid request. Please check your input.',
-        401 => 'Session expired. Please sign in again.',
-        403 when code == 'ACCOUNT_SUSPENDED' =>
-          'Your account has been suspended.',
-        403 => 'You don\'t have permission to do this.',
-        404 => 'The requested resource was not found.',
-        429 => 'Too many requests. Please wait a moment.',
-        500 || 502 || 503 => 'Server error. Please try again later.',
-        _ => 'Something went wrong. Please try again.',
-      };
+  static String _defaultMessage(int? status, {String? code}) => switch (status) {
+    400 => 'Invalid request. Please check your input.',
+    401 => 'Session expired. Please sign in again.',
+    403 when code == 'ACCOUNT_SUSPENDED' =>
+      'Your account has been suspended.',
+    403 => 'You don\'t have permission to do this.',
+    404 => 'The requested resource was not found.',
+    429 => 'Too many requests. Please wait a moment.',
+    500 || 502 || 503 => 'Server error. Please try again later.',
+    _ => 'Something went wrong. Please try again.',
+  };
 
   @override
   String toString() => 'ApiException($statusCode: $userMessage)';

@@ -10,22 +10,33 @@ import { adminAnalyticsRouter } from './analytics.routes.js';
 import { adminAuditLogRouter } from './audit.routes.js';
 import { getDashboardHandler } from './analytics.controller.js';
 
-/** Admin API namespace (`/api/admin/*`). */
+/**
+ * Admin API namespace (`/api/admin/*`). Every sub-router enforces
+ * `requireAuth + requireAdmin` per route — no open admin endpoints.
+ */
 export const adminRouter = Router();
 
 /** Login gate for the admin web: proves the caller's token is admin. */
 adminRouter.get('/me', requireAuth, requireAdmin, (req, res) => {
-  return res.status(200).json({
-    ok: true,
-    data: {
-      uid: req.auth?.uid,
-      email: typeof req.auth?.token.email === 'string' ? req.auth.token.email : null,
-      admin: true,
-    },
-  });
+    return res.status(200).json({
+        ok: true,
+        data: {
+            uid: req.auth?.uid,
+            email:
+                typeof req.auth?.token.email === 'string'
+                    ? req.auth.token.email
+                    : null,
+            admin: true,
+        },
+    });
 });
 
-adminRouter.get('/dashboard', requireAuth, requireAdmin, getDashboardHandler);
+adminRouter.get(
+    '/dashboard',
+    requireAuth,
+    requireAdmin,
+    getDashboardHandler,
+);
 adminRouter.use('/members', adminMembersRouter);
 adminRouter.use('/activities', adminActivitiesRouter);
 adminRouter.use('/appeals', adminAppealsRouter);

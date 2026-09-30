@@ -111,7 +111,11 @@ class ImageProcessor {
 
   /// Compress image to target size
   Future<String> compressImage(String base64Image) async {
-    // Image pipeline placeholder: returns the base64 input unchanged for now.
+    // In a real implementation, this would:
+    // 1. Decode the base64 image
+    // 2. Resize if dimensions exceed limits
+    // 3. Compress to JPEG with quality that targets ~500KB
+    // 4. Return compressed base64 string
     return base64Image; // Placeholder - return as-is for now
   }
 }

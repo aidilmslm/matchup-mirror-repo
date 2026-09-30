@@ -2,9 +2,12 @@ import '../../../core/network/api_client.dart';
 import '../domain/appeal_model.dart';
 
 /// Server-backed moderation appeals (`/api/appeals`).
-/// These endpoints are suspension-safe by design: a suspended account keeps its tokens precisely.
+///
+/// These endpoints are suspension-safe by design: a suspended account
+/// keeps its tokens precisely so it can file and track an appeal.
 abstract class AppealRepository {
-  /// Files a suspension appeal.
+  /// Files a suspension appeal. Throws [ApiException] — including 409
+  /// when a pending appeal already exists.
   Future<AppealModel> submitSuspensionAppeal({required String statement});
 
   /// The caller's appeals, newest-first.
@@ -45,7 +48,10 @@ class RemoteAppealRepository implements AppealRepository {
   }
 }
 
-/// Appeals require a live backend — there is no honest offline fallback.
+/// Appeals require a live backend — there is no honest offline fallback
+/// (a "submitted" appeal that never reaches triage would be a lie).
+/// Throws [ApiException] (not [UnimplementedError]) so the suspended
+/// interstitial surfaces a friendly message instead of crashing.
 class UnavailableAppealRepository implements AppealRepository {
   @override
   Future<AppealModel> submitSuspensionAppeal({required String statement}) {

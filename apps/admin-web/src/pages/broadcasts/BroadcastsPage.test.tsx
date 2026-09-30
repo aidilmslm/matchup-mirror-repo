@@ -55,14 +55,8 @@ describe('BroadcastsPage audit fixes', () => {
   it('F2: Schedule validates a future datetime and creates with scheduledAt', async () => {
     const handleCreate = vi.fn().mockResolvedValue({});
     useBroadcastsMock.mockReturnValue({
-      loading: false,
-      error: null,
-      broadcasts: [],
-      reload: vi.fn(),
-      handleCreate,
-      handleDelete: vi.fn(),
-      handleSend: vi.fn(),
-      handleUpdate: vi.fn(),
+      loading: false, error: null, broadcasts: [], reload: vi.fn(),
+      handleCreate, handleDelete: vi.fn(), handleSend: vi.fn(), handleUpdate: vi.fn(),
     });
     const user = userEvent.setup();
     render(<BroadcastsPage />);
@@ -78,11 +72,7 @@ describe('BroadcastsPage audit fixes', () => {
   });
 
   it('F3: draft/scheduled rows have an Edit button opening an edit dialog', async () => {
-    mockHook([
-      makeBroadcast({ id: 'b1', status: 'Draft' }),
-      makeBroadcast({ id: 'b2', status: 'Scheduled' }),
-      makeBroadcast({ id: 'b3', status: 'Sent' }),
-    ]);
+    mockHook([makeBroadcast({ id: 'b1', status: 'Draft' }), makeBroadcast({ id: 'b2', status: 'Scheduled' }), makeBroadcast({ id: 'b3', status: 'Sent' })]);
     const user = userEvent.setup();
     render(<BroadcastsPage />);
     expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2);
@@ -94,22 +84,13 @@ describe('BroadcastsPage audit fixes', () => {
   it('F3: saving the edit dialog calls handleUpdate', async () => {
     const handleUpdate = vi.fn().mockResolvedValue({});
     useBroadcastsMock.mockReturnValue({
-      loading: false,
-      error: null,
-      broadcasts: [makeBroadcast()],
-      reload: vi.fn(),
-      handleCreate: vi.fn(),
-      handleDelete: vi.fn(),
-      handleSend: vi.fn(),
-      handleUpdate,
+      loading: false, error: null, broadcasts: [makeBroadcast()], reload: vi.fn(),
+      handleCreate: vi.fn(), handleDelete: vi.fn(), handleSend: vi.fn(), handleUpdate,
     });
     const user = userEvent.setup();
     render(<BroadcastsPage />);
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(handleUpdate).toHaveBeenCalledWith(
-      'b1',
-      expect.objectContaining({ title: 'Draft one' }),
-    );
+    expect(handleUpdate).toHaveBeenCalledWith('b1', expect.objectContaining({ title: 'Draft one' }));
   });
 });

@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../theme/app_spacing.dart';
 import '../theme/dark_colors.dart';
 
-/// A single shimmering skeleton block.
+/// A single shimmering skeleton block. Sweeps a soft highlight band
+/// left-to-right across a muted base, the standard "content is loading"
+/// treatment — distinct from a flat pulsing block, which reads as "this is
+/// broken" more than "this is loading" (PRD Section 1.6 / Appendix D.3).
 class SkeletonBox extends StatefulWidget {
   const SkeletonBox({super.key, this.width, this.height = 16, this.radius = 8});
 
@@ -33,7 +36,8 @@ class _SkeletonBoxState extends State<SkeletonBox>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        // Sweep runs from -1.5..1.5 so the highlight band fully enters and exits the box rather than snapping.
+        // Sweep runs from -1.5..1.5 so the highlight band fully enters and
+        // exits the box rather than snapping between two solid states.
         final t = _controller.value;
         final start = -1.5 + 3.0 * t;
         return ShaderMask(
@@ -117,6 +121,8 @@ class ActivityCardSkeleton extends StatelessWidget {
 }
 
 /// Skeleton for a compact list row — avatar/thumbnail + two lines of text.
+/// Matches the shape of a notification row, a participant row, or a
+/// conversation row (Messages).
 class ListRowSkeleton extends StatelessWidget {
   const ListRowSkeleton({super.key});
 
@@ -144,13 +150,17 @@ class ListRowSkeleton extends StatelessWidget {
   }
 }
 
-/// Skeleton for the My Activities compact card shape — thumbnail, chip row, title, meta row.
+/// Skeleton for the My Activities compact card shape — thumbnail, chip row,
+/// title, meta row. Mirrors `_ActivityListCard` so the loading state doesn't
+/// jump when real data arrives.
 class ActivityListCardSkeleton extends StatelessWidget {
   const ActivityListCardSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Mirrors _CompactCard (My Games) exactly: x3 outer padding, 72px thumbnail, x3 gaps.
+    // Mirrors _CompactCard (My Games) exactly: x3 outer padding, 72px
+    // thumbnail, x3 gaps — any drift reintroduces the layout jump this
+    // skeleton exists to prevent. Keep in sync when the card changes.
     return Container(
       padding: const EdgeInsets.all(AppSpacing.x3),
       decoration: BoxDecoration(
@@ -187,7 +197,8 @@ class ActivityListCardSkeleton extends StatelessWidget {
   }
 }
 
-/// Renders [count] [ListRowSkeleton] items as a loading placeholder for scrollable lists.
+/// Renders [count] [ListRowSkeleton] items as a loading placeholder for
+/// any screen that shows a scrollable list of simple rows.
 class SkeletonList extends StatelessWidget {
   const SkeletonList({super.key, this.count = 5});
 

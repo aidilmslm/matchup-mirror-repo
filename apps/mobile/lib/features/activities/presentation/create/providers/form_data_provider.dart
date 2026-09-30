@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Sentinel distinguishing "argument omitted" from an explicit null.
+/// Sentinel distinguishing "argument omitted" from an explicit null
+/// (needed for [ActivityFormData.copyWith] to clear [minPlayers]).
 const _unset = Object();
 
 /// Form data model for the wizard
@@ -9,14 +10,21 @@ class ActivityFormData {
   final String sportType;
 
   /// Local file path of the cover image picked by the user, if any.
+  /// Stored as a path (not base64) so we don't blow up the form draft
+  /// on every keystroke. The actual upload to Firebase Storage
+  /// happens in `_submit()` and produces a public URL the backend can
+  /// fetch.
   final String? coverImagePath;
   final DateTime? selectedDate;
   final String location;
 
   /// Full address of the picked venue (`PlaceSuggestion.secondary`).
+  /// Empty when the user typed a custom location or nothing was picked
+  /// — the backend then stores no `address`.
   final String venueAddress;
 
-  /// Picked venue coordinates.
+  /// Picked venue coordinates. Persisted so a restored draft keeps the
+  /// accurate pin instead of falling back to the default on submit.
   final double? venueLatitude;
   final double? venueLongitude;
   final String description;
@@ -26,18 +34,23 @@ class ActivityFormData {
   final String? price;
 
   /// Paid pricing mode: 0 = Fixed per person, 1 = Split total cost.
+  /// Only meaningful when [feeType] == 1.
   final int priceMode;
 
-  /// Minimum players for split mode (worst-case divisor).
+  /// Minimum players for split mode (worst-case divisor). Null (or <= 0)
+  /// means full capacity. Clamped to 2..maxParticipants at submit.
   final int? minPlayers;
 
-  /// How long the activity runs, in minutes.
+  /// How long the activity runs, in minutes. Default 120 (2h) matches the
+  /// assumption the detail screen used before this field existed.
   final int durationMinutes;
 
   /// Who can discover and join: 'Public', 'Friends', or 'Invite only'.
+  /// Captured on step 2 of the wizard and surfaced in the live preview.
   final String visibility;
 
-  /// Backend join policy: 'open' (instant join) or 'approval' (host must approve each request).
+  /// Backend join policy: 'open' (instant join) or 'approval' (host
+  /// must approve each request). Matches `ActivityRecord.joinPolicy`.
   final String joinPolicy;
 
   const ActivityFormData({
@@ -76,7 +89,9 @@ class ActivityFormData {
     int? feeType,
     String? price,
     int? priceMode,
-    // Nullable on purpose: passing an explicit null CLEARS the minimum (full house).
+    // Nullable on purpose: passing an explicit null CLEARS the minimum
+    // (full house). A plain `??` would make "clear" impossible — the
+    // stepper's "+" at max-1 would silently stick (the min-players bug).
     Object? minPlayers = _unset,
     int? durationMinutes,
     String? visibility,
@@ -184,7 +199,8 @@ class FormDataNotifier extends StateNotifier<ActivityFormData> {
     state = state.copyWith(location: location);
   }
 
-  /// Records a picked venue: display name goes to the form fields.
+  /// Records a picked venue: display name goes to [location], the full
+  /// address and coordinates ride along for submit + draft restore.
   void setVenue({
     required String label,
     required String address,
@@ -206,7 +222,8 @@ class FormDataNotifier extends StateNotifier<ActivityFormData> {
   void setMaxParticipants(int participants) {
     final clamped = participants.clamp(2, 50);
     final min = state.minPlayers;
-    // A minimum that no longer fits the new capacity collapses to full house instead of lingering as an invalid value.
+    // A minimum that no longer fits the new capacity collapses to
+    // full house instead of lingering as an invalid value.
     state = state.copyWith(
       maxParticipants: clamped,
       minPlayers: (min != null && min >= clamped) ? null : min,
@@ -233,8 +250,7 @@ class FormDataNotifier extends StateNotifier<ActivityFormData> {
     state = state.copyWith(minPlayers: min);
   }
 
-  void setDurationMinutes(int minutes) {
-    state = state.copyWith(durationMinutes: minutes);
+  void setDurationMinutes(int minutes) {    state = state.copyWith(durationMinutes: minutes);
   }
 
   void setVisibility(String visibility) {
@@ -259,6 +275,7 @@ class FormDataNotifier extends StateNotifier<ActivityFormData> {
 }
 
 /// Tracks which fields have been "touched" (user interacted or Next was pressed).
+/// Errors are only shown in the UI for fields present in this set.
 final formDirtyFieldsProvider =
     StateNotifierProvider<FormDirtyNotifier, Set<String>>(
       (ref) => FormDirtyNotifier(),
@@ -295,13 +312,15 @@ class FormDirtyNotifier extends StateNotifier<Set<String>> {
   }
 }
 
-/// All validation errors regardless of dirty state.
+/// All validation errors regardless of dirty state — used internally and by
+/// NavigationControls to determine if the Next button should be enabled.
 final allFormErrorsProvider = Provider<Map<String, String>>((ref) {
   final formData = ref.watch(formDataProvider);
   return _validate(formData);
 });
 
-/// Validation errors **filtered to dirty fields only**. Widgets should watch this.
+/// Validation errors **filtered to dirty fields only**.
+/// Widgets should watch this — it never shows errors for untouched fields.
 final formErrorsProvider = Provider<Map<String, String>>((ref) {
   final all = ref.watch(allFormErrorsProvider);
   final dirty = ref.watch(formDirtyFieldsProvider);

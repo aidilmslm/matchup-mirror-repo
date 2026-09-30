@@ -17,7 +17,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../domain/app_notification.dart';
 import '../services/push_routing.dart';
 
-// UI extensions on NotificationType.
+// ─── UI extensions on NotificationType ───────────────────────────────────────
 
 extension _NotifTypeUi on NotificationType {
   Color bgColor(BuildContext context) => switch (this) {
@@ -45,13 +45,13 @@ extension _NotifTypeUi on NotificationType {
   };
 }
 
-// Provider.
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 final _notifProvider = FutureProvider.autoDispose<List<AppNotification>>((ref) {
   return ref.watch(notificationRepositoryProvider).all();
 });
 
-// Screen.
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -66,7 +66,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   Future<void> _markAllRead() async {
     final ok = await ref.read(notificationRepositoryProvider).markAllRead();
-    // Resync either way — a failure may be partial.
+    // Resync either way — a failure may be partial (some rows read,
+    // some not) and the feed must reflect the server truth.
     ref.invalidate(_notifProvider);
     if (!ok && mounted) {
       AppSnackbar.show(
@@ -77,7 +78,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
-  /// Marks one row read.
+  /// Marks one row read. Returns the transport result so dismissals
+  /// can be gated on it — a failed row stays put instead of snapping
+  /// back on the resync. Success is silent when [silent] (opening a
+  /// notification must not pop a "Marked as read" snackbar over the
+  /// navigation); swipe-to-read keeps the confirmation.
   Future<bool> _markRead(String id, {bool silent = false}) async {
     final ok = await ref.read(notificationRepositoryProvider).markRead(id);
     // Resync either way so the badge/read state matches the server.
@@ -101,7 +106,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return ok;
   }
 
-  /// Marks the notification read (silently), then deep-links to its screen.
+  /// Marks the notification read (silently), then deep-links to its
+  /// screen. `push` (not `go`) keeps the feed underneath so back
+  /// returns here. Taps without a usable target (report decisions,
+  /// admin broadcasts — null route) open the full message in a sheet
+  /// instead, since the feed card truncates at 2 lines and there is
+  /// nowhere to navigate.
   Future<void> _openNotif(AppNotification notif) async {
     await _markRead(notif.id, silent: true);
     if (!mounted) return;
@@ -113,7 +123,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     NavGuard.push(context, route);
   }
 
-  /// Bottom sheet with the complete title + body + timestamp.
+  /// Bottom sheet with the complete title + body + timestamp. Used for
+  /// target-less notifications (reports, broadcasts) whose full text
+  /// never appears anywhere else.
   void _showFullMessage(AppNotification notif) {
     showModalBottomSheet<void>(
       context: context,
@@ -130,7 +142,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(notif.title, style: AppTypography.titleMedium(context)),
+              Text(
+                notif.title,
+                style: AppTypography.titleMedium(context),
+              ),
               const SizedBox(height: AppSpacing.x2),
               Text(
                 _sheetTimeAgo(notif.createdAt),
@@ -167,10 +182,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       backgroundColor: context.colors.background,
       body: Column(
         children: [
-          // Header.
-          _Header(hasUnread: unreadCount > 0, onMarkAllRead: _markAllRead),
+          // ── Header ──────────────────────────────────────────────────
+          _Header(
+            hasUnread: unreadCount > 0,
+            onMarkAllRead: _markAllRead,
+          ),
 
-          // Tab bar.
+          // ── Tab bar ─────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.x5,
@@ -186,7 +204,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
           ),
 
-          // Notification list.
+          // ── Notification list ────────────────────────────────────────
           Expanded(
             child: async.when(
               loading: () => const SkeletonList(count: 5),
@@ -252,19 +270,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
     final todayItems = items.where((n) => n.createdAt.isAfter(today)).toList();
     final yesterdayItems = items
-        .where(
-          (n) => n.createdAt.isAfter(yesterday) && !n.createdAt.isAfter(today),
-        )
+        .where((n) =>
+            n.createdAt.isAfter(yesterday) && !n.createdAt.isAfter(today))
         .toList();
     final weekItems = items
-        .where(
-          (n) =>
-              n.createdAt.isAfter(weekAgo) && !n.createdAt.isAfter(yesterday),
-        )
+        .where((n) =>
+            n.createdAt.isAfter(weekAgo) && !n.createdAt.isAfter(yesterday))
         .toList();
-    final olderItems = items
-        .where((n) => !n.createdAt.isAfter(weekAgo))
-        .toList();
+    final olderItems =
+        items.where((n) => !n.createdAt.isAfter(weekAgo)).toList();
 
     final result = <Object>[];
     if (todayItems.isNotEmpty) {
@@ -291,7 +305,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 }
 
-// Header.
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
   const _Header({required this.hasUnread, required this.onMarkAllRead});
@@ -371,7 +385,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// Custom tab bar with count badges.
+// ─── Custom tab bar with count badges ────────────────────────────────────────
 
 class _TabBar extends StatelessWidget {
   const _TabBar({
@@ -445,8 +459,13 @@ class _TabItem extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
-            // Theme-aware pair: a hardcoded near-black pill is invisible on a dark background.
-            color: selected ? context.colors.textPrimary : Colors.transparent,
+            // Theme-aware pair: a hardcoded near-black pill is
+            // invisible on a dark background (and white-on-black text
+            // only works when the pill itself reads as a pill).
+            // textPrimary/background clears AA both themes (~13-15:1).
+            color: selected
+                ? context.colors.textPrimary
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
           alignment: Alignment.center,
@@ -459,7 +478,8 @@ class _TabItem extends StatelessWidget {
                   color: selected
                       ? context.colors.background
                       : context.colors.textSecondary,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight:
+                      selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
               if (count > 0) ...[
@@ -495,7 +515,7 @@ class _TabItem extends StatelessWidget {
   }
 }
 
-// Section header.
+// ─── Section header ───────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label});
@@ -518,13 +538,18 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// Swipe to mark read.
+// ─── Swipe to mark read ───────────────────────────────────────────────────────
 
 class _SwipeToRead extends StatelessWidget {
-  const _SwipeToRead({super.key, required this.child, required this.onConfirm});
+  const _SwipeToRead({
+    super.key,
+    required this.child,
+    required this.onConfirm,
+  });
   final Widget child;
 
-  /// Awaited before the row is dismissed: returning `false`.
+  /// Awaited before the row is dismissed: returning `false` (transport
+  /// failure) keeps the row instead of a snap-back refetch surprise.
   final Future<bool> Function() onConfirm;
 
   @override
@@ -543,11 +568,8 @@ class _SwipeToRead extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.done_all_rounded,
-              color: context.colors.primaryOnSurface,
-              size: 18,
-            ),
+            Icon(Icons.done_all_rounded,
+                color: context.colors.primaryOnSurface, size: 18),
             const SizedBox(width: 6),
             Text(
               'Mark read',
@@ -565,7 +587,7 @@ class _SwipeToRead extends StatelessWidget {
   }
 }
 
-// Notification card.
+// ─── Notification card ────────────────────────────────────────────────────────
 
 class _NotifCard extends StatelessWidget {
   const _NotifCard({required this.item, required this.onTap});
@@ -639,9 +661,9 @@ class _NotifCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         item.body!,
-                        style: AppTypography.metaSub(
-                          context,
-                        ).copyWith(fontSize: 13),
+                        style: AppTypography.metaSub(context).copyWith(
+                          fontSize: 13,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -649,9 +671,9 @@ class _NotifCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _timeAgo(item.createdAt),
-                      style: AppTypography.metaSub(
-                        context,
-                      ).copyWith(fontSize: 12),
+                      style: AppTypography.metaSub(context).copyWith(
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -689,7 +711,9 @@ class _NotifCard extends StatelessWidget {
   }
 }
 
-/// Relative timestamp for the full-message sheet (mirrors the card's `_timeAgo` formatting.
+/// Relative timestamp for the full-message sheet (mirrors the card's
+/// `_timeAgo` formatting; kept as a top-level helper because the card
+/// widgets each own a private copy bound to their own classes).
 String _sheetTimeAgo(DateTime dt) {
   final diff = DateTime.now().difference(dt);
   if (diff.inMinutes < 1) return 'Just now';

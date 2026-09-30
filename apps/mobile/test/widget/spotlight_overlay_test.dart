@@ -37,19 +37,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('should render the callout centered when there is no hole rect', (
-    tester,
-  ) async {
-    await pumpOverlay(tester, holeRect: null);
+  testWidgets(
+    'should render the callout centered when there is no hole rect',
+    (tester) async {
+      await pumpOverlay(tester, holeRect: null);
 
-    final calloutFinder = find.text('Callout');
-    expect(calloutFinder, findsOneWidget);
+      final calloutFinder = find.text('Callout');
+      expect(calloutFinder, findsOneWidget);
 
-    // Centered means its horizontal midpoint sits at the screen's
-    // horizontal midpoint.
-    final calloutCenter = tester.getCenter(calloutFinder);
-    expect(calloutCenter.dx, closeTo(screenSize.width / 2, 1));
-  });
+      // Centered means its horizontal midpoint sits at the screen's
+      // horizontal midpoint.
+      final calloutCenter = tester.getCenter(calloutFinder);
+      expect(calloutCenter.dx, closeTo(screenSize.width / 2, 1));
+    },
+  );
 
   testWidgets(
     'should position the callout below the hole when there is room below',
@@ -77,20 +78,25 @@ void main() {
     },
   );
 
-  testWidgets('should invoke onTapScrim when the dimmed area is tapped', (
-    tester,
-  ) async {
-    var tapped = false;
-    const hole = Rect.fromLTWH(20, 100, 200, 80);
+  testWidgets(
+    'should invoke onTapScrim when the dimmed area is tapped',
+    (tester) async {
+      var tapped = false;
+      const hole = Rect.fromLTWH(20, 100, 200, 80);
 
-    await pumpOverlay(tester, holeRect: hole, onTapScrim: () => tapped = true);
+      await pumpOverlay(
+        tester,
+        holeRect: hole,
+        onTapScrim: () => tapped = true,
+      );
 
-    // Tap somewhere clearly outside the hole and outside the callout.
-    await tester.tapAt(const Offset(300, 700));
-    await tester.pumpAndSettle();
+      // Tap somewhere clearly outside the hole and outside the callout.
+      await tester.tapAt(const Offset(300, 700));
+      await tester.pumpAndSettle();
 
-    expect(tapped, isTrue);
-  });
+      expect(tapped, isTrue);
+    },
+  );
 
   testWidgets(
     'should keep the callout within the screen bounds for a hole near the edge',

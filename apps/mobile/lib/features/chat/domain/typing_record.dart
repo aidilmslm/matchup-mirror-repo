@@ -1,5 +1,7 @@
 /// Persisted typing record as returned by the backend.
-/// The backend stores the latest typing state per `(activityId.
+///
+/// The backend stores the latest typing state per `(activityId, uid)`
+/// pair in the Realtime Database at `typing/{activityId}/{uid}`.
 class TypingRecord {
   const TypingRecord({
     required this.activityId,

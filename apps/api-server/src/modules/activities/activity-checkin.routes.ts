@@ -1,7 +1,9 @@
-// Routes for activity checkin.
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.middleware.js';
-import { checkInHandler, getMyCheckInHandler } from './activity-checkin.controller.js';
+import {
+  checkInHandler,
+  getMyCheckInHandler,
+} from './activity-checkin.controller.js';
 
 export const activityCheckInRouter = Router();
 

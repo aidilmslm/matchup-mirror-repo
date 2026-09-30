@@ -1,7 +1,11 @@
-// reports.
 export type ReportStatus = 'Pending' | 'Resolved' | 'Dismissed';
 export type ReportCategory =
-  'Harassment' | 'Spam' | 'Policy Breach' | 'Fraud' | 'Inappropriate Content' | 'Other';
+  | 'Harassment'
+  | 'Spam'
+  | 'Policy Breach'
+  | 'Fraud'
+  | 'Inappropriate Content'
+  | 'Other';
 
 export interface Report {
   id: string;

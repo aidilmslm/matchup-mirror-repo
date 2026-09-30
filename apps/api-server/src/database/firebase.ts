@@ -47,7 +47,8 @@ function createFirebaseApp() {
 
 const firebaseApp = createFirebaseApp();
 
-// Non-secret boot log: lets operators spot a project/email mismatch (the usual cause of UNAUTHENTICATED /.
+// Non-secret boot log: lets operators spot a project/email mismatch
+// (the usual cause of UNAUTHENTICATED / ACCESS_TOKEN_EXPIRED) at a glance.
 if (!process.env.VITEST) {
   console.log(
     `[firebase] project=${env.FIREBASE_PROJECT_ID} clientEmail=${env.FIREBASE_CLIENT_EMAIL}`,

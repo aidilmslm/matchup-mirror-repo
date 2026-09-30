@@ -4,7 +4,8 @@ import '../../../core/network/api_client.dart';
 import '../domain/app_notification.dart';
 import 'notification_repository.dart';
 
-/// Offline-only notification store.
+/// Offline-only notification store. Reads return empty, writes are
+/// no-ops. Notifications only come from the live backend.
 class LocalNotificationRepository implements NotificationRepository {
   @override
   Future<List<AppNotification>> all() async {
@@ -29,17 +30,18 @@ class LocalNotificationRepository implements NotificationRepository {
 
 class RemoteNotificationRepository implements NotificationRepository {
   RemoteNotificationRepository({ApiClient? client})
-    : _client = client ?? ApiClient.instance;
+      : _client = client ?? ApiClient.instance;
 
   final ApiClient _client;
 
   @override
   Future<List<AppNotification>> all() async {
-    // Canonical route is `GET /api/notifications/me` (no `/unread` variant exists on the backend).
+    // Canonical route is `GET /api/notifications/me` (no `/unread`
+    // variant exists on the backend). Transport failures rethrow so
+    // the feed can show its ErrorRetry state instead of a misleading
+    // "no notifications" empty screen.
     final res = await _client.dio.get('/notifications/me');
-    return apiDataList(
-      res.data,
-    ).map(_parse).whereType<AppNotification>().toList();
+    return apiDataList(res.data).map(_parse).whereType<AppNotification>().toList();
   }
 
   @override
@@ -63,6 +65,8 @@ class RemoteNotificationRepository implements NotificationRepository {
   @override
   Future<bool> markAllRead() async {
     // No bulk endpoint on the backend — fan out per-notification.
+    // Individual failures are swallowed so one bad id can't block
+    // the rest, but the overall result reports them.
     try {
       final pending = await unread();
       var ok = true;
@@ -82,13 +86,16 @@ class RemoteNotificationRepository implements NotificationRepository {
     }
   }
 
-  /// Parses one backend row, or `null` when the row is malformed.
+  /// Parses one backend row, or `null` when the row is malformed (the
+  /// caller skips those so one bad row never sinks the whole feed).
+  /// Backend shape: `{notificationId, title, body, type, isRead,
+  /// createdAt: {_seconds,…}, activityId?, senderUid?}`.
   AppNotification? _parse(dynamic raw) {
     final json = raw is Map<String, dynamic>
         ? raw
         : raw is Map
-        ? Map<String, dynamic>.from(raw)
-        : null;
+            ? Map<String, dynamic>.from(raw)
+            : null;
     if (json == null) return null;
     String? clean(Object? v) {
       final s = v?.toString().trim() ?? '';
@@ -96,7 +103,9 @@ class RemoteNotificationRepository implements NotificationRepository {
     }
 
     return AppNotification(
-      id: json['notificationId']?.toString() ?? json['id']?.toString() ?? '',
+      id: json['notificationId']?.toString() ??
+          json['id']?.toString() ??
+          '',
       title: json['title'] as String? ?? '',
       body: json['body'] as String?,
       createdAt: _parseTimestamp(json['createdAt']) ?? DateTime.now(),
@@ -112,7 +121,9 @@ class RemoteNotificationRepository implements NotificationRepository {
     if (raw == null) return null;
     if (raw is String) return DateTime.tryParse(raw);
     if (raw is num) {
-      // Epoch numbers arrive in both precisions: millis (13 digits) and seconds (10 digits).
+      // Epoch numbers arrive in both precisions: millis (13 digits)
+      // and seconds (10 digits). Heuristic shared with the chat
+      // parsers: anything above 1e11 is millis, else seconds.
       final ms = raw.toInt() > 100000000000 ? raw.toInt() : raw.toInt() * 1000;
       return DateTime.fromMillisecondsSinceEpoch(ms);
     }
@@ -130,15 +141,15 @@ class RemoteNotificationRepository implements NotificationRepository {
       case 'chat' || 'chat_message' || 'dm_message':
         return NotificationType.chat;
       case 'activity' ||
-          'activity_reminder' ||
-          'activity_cancelled' ||
-          'activity_completed' ||
-          'activity_left':
+            'activity_reminder' ||
+            'activity_cancelled' ||
+            'activity_completed' ||
+            'activity_left':
         return NotificationType.activity;
       case 'request' ||
-          'activity_interest' ||
-          'activity_joined' ||
-          'join_request':
+            'activity_interest' ||
+            'activity_joined' ||
+            'join_request':
         return NotificationType.request;
       case 'moderation' || 'participant_removed':
         return NotificationType.moderation;

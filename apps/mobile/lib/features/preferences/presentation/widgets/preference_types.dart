@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/dark_colors.dart';
 
-/// Skill level for a single sport preference.
+/// Skill level for a single sport preference. `any` matches the backend
+/// wire value (`wireSkillLevel`/`labelSkillLevel` in `user_repository_impl`
+/// already round-trip it) so "no preference" survives a sync instead of
+/// being coerced to Intermediate.
 enum SkillLevel { beginner, intermediate, advanced, any }
 
 extension SkillLevelX on SkillLevel {

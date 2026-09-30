@@ -21,10 +21,10 @@ AppNotification _notif({
 void main() {
   group('PushPayload.parse', () {
     test('parses type + activityId', () {
-      final p = PushPayload.parse({
-        'type': 'chat_message',
-        'activityId': 'a-1',
-      }, title: 'Hi');
+      final p = PushPayload.parse(
+        {'type': 'chat_message', 'activityId': 'a-1'},
+        title: 'Hi',
+      );
       expect(p, isNotNull);
       expect(p!.type, 'chat_message');
       expect(p.activityId, 'a-1');
@@ -47,9 +47,7 @@ void main() {
   group('routeForPush', () {
     test('chat_message goes to the chat', () {
       expect(
-        routeForPush(
-          const PushPayload(type: 'chat_message', activityId: 'a-1'),
-        ),
+        routeForPush(const PushPayload(type: 'chat_message', activityId: 'a-1')),
         '/chat/a-1',
       );
     });
@@ -57,35 +55,27 @@ void main() {
     test('activity_completed goes to the review screen', () {
       expect(
         routeForPush(
-          const PushPayload(type: 'activity_completed', activityId: 'a-2'),
-        ),
+            const PushPayload(type: 'activity_completed', activityId: 'a-2')),
         '/past-activity/a-2/review',
       );
     });
 
     test('join_request goes to manage', () {
       expect(
-        routeForPush(
-          const PushPayload(type: 'join_request', activityId: 'a-3'),
-        ),
+        routeForPush(const PushPayload(type: 'join_request', activityId: 'a-3')),
         '/manage-activity/a-3',
       );
     });
 
     test('activity events go to detail', () {
       expect(
-        routeForPush(
-          const PushPayload(type: 'activity_joined', activityId: 'a-4'),
-        ),
+        routeForPush(const PushPayload(type: 'activity_joined', activityId: 'a-4')),
         '/activity/a-4',
       );
     });
 
     test('missing activityId falls back to notifications feed', () {
-      expect(
-        routeForPush(const PushPayload(type: 'chat_message')),
-        '/notifications',
-      );
+      expect(routeForPush(const PushPayload(type: 'chat_message')), '/notifications');
     });
 
     test('unknown types have no route (callers no-op)', () {
@@ -95,10 +85,10 @@ void main() {
   });
   group('dm_message routing', () {
     test('parses senderUid', () {
-      final p = PushPayload.parse({
-        'type': 'dm_message',
-        'senderUid': 'u-9',
-      }, title: 'New message from Sam');
+      final p = PushPayload.parse(
+        {'type': 'dm_message', 'senderUid': 'u-9'},
+        title: 'New message from Sam',
+      );
       expect(p, isNotNull);
       expect(p!.senderUid, 'u-9');
     });
@@ -118,38 +108,29 @@ void main() {
     });
   });
 
-  group('routeForNotification', () {
-    test('feed and tray taps agree per backend type', () {
+  group('routeForNotification', () {    test('feed and tray taps agree per backend type', () {
       expect(
-        routeForNotification(
-          _notif(backendType: 'chat_message', activityId: 'a-1'),
-        ),
+        routeForNotification(_notif(backendType: 'chat_message', activityId: 'a-1')),
         '/chat/a-1',
       );
       expect(
-        routeForNotification(
-          _notif(backendType: 'dm_message', senderUid: 'u-9'),
-        ),
+        routeForNotification(_notif(backendType: 'dm_message', senderUid: 'u-9')),
         '/dm/u-9',
       );
       expect(
         routeForNotification(
-          _notif(backendType: 'activity_completed', activityId: 'a-2'),
-        ),
+            _notif(backendType: 'activity_completed', activityId: 'a-2')),
         '/past-activity/a-2/review',
       );
       expect(
-        routeForNotification(
-          _notif(backendType: 'join_request', activityId: 'a-3'),
-        ),
+        routeForNotification(_notif(backendType: 'join_request', activityId: 'a-3')),
         '/manage-activity/a-3',
       );
       // Same display type, different screens: activity_joined goes to
       // detail while join_request goes to manage.
       expect(
         routeForNotification(
-          _notif(backendType: 'activity_joined', activityId: 'a-4'),
-        ),
+            _notif(backendType: 'activity_joined', activityId: 'a-4')),
         '/activity/a-4',
       );
     });

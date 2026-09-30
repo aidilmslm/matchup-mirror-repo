@@ -2,13 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const {
-  loadSessionMock,
-  authSignInMock,
-  authSignOutMock,
-  subscribeSessionRefreshMock,
-  refreshStoredTokenMock,
-} = vi.hoisted(() => ({
+const { loadSessionMock, authSignInMock, authSignOutMock, subscribeSessionRefreshMock, refreshStoredTokenMock } = vi.hoisted(() => ({
   loadSessionMock: vi.fn(),
   authSignInMock: vi.fn(),
   authSignOutMock: vi.fn(),
@@ -49,9 +43,7 @@ function Probe() {
   const { user, loading, sessionExpired, isAuthenticated, signIn, signOut } = useAuth();
   return (
     <div>
-      <div data-testid="user">
-        {user === null ? 'checking' : user === false ? 'signed-out' : user.name}
-      </div>
+      <div data-testid="user">{user === null ? 'checking' : user === false ? 'signed-out' : user.name}</div>
       <div data-testid="loading">{String(loading)}</div>
       <div data-testid="expired">{String(sessionExpired)}</div>
       <div data-testid="authed">{String(isAuthenticated)}</div>
@@ -98,13 +90,12 @@ describe('AuthContext', () => {
   });
 
   it('signs in successfully and clears any prior sessionExpired flag', async () => {
-    // The real authService.signIn() persists a session via saveSession() before resolving.
+    // The real authService.signIn() persists a session via saveSession()
+    // before resolving; mirror that so the TTL effect (which reads
+    // loadSession() once `user` becomes truthy) doesn't see "no session"
+    // and immediately auto-log the freshly signed-in user back out.
     authSignInMock.mockImplementation(async () => {
-      loadSessionMock.mockReturnValue({
-        token: 't',
-        user: testUser,
-        expiresAt: Date.now() + 60_000,
-      });
+      loadSessionMock.mockReturnValue({ token: 't', user: testUser, expiresAt: Date.now() + 60_000 });
       return { user: testUser };
     });
     const user = userEvent.setup();
@@ -201,7 +192,10 @@ describe('AuthContext', () => {
   });
 
   it('auto logs out on a storage event for the session key while a session is still resolvable', async () => {
-    // autoLogoutIfSession only proceeds when loadSession() is still truthy at the moment the storage event fires.
+    // autoLogoutIfSession only proceeds when loadSession() is still
+    // truthy at the moment the storage event fires (e.g. the session
+    // was replaced/rotated by another tab, not cleared) — see
+    // AuthContext.tsx's autoLogoutIfSession guard.
     loadSessionMock.mockReturnValue({ token: 't', user: testUser, expiresAt: Date.now() + 60_000 });
     authSignOutMock.mockResolvedValue(undefined);
 
@@ -222,7 +216,10 @@ describe('AuthContext', () => {
   });
 
   it('does not auto log out on a storage event once the session has actually been cleared', async () => {
-    // Documents the guard's current behavior: by the time the listener runs.
+    // Documents the guard's current behavior: by the time the listener
+    // runs, loadSession() already reflects the other tab's removal, so
+    // `!loadSession()` short-circuits autoLogoutIfSession — the "another
+    // tab signed out" case does not reach performAutoLogout via this path.
     loadSessionMock.mockReturnValue({ token: 't', user: testUser, expiresAt: Date.now() + 60_000 });
     authSignOutMock.mockResolvedValue(undefined);
 

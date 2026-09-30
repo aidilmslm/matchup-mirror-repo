@@ -1,4 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -20,7 +27,12 @@ function readStoredTheme(): Theme | null {
   return null;
 }
 
-// Applies the theme app-wide: the `dark` class on <html> drives Tailwind's `darkMode: 'class'` variants, the same.
+/// Applies the theme app-wide: the `dark` class on <html> drives
+/// Tailwind's `darkMode: 'class'` variants, the same class on <body>
+/// drives the `body:not(.dark)` light-mode overrides in index.css
+/// (body never inherited the class before, so those rules always won
+/// on specificity and dark mode appeared broken), and `data-theme` +
+/// `color-scheme` keep form controls consistent.
 function applyTheme(theme: Theme) {
   const dark = theme === 'dark';
   for (const el of [document.documentElement, document.body]) {
@@ -33,7 +45,9 @@ function applyTheme(theme: Theme) {
 function initialTheme(): Theme {
   const stored = readStoredTheme();
   if (stored != null) return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -50,7 +64,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const toggle = useCallback(() => setTheme((t) => (t === 'dark' ? 'light' : 'dark')), []);
 
-  return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={{ theme, toggle }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

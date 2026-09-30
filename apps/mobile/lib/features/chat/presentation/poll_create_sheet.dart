@@ -9,7 +9,10 @@ import '../../../core/theme/dark_colors.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../../../core/widgets/pressable_scale.dart';
 
-/// Bottom sheet for creating a single-choice group-chat poll ("Play at 4 or 5?").
+/// Bottom sheet for creating a single-choice group-chat poll
+/// ("Play at 4 or 5?"). Reached from the composer's `+` menu.
+/// Returns `true` via pop when the poll was created so the caller can
+/// confirm and scroll it into view (it lands at the timeline end).
 class PollCreateSheet extends ConsumerStatefulWidget {
   const PollCreateSheet({super.key, required this.activityId});
   final String activityId;
@@ -52,10 +55,8 @@ class _PollCreateSheetState extends ConsumerState<PollCreateSheet> {
   Future<void> _create() async {
     if (_saving) return;
     final question = _questionCtrl.text.trim();
-    final options = _optionCtrls
-        .map((c) => c.text.trim())
-        .where((o) => o.isNotEmpty)
-        .toList();
+    final options =
+        _optionCtrls.map((c) => c.text.trim()).where((o) => o.isNotEmpty).toList();
     if (question.isEmpty || options.length < 2) {
       AppSnackbar.show(
         context,
@@ -91,13 +92,12 @@ class _PollCreateSheetState extends ConsumerState<PollCreateSheet> {
       return;
     }
     setState(() => _saving = true);
-    final pollId = await ref
-        .read(chatRepositoryProvider)
-        .createPoll(
-          activityId: widget.activityId,
-          question: question,
-          options: options,
-        );
+    final pollId =
+        await ref.read(chatRepositoryProvider).createPoll(
+              activityId: widget.activityId,
+              question: question,
+              options: options,
+            );
     if (!mounted) return;
     if (pollId == null) {
       setState(() => _saving = false);
@@ -114,13 +114,13 @@ class _PollCreateSheetState extends ConsumerState<PollCreateSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: BoxDecoration(
           color: context.colors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.fromLTRB(
           AppSpacing.x5,
@@ -205,11 +205,9 @@ class _PollCreateSheetState extends ConsumerState<PollCreateSheet> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.add_circle_outline_rounded,
-                        size: 18,
-                        color: context.colors.primaryOnSurface,
-                      ),
+                      Icon(Icons.add_circle_outline_rounded,
+                          size: 18,
+                          color: context.colors.primaryOnSurface),
                       const SizedBox(width: 6),
                       Text(
                         'Add option',
@@ -226,7 +224,8 @@ class _PollCreateSheetState extends ConsumerState<PollCreateSheet> {
             PressableScale(
               onTap: _saving ? null : _create,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.x4),
+                padding:
+                    const EdgeInsets.symmetric(vertical: AppSpacing.x4),
                 decoration: BoxDecoration(
                   color: _saving
                       ? context.colors.surfaceMuted
@@ -300,9 +299,9 @@ class _SheetTextBox extends StatelessWidget {
             maxLength: maxLength,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: AppTypography.bodyMedium(
-                context,
-              ).copyWith(color: context.colors.textTertiary),
+              hintStyle: AppTypography.bodyMedium(context).copyWith(
+                color: context.colors.textTertiary,
+              ),
               border: InputBorder.none,
               counterText: '',
             ),

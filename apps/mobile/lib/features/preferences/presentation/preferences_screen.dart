@@ -28,7 +28,8 @@ class PreferencesScreen extends ConsumerStatefulWidget {
 }
 
 class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
-  /// Offline fallback catalog — used only when the server sports config is empty/unreachable.
+  /// Offline fallback catalog — used only when the server sports config
+  /// is empty/unreachable (same pattern as onboarding/filter/create).
   static const List<SportOption> _fallbackSports = [
     SportOption(name: 'Basketball', icon: Icons.sports_basketball),
     SportOption(name: 'Tennis', icon: Icons.sports_tennis),
@@ -57,7 +58,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
   static const double _minDistance = 1;
   static const double _maxDistance = 50;
 
-  // Read initial values from providers on first build.
+  // ── Read initial values from providers on first build ─────────────────────
   bool _initialised = false;
   void _initFromProviders() {
     if (_initialised) return;
@@ -78,7 +79,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
     );
   }
 
-  // Persist to providers whenever user applies.
+  // ── Persist to providers whenever user applies ────────────────────────────
   void _applyToProviders() {
     ref
         .read(sportPreferencesProvider.notifier)
@@ -146,14 +147,15 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
     _price = PricePreference.both;
   });
 
-  /// Applies locally, then syncs the sport picks to the backend profile so they survive reinstalls and seed Discover.
+  /// Applies locally, then syncs the sport picks to the backend profile
+  /// so they survive reinstalls and seed Discover on other devices.
+  /// A sync failure keeps the local result and still navigates — the
+  /// next Apply retries the sync.
   Future<void> _onApply() async {
     _applyToProviders();
     if (_selected.isNotEmpty) {
       try {
-        await ref
-            .read(userRepositoryProvider)
-            .updateProfile(
+        await ref.read(userRepositoryProvider).updateProfile(
               sports: [
                 for (final e in _selected.entries)
                   (sport: e.key, level: e.value.label),
@@ -177,7 +179,8 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
   @override
   Widget build(BuildContext context) {
     _initFromProviders();
-    // Server-driven catalog (filter surface); bundled list is the offline fallback so a failed fetch never empties.
+    // Server-driven catalog (filter surface); bundled list is the
+    // offline fallback so a failed fetch never empties the grid.
     final sports = [
       for (final name in pickSportNames(
         ref.watch(sportsConfigProvider).valueOrNull ?? const [],
@@ -266,7 +269,8 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                   textAlign: TextAlign.center,
                   style: AppTypography.metaSub(context),
                 ),
-                // Honest sync scope: only sports reach the backend profile.
+                // Honest sync scope: only sports reach the backend profile;
+                // distance/price are SharedPreferences-only on this device.
                 Text(
                   'Sports sync to your profile · Distance & price stay on this device',
                   textAlign: TextAlign.center,

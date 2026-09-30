@@ -6,12 +6,24 @@ import 'local_swipes_repository.dart';
 import 'swipes_repository.dart';
 
 /// HTTP-backed [SwipesRepository] for the live MatchUp API.
-/// Endpoints used: `POST /api/swipes` — record/update a decision `GET /api/swipes/me/:activityId` — fetch the current.
-/// On any network failure the [LocalSwipesRepository] is used as a no-op fallback so the discovery screen doesn't.
+///
+/// Endpoints used:
+///   - `POST /api/swipes`              — record/update a decision
+///   - `GET  /api/swipes/me/:activityId` — fetch the current user's decision
+///   - `GET  /api/swipes/me`           — list every decision the user has made
+///
+/// On any network failure the [LocalSwipesRepository] is used as a
+/// no-op fallback so the discovery screen doesn't unwind its swipe
+/// animation. With the local fallback now empty (no in-memory
+/// store), the user's decision is simply lost in the offline case —
+/// the alternative would be a phantom in-memory record that
+/// contradicts the backend on next launch.
 class RemoteSwipesRepository implements SwipesRepository {
-  RemoteSwipesRepository({ApiClient? client, SwipesRepository? fallback})
-    : _client = client ?? ApiClient.instance,
-      _fallback = fallback ?? LocalSwipesRepository();
+  RemoteSwipesRepository({
+    ApiClient? client,
+    SwipesRepository? fallback,
+  })  : _client = client ?? ApiClient.instance,
+        _fallback = fallback ?? LocalSwipesRepository();
 
   final ApiClient _client;
   final SwipesRepository _fallback;
@@ -24,11 +36,17 @@ class RemoteSwipesRepository implements SwipesRepository {
     try {
       await _client.dio.post(
         '/swipes',
-        data: {'activityId': activityId, 'decision': decision.wireValue},
+        data: {
+          'activityId': activityId,
+          'decision': decision.wireValue,
+        },
       );
     } catch (e, st) {
       debugPrint('[RemoteSwipesRepository.save] $e\n$st');
-      // Record locally so a retry stays idempotent.
+      // Record locally so a retry stays idempotent, then rethrow: the
+      // discovery flow surfaces persist failures via `onPersistError`
+      // instead of silently dropping the decision. Only the discovery
+      // flow calls this method, so no other caller needs updating.
       await _fallback.save(activityId: activityId, decision: decision);
       rethrow;
     }
@@ -43,7 +61,8 @@ class RemoteSwipesRepository implements SwipesRepository {
       if (data == null) return null;
       return SwipeDecision.fromWire(data['decision'] as String?);
     } on Exception catch (e) {
-      // 404 is the expected response when the user hasn't swiped yet.
+      // 404 is the expected response when the user hasn't swiped yet —
+      // not an error worth logging at the same level as transport failures.
       final isNotFound = e.toString().contains('404');
       if (!isNotFound) {
         debugPrint('[RemoteSwipesRepository.getDecision] $e');

@@ -1,11 +1,6 @@
-// Routes for sports.
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
-import {
-  listSportsHandler,
-  replaceSportsHandler,
-  updateSportHandler,
-} from './sports.controller.js';
+import { listSportsHandler, replaceSportsHandler, updateSportHandler } from './sports.controller.js';
 
 export const adminSportsRouter = Router();
 

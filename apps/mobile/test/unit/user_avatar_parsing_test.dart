@@ -12,7 +12,11 @@ Dio _cannedDio(Object? payload) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) => handler.resolve(
-        Response(requestOptions: options, statusCode: 200, data: payload),
+        Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: payload,
+        ),
       ),
     ),
   );

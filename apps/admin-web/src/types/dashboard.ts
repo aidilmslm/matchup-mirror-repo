@@ -1,4 +1,4 @@
-// KPI.
+// ─── KPI ──────────────────────────────────────────────────────────────────────
 
 export interface KpiData {
   title: string;
@@ -10,7 +10,7 @@ export interface KpiData {
   sparkColor: string;
 }
 
-// Trend chart.
+// ─── Trend chart ──────────────────────────────────────────────────────────────
 
 export interface TrendPoint {
   day: string;
@@ -18,7 +18,7 @@ export interface TrendPoint {
   signups: number;
 }
 
-// Moderation.
+// ─── Moderation ───────────────────────────────────────────────────────────────
 
 export interface ModerationItem {
   id: string;
@@ -31,7 +31,7 @@ export interface ModerationItem {
   createdAt: string; // ISO
 }
 
-// Activities table.
+// ─── Activities table ─────────────────────────────────────────────────────────
 
 export type MatchStatus = 'Active' | 'Full' | 'Completed' | 'Flagged';
 
@@ -49,7 +49,7 @@ export interface ActivityRow {
   scheduledDate: string; // human-readable
 }
 
-// Dashboard response (full payload from API).
+// ─── Dashboard response (full payload from API) ───────────────────────────────
 
 export interface DashboardData {
   kpis: KpiData[];

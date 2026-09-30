@@ -8,8 +8,18 @@ import '../theme/dark_colors.dart';
 import 'pressable_scale.dart';
 
 /// Full-width segmented pill tab bar.
-/// One rounded container, tabs sit inside it.
-/// Usage: see the constructors below.
+///
+/// One rounded container, tabs sit inside it. The selected tab slides a
+/// blue pill beneath its label; unselected labels are plain text on the
+/// grey track.
+///
+/// ```dart
+/// AppTabBar(
+///   labels: const ['Upcoming', 'Hosting', 'Past'],
+///   selectedIndex: _tab,
+///   onChanged: (i) => setState(() => _tab = i),
+/// )
+/// ```
 class AppTabBar extends StatelessWidget {
   const AppTabBar({
     super.key,

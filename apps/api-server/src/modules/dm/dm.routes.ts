@@ -1,11 +1,10 @@
-// Routes for dm.
 import { Router } from 'express';
 import {
-  getThreadHandler,
-  listConversationsHandler,
-  listDmMessagesHandler,
-  markThreadReadHandler,
-  sendDmHandler,
+    getThreadHandler,
+    listConversationsHandler,
+    listDmMessagesHandler,
+    markThreadReadHandler,
+    sendDmHandler,
 } from './dm.controller.js';
 import { requireAuth } from '../../middleware/auth.middleware.js';
 

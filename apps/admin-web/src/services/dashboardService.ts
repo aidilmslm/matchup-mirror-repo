@@ -1,8 +1,23 @@
-/** Dashboard service — database-backed (Firestore aggregates + reports + activities). */
+/**
+ * Dashboard service — database-backed (Firestore aggregates + reports + activities).
+ *
+ * API contract (all admin-gated):
+ *   GET  /api/admin/dashboard                  → DashboardView (headline numbers)
+ *   GET  /api/admin/analytics?range=7d         → trend series
+ *   GET  /api/admin/activities                 → activities table (first 8)
+ *   GET  /api/reports?status=pending           → moderation queue
+ *   POST /api/reports/:id/resolve { note? }    → void
+ *   POST /api/reports/:id/dismiss { note? }    → void
+ */
 import { fetchReports, reportAction } from './reportsService';
 import { fetchAnalytics } from './analyticsService';
 import { fetchActivities } from './activitiesService';
-import type { ActivityRow, DashboardData, KpiData, ModerationItem } from '../types/dashboard';
+import type {
+  ActivityRow,
+  DashboardData,
+  KpiData,
+  ModerationItem,
+} from '../types/dashboard';
 
 interface DashboardView {
   totalUsers: number;
@@ -14,7 +29,11 @@ interface DashboardView {
 
 import { apiFetch } from './api';
 
-function kpi(title: string, rawValue: number, sparkColor: string): KpiData {
+function kpi(
+  title: string,
+  rawValue: number,
+  sparkColor: string,
+): KpiData {
   return {
     title,
     value: rawValue.toLocaleString('en-US'),
@@ -49,22 +68,24 @@ export async function fetchDashboard(): Promise<DashboardData> {
       signups: w.signups,
     })),
     moderationQueue,
-    activities: activities.slice(0, 8).map((a): ActivityRow => ({
-      id: a.id,
-      name: a.name,
-      matchId: a.matchId,
-      sport: a.sport,
-      host: a.host,
-      hostAvatarSeed: a.hostAvatarSeed,
-      photoUrl: a.photoUrl,
-      participants: a.participants,
-      capacity: a.capacity,
-      status:
-        a.status === 'Active' || a.status === 'Full' || a.status === 'Completed'
-          ? a.status
-          : 'Flagged',
-      scheduledDate: a.scheduledDate,
-    })),
+    activities: activities.slice(0, 8).map(
+      (a): ActivityRow => ({
+        id: a.id,
+        name: a.name,
+        matchId: a.matchId,
+        sport: a.sport,
+        host: a.host,
+        hostAvatarSeed: a.hostAvatarSeed,
+        photoUrl: a.photoUrl,
+        participants: a.participants,
+        capacity: a.capacity,
+        status:
+          a.status === 'Active' || a.status === 'Full' || a.status === 'Completed'
+            ? a.status
+            : 'Flagged',
+        scheduledDate: a.scheduledDate,
+      }),
+    ),
   };
 }
 

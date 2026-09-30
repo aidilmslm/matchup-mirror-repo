@@ -19,9 +19,7 @@ class _FakeAppealRepository implements AppealRepository {
   Future<List<AppealModel>> myAppeals() async => appeals;
 
   @override
-  Future<AppealModel> submitSuspensionAppeal({
-    required String statement,
-  }) async {
+  Future<AppealModel> submitSuspensionAppeal({required String statement}) async {
     lastStatement = statement;
     const created = AppealModel(
       id: 'ap-new',
@@ -41,7 +39,10 @@ const _pending = AppealModel(
   status: AppealStatus.pending,
 );
 
-Future<void> _pump(WidgetTester tester, List<AppealModel> appeals) async {
+Future<void> _pump(
+  WidgetTester tester,
+  List<AppealModel> appeals,
+) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [

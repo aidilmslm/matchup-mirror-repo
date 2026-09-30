@@ -45,7 +45,7 @@ import '../features/chat/presentation/dm_screen.dart';
 import '../features/chat/presentation/messages_screen.dart';
 import 'app_shell.dart';
 
-// Public routes (no auth required).
+// ─── Public routes (no auth required) ────────────────────────────────────────
 
 const _publicPaths = {
   '/splash',
@@ -57,7 +57,7 @@ const _publicPaths = {
   '/reset-link-sent',
 };
 
-// AuthNotifier → Listenable bridge.
+// ─── AuthNotifier → Listenable bridge ────────────────────────────────────────
 // GoRouter's refreshListenable rebuilds the router when auth state changes.
 
 class _AuthListenable extends ChangeNotifier {
@@ -67,8 +67,18 @@ class _AuthListenable extends ChangeNotifier {
   final Ref _ref;
 }
 
-// Shared page transition.
-// Every route reached via context.push() — whether it lives outside the ShellRoute below or inside it — gets the same.
+// ─── Shared page transition ──────────────────────────────────────────────────
+// Every route reached via context.push() — whether it lives outside the
+// ShellRoute below or inside it — gets the same slide+fade instead of the
+// platform default (PRD Section 0.6 / Appendix D.1). Routes reached only via
+// context.go() (the five tab roots, plus the swipe-to-match reveal) keep
+// plain `builder:` — go() replaces the shell's matched child in place, it
+// never plays a page transition regardless of what the route's builder
+// returns, so giving those a pageBuilder would be dead code.
+//
+// Usage: replace `builder: (_, state) => Screen()` with
+// `pageBuilder: (_, state) => appPage(state, const Screen())` on any route
+// that should feel like a "push" rather than an instant swap.
 CustomTransitionPage<void> appPage(
   GoRouterState state,
   Widget child, {
@@ -96,9 +106,11 @@ CustomTransitionPage<void> appPage(
   );
 }
 
-// Builder.
+// ─── Builder ─────────────────────────────────────────────────────────────────
 
-/// Root navigator key — lets notification taps and other app-level triggers navigate without a widget context.
+/// Root navigator key — lets notification taps and other app-level
+/// triggers navigate without a widget context (see `_PushRouter` in
+/// `app.dart`, which resolves its context from this key).
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 GoRouter buildRouter(Ref ref) {
@@ -124,18 +136,23 @@ GoRouter buildRouter(Ref ref) {
       ),
     ),
     redirect: (context, state) {
-      // Persist allow-listed locations only (tab roots + /activity* detail).
+      // Persist allow-listed locations only (tab roots + /activity*
+      // detail). RouteStore.save enforces the allow-list; splash,
+      // suspended, auth, and GTK routes are never stored.
       RouteStore.instance.save(state.matchedLocation);
 
       final authStatus = ref.read(authStatusProvider);
       final location = state.matchedLocation;
 
-      // While session check is in progress (AuthStatus.unknown), stay on splash so the loading animation can finish.
+      // While session check is in progress (AuthStatus.unknown), stay on
+      // splash so the loading animation can finish.
       if (authStatus == AuthStatus.unknown) {
         return location == '/splash' ? null : '/splash';
       }
 
-      // Suspended accounts are locked to the interstitial: no tabs, no auth screens, no deep content.
+      // Suspended accounts are locked to the interstitial: no tabs, no
+      // auth screens, no deep content. Tokens are kept (appeals need
+      // them); sign-out inside the interstitial flips to unauthenticated.
       if (authStatus == AuthStatus.suspended) {
         return location == '/suspended' ? null : '/suspended';
       }
@@ -159,7 +176,8 @@ GoRouter buildRouter(Ref ref) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
-      // Suspended interstitial — outside the shell (no tab bar), reached only via the auth redirect above.
+      // Suspended interstitial — outside the shell (no tab bar), reached
+      // only via the auth redirect above, never via context.go().
       GoRoute(
         path: '/suspended',
         pageBuilder: (_, state) => appPage(state, const SuspendedScreen()),
@@ -185,7 +203,9 @@ GoRouter buildRouter(Ref ref) {
           );
         },
       ),
-      // Post-signup preference flow sits OUTSIDE the shell: the user hasn't landed in the app proper yet.
+      // Post-signup preference flow sits OUTSIDE the shell: the user hasn't
+      // landed in the app proper yet, so showing the tab bar here would let
+      // them skip the flow by tapping a tab.
       GoRoute(
         path: '/get-to-know-1',
         pageBuilder: (_, state) => appPage(state, const GetToKnow1Screen()),
@@ -198,11 +218,25 @@ GoRouter buildRouter(Ref ref) {
         path: '/get-to-know-3',
         pageBuilder: (_, state) => appPage(state, const GetToKnow3Screen()),
       ),
-      // Activity detail sits OUTSIDE the shell: the Figma design (node 43:201) has no bottom navigation on this screen.
+      // Activity detail sits OUTSIDE the shell: the Figma design (node 43:201)
+      // has no bottom navigation on this screen — its footer holds only the home
+      // indicator. Note that joined-activity-detail (74:5) DOES keep the tab
+      // bar, so only this route is hoisted out.
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
-          // Activity detail lives INSIDE the shell (not top-level): pushing a shell-child route (host profile, full.
+          // Activity detail lives INSIDE the shell (not top-level):
+          // pushing a shell-child route (host profile, full view,
+          // participants…) from a top-level screen re-adds the shell
+          // page with an identical key and red-screens
+          // ('!keyReservation.contains(key)'). Intra-shell pushes never
+          // duplicate. The tab bar stays hidden on exact detail
+          // locations (see AppShell) so the full-screen look is kept.
+          //
+          // Must be reached via context.push, never context.go — its back/dislike
+          // buttons call Navigator.maybePop(), which needs a route to pop back to.
+          // See test/widget/activity_detail_buttons_test.dart for the regression
+          // this documents (PRD Appendix B.3).
           GoRoute(
             path: '/activity/:id',
             pageBuilder: (_, state) {
@@ -214,7 +248,11 @@ GoRouter buildRouter(Ref ref) {
               );
             },
           ),
-          // Tab roots — reached only via context.go() from AppShell's tab bar (or the auth/flow redirects above).
+          // Tab roots — reached only via context.go() from AppShell's tab
+          // bar (or the auth/flow redirects above). go() replaces the
+          // shell's matched child in place rather than pushing a page, so
+          // these never animate through appPage regardless of what their
+          // builder returns; kept as plain `builder:` for clarity.
           GoRoute(
             path: '/discovery',
             builder: (_, _) => const DiscoveryScreen(),
@@ -225,7 +263,13 @@ GoRouter buildRouter(Ref ref) {
           ),
           GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
 
-          // Also tab roots, but ALSO reached via context.push() from other screens.
+          // Also tab roots, but ALSO reached via context.push() from other
+          // screens (My Activities' empty-state CTA → /create;
+          // joined-activity-detail's "Message host" → /messages). A
+          // pushed route always animates through its own pageBuilder
+          // regardless of go_router's instant same-shell swap for go(), so
+          // these need appPage for the pushed case without affecting the
+          // tab-bar's go()-based instant switch.
           GoRoute(
             path: '/create',
             pageBuilder: (_, state) =>
@@ -236,7 +280,9 @@ GoRouter buildRouter(Ref ref) {
             pageBuilder: (_, state) => appPage(state, const MessagesScreen()),
           ),
 
-          // Match reveal — reached only via context.go() from Discovery after a swipe-right match.
+          // Match reveal — reached only via context.go() from Discovery
+          // after a swipe-right match (PRD: no "back" to the swipe deck
+          // once matched), so it intentionally has no push transition.
           GoRoute(
             path: '/match/:id',
             builder: (_, state) {
@@ -252,7 +298,9 @@ GoRouter buildRouter(Ref ref) {
             },
           ),
 
-          // Everything below is reached exclusively via context.push().
+          // Everything below is reached exclusively via context.push() —
+          // each gets the shared appPage slide+fade so every push feels
+          // consistent (PRD Section 0.6 / Appendix D.1).
           GoRoute(
             path: '/notifications',
             pageBuilder: (_, state) =>
@@ -307,7 +355,10 @@ GoRouter buildRouter(Ref ref) {
               );
             },
           ),
-          // '/joined-activities' removed (PRD Section 3 / Appendix E.2): JoinedActivitiesScreen duplicated My.
+          // '/joined-activities' removed (PRD Section 3 / Appendix E.2):
+          // JoinedActivitiesScreen duplicated My Activities and nothing in
+          // the app ever navigated to it — confirmed via a full-repo grep
+          // for '/joined-activities' before deleting the screen + route.
           GoRoute(
             path: '/joined-activity/:id',
             pageBuilder: (_, state) {
@@ -350,9 +401,15 @@ GoRouter buildRouter(Ref ref) {
             path: '/filter',
             pageBuilder: (_, state) => appPage(state, const FilterScreen()),
           ),
-          // /report/:type/:name removed — replaced by `ReportActivitySheet` shown via showModalBottomSheet.
+          // /report/:type/:name removed — replaced by `ReportActivitySheet`
+          // shown via showModalBottomSheet. The route form crashed with
+          // '!keyReservation.contains(key)' on double-tap/race; modal sheets
+          // sidestep that because they live in an Overlay, not a Page.
           GoRoute(
-            // Uses the *activity id* (not title) so backend calls.
+            // Uses the *activity id* (not title) so backend calls —
+            // `/api/chat/{id}/messages`, `/api/typing/{id}/:uid`, the
+            // RTDB `activityChats/{id}` ref — all hit real rows.
+            // The screen fetches the activity to display the title.
             path: '/chat/:id',
             pageBuilder: (_, state) {
               final id = state.pathParameters['id'] ?? '';
@@ -376,7 +433,9 @@ GoRouter buildRouter(Ref ref) {
             },
           ),
           GoRoute(
-            // 1-on-1 thread with another user.
+            // 1-on-1 thread with another user. Peer display name rides
+            // along as route `extra` (falls back to a generic label on
+            // cold-start push taps where no name is available).
             path: '/dm/:uid',
             pageBuilder: (_, state) {
               final uid = state.pathParameters['uid'] ?? '';
@@ -420,7 +479,8 @@ GoRouter buildRouter(Ref ref) {
             },
           ),
           GoRoute(
-            // Same screen by auth uid — exact and URL-safe.
+            // Same screen by auth uid — exact and URL-safe. Preferred
+            // when the uid is known (e.g. personal-chat settings).
             path: '/player-profile/uid/:uid',
             pageBuilder: (_, state) {
               final uid = state.pathParameters['uid'] ?? '';

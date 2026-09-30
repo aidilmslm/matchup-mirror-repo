@@ -17,8 +17,21 @@ import '../../../core/widgets/pressable_scale.dart';
 import '../../tour/presentation/tour_controller.dart';
 import 'get_to_know_1_screen.dart' show OnboardingProgressHeader;
 
-/// Final onboarding step — collects the physical details on [UserModel].
-/// Best-practice notes (why this looks different from a naive form): Sensible defaults (175 cm / 70 kg / 25 yrs ago).
+/// Final onboarding step — collects the physical details that live on
+/// [UserModel] (height, weight, date of birth) and persists them through
+/// `UserRepository.updateProfile` before entering the app.
+///
+/// Best-practice notes (why this looks different from a naive form):
+/// - Sensible defaults (175 cm / 70 kg / 25 yrs ago) instead of empty
+///   fields: the user can complete in one tap, adjusting only what is
+///   wrong. No dead-end validation states.
+/// - Steppers instead of free-text numbers: out-of-range input is
+///   impossible, so there is nothing to error-message.
+/// - One native date picker instead of three wheels: far less friction,
+///   and the 13+ rule is enforced by the picker's own max date
+///   (prevention beats error text).
+/// - Same pinned CTA chrome as step 2, same shared [PrimaryPillButton]
+///   as step 1.
 class GetToKnow3Screen extends ConsumerStatefulWidget {
   const GetToKnow3Screen({super.key});
 
@@ -77,29 +90,36 @@ class _GetToKnow3ScreenState extends ConsumerState<GetToKnow3Screen> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      await ref
-          .read(userRepositoryProvider)
-          .updateProfile(
-            heightCm: _heightCm,
-            weightKg: _weightKg,
-            dateOfBirth: _dob,
-          );
+      await ref.read(userRepositoryProvider).updateProfile(
+        heightCm: _heightCm,
+        weightKg: _weightKg,
+        dateOfBirth: _dob,
+      );
       ref.invalidate(myProfileProvider);
       // Onboarding complete — splash must not resume GTK on next cold start.
+      // Scoped per account (gtk_done_<uid>) so shared devices don't leak
+      // completion across users.
       try {
         final prefs = await SharedPreferences.getInstance();
         final uid = await SecureTokenStore.instance
             .readUserId()
-            // A hung Keystore read must not pin the onboarding flow on "Saving…" — fail open after a bounded wait.
+            // A hung Keystore read must not pin the onboarding flow on
+            // "Saving…" — fail open after a bounded wait.
             .timeout(const Duration(seconds: 3));
         if (uid != null && uid.isNotEmpty) {
           await prefs.setBool(gtkDoneKeyFor(uid), true);
         }
       } catch (_) {
-        // Fail-open: next splash treats missing as done for old accounts, and new accounts will simply resume GTK.
+        // Fail-open: next splash treats missing as done for old accounts,
+        // and new accounts will simply resume GTK once more.
       }
       if (!mounted) return;
-      // Arm the first-run tour for the next Discovery visit.
+      // Arm the first-run tour for the next Discovery visit. The
+      // destination (TourHost) decides when to start it — only while
+      // Discovery is actually showing with content ready — so a
+      // redirect/deep-link landing elsewhere never spotlights nothing,
+      // and no navigator-key lookup is needed here (this State is
+      // disposed by the go() below, so mounted/context are useless).
       ref.read(tourControllerProvider.notifier).armFirstRun();
       context.go('/discovery');
     } catch (_) {
@@ -143,9 +163,9 @@ class _GetToKnow3ScreenState extends ConsumerState<GetToKnow3Screen> {
                   const SizedBox(height: AppSpacing.x2),
                   Text(
                     'Helps us match you with the right games. Defaults are set — adjust what\'s wrong.',
-                    style: AppTypography.bodyMedium(
-                      context,
-                    ).copyWith(color: context.colors.textSecondary),
+                    style: AppTypography.bodyMedium(context).copyWith(
+                      color: context.colors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.x5),
 
@@ -181,13 +201,17 @@ class _GetToKnow3ScreenState extends ConsumerState<GetToKnow3Screen> {
                   ),
                   const SizedBox(height: AppSpacing.x3),
 
-                  _DobCard(date: _dob, ageYears: _ageYears, onTap: _pickDob),
+                  _DobCard(
+                    date: _dob,
+                    ageYears: _ageYears,
+                    onTap: _pickDob,
+                  ),
                 ],
               ),
             ),
           ),
 
-          // Pinned CTA (same chrome as step 2).
+          // ── Pinned CTA (same chrome as step 2) ─────────────────────
           Container(
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: context.colors.border)),
@@ -209,9 +233,10 @@ class _GetToKnow3ScreenState extends ConsumerState<GetToKnow3Screen> {
   }
 }
 
-// Measure card (height weight).
+// ─── Measure card (height / weight) ───────────────────────────────────────────
 
 /// Uniform stepper card: label + unit header, − / big value / + row.
+/// Bounds make invalid input impossible — no error states to render.
 class _MeasureCard extends StatelessWidget {
   const _MeasureCard({
     required this.icon,
@@ -263,16 +288,17 @@ class _MeasureCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.x3),
               Text(
                 label,
-                style: AppTypography.labelField(
-                  context,
-                ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                style: AppTypography.labelField(context).copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(),
               Text(
                 unit,
-                style: AppTypography.bodyMedium(
-                  context,
-                ).copyWith(color: context.colors.textSecondary),
+                style: AppTypography.bodyMedium(context).copyWith(
+                  color: context.colors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -312,9 +338,10 @@ class _MeasureCard extends StatelessWidget {
   }
 }
 
-// Date of birth card.
+// ─── Date-of-birth card ───────────────────────────────────────────────────────
 
-/// One tappable row opening the native date picker.
+/// One tappable row opening the native date picker. Shows the selected
+/// date plus the derived age so the user sees *why* it matters.
 class _DobCard extends StatelessWidget {
   const _DobCard({
     required this.date,
@@ -363,16 +390,17 @@ class _DobCard extends StatelessWidget {
                   children: [
                     Text(
                       'Date of Birth',
-                      style: AppTypography.labelField(
-                        context,
-                      ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                      style: AppTypography.labelField(context).copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       DateFormat('d MMMM yyyy').format(date),
-                      style: AppTypography.bodyMedium(
-                        context,
-                      ).copyWith(color: context.colors.textSecondary),
+                      style: AppTypography.bodyMedium(context).copyWith(
+                        color: context.colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -388,9 +416,9 @@ class _DobCard extends StatelessWidget {
                 ),
                 child: Text(
                   '$ageYears yrs',
-                  style: AppTypography.chipLabel(
-                    context,
-                  ).copyWith(color: context.colors.primaryOnSurface),
+                  style: AppTypography.chipLabel(context).copyWith(
+                    color: context.colors.primaryOnSurface,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.x2),
@@ -419,7 +447,8 @@ class _StepButton extends StatelessWidget {
   final IconData icon;
   final bool enabled;
 
-  /// The `+` button carries a primary-tinted border in the design; `−` is plain grey.
+  /// The `+` button carries a primary-tinted border in the design; `−` is
+  /// plain grey.
   final bool emphasised;
   final VoidCallback onTap;
   final String semanticLabel;

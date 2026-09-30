@@ -1,9 +1,14 @@
 import '../domain/tour_step.dart';
 
-/// Identifies the first-run tour for [TourStore] persistence — bump this.
+/// Identifies the first-run tour for [TourStore] persistence — bump this
+/// (e.g. `first_run_v2`) if the tour's content changes enough that every
+/// user should see it again, rather than only users who never completed
+/// `v1`.
 const kFirstRunTourId = 'first_run';
 
-/// The first-run coach-mark tour shown once, right after a new user finishes onboarding and lands on Discovery.
+/// The first-run coach-mark tour shown once, right after a new user
+/// finishes onboarding and lands on Discovery. Copy is final — see plan
+/// §3.4; do not paraphrase when editing, only replace outright.
 const kFirstRunTour = <TourStep>[
   TourStep(
     anchor: TourAnchorId.none,
@@ -13,7 +18,8 @@ const kFirstRunTour = <TourStep>[
   TourStep(
     anchor: TourAnchorId.swipeDeck,
     title: 'Swipe to find games',
-    body: "Swipe right if you're keen, left to pass. Tap a card for details.",
+    body:
+        "Swipe right if you're keen, left to pass. Tap a card for details.",
   ),
   TourStep(
     anchor: TourAnchorId.actionRow,

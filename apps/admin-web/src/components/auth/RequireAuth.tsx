@@ -2,7 +2,13 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-/** Wraps any route that requires authentication. */
+/**
+ * Wraps any route that requires authentication.
+ * - While session is being checked (user === null), shows a full-screen
+ *   loading spinner so there's no flash of the login page.
+ * - When signed out (user === false), redirects to /login and saves the
+ *   attempted path so the user is returned there after sign-in.
+ */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const location = useLocation();

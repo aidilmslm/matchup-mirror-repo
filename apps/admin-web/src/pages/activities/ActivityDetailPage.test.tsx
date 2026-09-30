@@ -1,16 +1,14 @@
-// Tests for ActivityDetailPage.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-const { fetchActivitiesMock, updateActivityStatusMock, deleteActivityMock, toastPushMock } =
-  vi.hoisted(() => ({
-    fetchActivitiesMock: vi.fn(),
-    updateActivityStatusMock: vi.fn(),
-    deleteActivityMock: vi.fn(),
-    toastPushMock: vi.fn(),
-  }));
+const { fetchActivitiesMock, updateActivityStatusMock, deleteActivityMock, toastPushMock } = vi.hoisted(() => ({
+  fetchActivitiesMock: vi.fn(),
+  updateActivityStatusMock: vi.fn(),
+  deleteActivityMock: vi.fn(),
+  toastPushMock: vi.fn(),
+}));
 vi.mock('../../services/activitiesService', () => ({
   fetchActivities: fetchActivitiesMock,
   updateActivityStatus: updateActivityStatusMock,
@@ -22,26 +20,11 @@ import { ActivityDetailPage } from './ActivityDetailPage';
 
 function makeActivity(overrides = {}) {
   return {
-    id: 'a1',
-    name: 'Sunday Futsal',
-    matchId: 'A1',
-    sport: 'Futsal',
-    skillLevel: 'Beginner',
-    host: 'Alice',
-    hostAvatarSeed: 'u1',
-    hostRating: 4.5,
-    hostGamesCount: 3,
-    location: 'Gym',
-    scheduledDate: 'Feb 1',
-    startTime: '10:00',
-    endTime: '11:00',
-    durationMinutes: 60,
-    participants: 2,
-    capacity: 10,
-    status: 'Active',
-    description: 'Fun game',
-    isPaid: false,
-    vibeTags: [],
+    id: 'a1', name: 'Sunday Futsal', matchId: 'A1', sport: 'Futsal', skillLevel: 'Beginner',
+    host: 'Alice', hostAvatarSeed: 'u1', hostRating: 4.5, hostGamesCount: 3,
+    location: 'Gym', scheduledDate: 'Feb 1', startTime: '10:00', endTime: '11:00',
+    durationMinutes: 60, participants: 2, capacity: 10, status: 'Active',
+    description: 'Fun game', isPaid: false, vibeTags: [],
     ...overrides,
   };
 }

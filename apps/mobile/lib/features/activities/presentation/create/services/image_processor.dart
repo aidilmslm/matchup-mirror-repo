@@ -4,7 +4,12 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 /// Lightweight image validation & processing service.
-/// Cover uploads are downscaled with `package:image`.
+///
+/// Cover uploads are downscaled with `package:image` (pure Dart, no
+/// native setup) so oversized camera photos don't ship at full
+/// resolution. `image_picker`'s own `maxWidth/maxHeight/imageQuality`
+/// parameters already constrain the picked file where supported; this
+/// is the second pass before upload.
 class ImageProcessor {
   /// Maximum file size accepted (5 MB).
   static const int maxFileSize = 5 * 1024 * 1024;
@@ -12,10 +17,11 @@ class ImageProcessor {
   /// Maximum edge dimension in pixels.
   static const int maxDimension = 4096;
 
-  /// Long edge target for cover uploads.
+  /// Long edge target for cover uploads. Photos larger than this are
+  /// downscaled — 1920px is plenty for a card hero.
   static const int uploadMaxEdge = 1920;
 
-  // Validation.
+  // ── Validation ────────────────────────────────────────────────────────────
 
   bool isValidFormat(String mimeType) {
     return const {'image/jpeg', 'image/png', 'image/webp'}.contains(mimeType);
@@ -34,7 +40,7 @@ class ImageProcessor {
     return null;
   }
 
-  // Encode decode.
+  // ── Encode / decode ───────────────────────────────────────────────────────
 
   /// Encode raw bytes to a base-64 string.
   String encodeToBase64(Uint8List bytes) => base64.encode(bytes);
@@ -42,9 +48,14 @@ class ImageProcessor {
   /// Decode a base-64 string back to raw bytes.
   Uint8List decodeFromBase64(String base64Image) => base64.decode(base64Image);
 
-  // Compression (downscale long edge JPEG quality).
-  /// Downscales the image so its long edge fits.
-  /// Returns the input unchanged when it is already under target, or when the bytes can't be decoded (not an image).
+  // ── Compression (downscale long edge + JPEG quality) ─────────────────
+  /// Downscales the image so its long edge fits [uploadMaxEdge], then
+  /// re-encodes as JPEG, stepping quality down until it fits
+  /// [targetKb] (or quality bottoms out at 60).
+  ///
+  /// Returns the input unchanged when it is already under target, or
+  /// when the bytes can't be decoded (not an image) — callers treat
+  /// the result opaquely either way.
   Future<Uint8List> process(Uint8List bytes, {int targetKb = 800}) async {
     // If under target size, return as-is.
     if (bytes.lengthInBytes <= targetKb * 1024) return bytes;
@@ -76,7 +87,7 @@ class ImageProcessor {
     return encoded;
   }
 
-  // Base64 round trip helpers.
+  // ── Base64 round-trip helpers ─────────────────────────────────────────────
 
   /// Process a base-64 image string and return processed base-64.
   Future<String> processBase64(String base64Image) async {

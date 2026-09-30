@@ -1,4 +1,3 @@
-// Tests for Avatar.
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Avatar } from './Avatar';

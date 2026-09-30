@@ -22,8 +22,8 @@ typedef _ParticipantsData = ({
   List<ActivityParticipant> roster,
   int capacity,
   String activityTitle,
-
-  /// Host-only kick affordance: viewer is host AND the game is still live.
+  /// Host-only kick affordance: viewer is host AND the game is still
+  /// live. Computed here (not in rows) so every row reads one flag.
   bool canKick,
 });
 
@@ -37,7 +37,8 @@ final _participantsProvider = FutureProvider.autoDispose
       ]);
       final activity = results[0] as ActivityModel?;
       final roster = results[1] as List<ActivityParticipant>;
-      // Kicking is meaningless on terminal lifecycles (cancelled/completed/removed) — same rule as Manage.
+      // Kicking is meaningless on terminal lifecycles
+      // (cancelled/completed/removed) — same rule as Manage.
       final lc = activity?.lifecycleStatus.toLowerCase() ?? '';
       final terminal =
           lc == 'cancelled' || lc == 'completed' || lc == 'removed';
@@ -49,22 +50,33 @@ final _participantsProvider = FutureProvider.autoDispose
       );
     });
 
-/// Polls the backend's `/api/presence/:uid` for each participant in the given list.
-/// Polls every 30s (per [RemotePresenceRepository.watchOnline]).
-/// IMPORTANT: the `uids` argument MUST be a stable list instance across rebuilds.
+/// Polls the backend's `/api/presence/:uid` for each participant in
+/// the given list. Emits the subset that's currently `online`.
+///
+/// Polls every 30s (per [RemotePresenceRepository.watchOnline]); the
+/// presence state is server-side authoritative, so a half-minute
+/// cadence is more than fast enough for a roster badge.
+///
+/// IMPORTANT: the `uids` argument MUST be a stable list instance
+/// across rebuilds. `List ==` is identity-based, so passing a freshly
+/// built `.toList()` from `build()` creates a *different* family
+/// instance every frame → resubscribe → fetch → rebuild, forever.
+/// Always pass the output of [_rosterUidsProvider] below, which
+/// Riverpod memoizes until the roster itself changes.
 final _onlineUidsProvider = StreamProvider.autoDispose
     .family<Set<String>, List<String>>((ref, uids) {
       return ref.watch(presenceRepositoryProvider).watchOnline(uids);
     });
 
-/// Memoized uid list for [_onlineUidsProvider].
-final _rosterUidsProvider = Provider.autoDispose.family<List<String>, String>((
-  ref,
-  activityId,
-) {
+/// Memoized uid list for [_onlineUidsProvider]. A plain `Provider`
+/// caches its value until its dependencies change, so every `build`
+/// observes the *same* list instance and the stream family is
+/// subscribed exactly once.
+final _rosterUidsProvider =
+    Provider.autoDispose.family<List<String>, String>((ref, activityId) {
   final roster =
       ref.watch(_participantsProvider(activityId)).valueOrNull?.roster ??
-      const [];
+          const [];
   return roster
       .map((p) => p.userId)
       .where((id) => id.isNotEmpty)
@@ -85,7 +97,8 @@ class _ActivityParticipantsScreenState
     extends ConsumerState<ActivityParticipantsScreen> {
   String get activityId => widget.activityId;
 
-  /// Uids with a kick currently in flight — their Remove buttons render disabled so rapid double-taps can't fire.
+  /// Uids with a kick currently in flight — their Remove buttons
+  /// render disabled so rapid double-taps can't fire duplicates.
   final Set<String> _kicking = {};
 
   Future<void> _kick(String uid, String name) async {
@@ -103,9 +116,10 @@ class _ActivityParticipantsScreenState
     if (_kicking.contains(uid)) return;
     setState(() => _kicking.add(uid));
     try {
-      await ref
-          .read(activityRepositoryProvider)
-          .removeParticipant(activityId: activityId, uid: uid);
+      await ref.read(activityRepositoryProvider).removeParticipant(
+            activityId: activityId,
+            uid: uid,
+          );
       ref.invalidate(_participantsProvider(activityId));
       if (!mounted) return;
       AppSnackbar.show(
@@ -146,10 +160,11 @@ class _ActivityParticipantsScreenState
               ? 0.0
               : (roster.length / capacity).clamp(0.0, 1.0);
 
-          // Watch online state for the roster.
+          // Watch online state for the roster. The uid list comes from
+          // the memoized [_rosterUidsProvider] (stable instance!) — never
+          // build it inline here, or the stream resubscribes every frame.
           final uids = ref.watch(_rosterUidsProvider(activityId));
-          final onlineUids =
-              ref.watch(_onlineUidsProvider(uids)).valueOrNull ??
+          final onlineUids = ref.watch(_onlineUidsProvider(uids)).valueOrNull ??
               const <String>{};
 
           return Column(
@@ -171,7 +186,9 @@ class _ActivityParticipantsScreenState
                       )
                     : RefreshIndicator(
                         onRefresh: () async {
-                          ref.invalidate(_participantsProvider(activityId));
+                          ref.invalidate(
+                            _participantsProvider(activityId),
+                          );
                           await ref
                               .read(_participantsProvider(activityId).future)
                               .then((_) {})
@@ -179,7 +196,8 @@ class _ActivityParticipantsScreenState
                         },
                         color: AppColors.primary,
                         child: ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
+                          physics:
+                              const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(
                             AppSpacing.x4,
                             AppSpacing.x4,
@@ -193,7 +211,8 @@ class _ActivityParticipantsScreenState
                             final p = roster[i];
                             return _ParticipantCard(
                               item: p,
-                              isOnline: onlineUids.contains(p.userId),
+                              isOnline:
+                                  onlineUids.contains(p.userId),
                               canKick: result.canKick,
                               kicking: _kicking.contains(p.userId),
                               onKick: () => _kick(p.userId, p.name),
@@ -266,7 +285,9 @@ class _CapacitySummary extends StatelessWidget {
               ),
             ],
           ),
-          // Online-now chip.
+          // Online-now chip. Only renders when the polling stream
+          // has produced a non-zero count — avoids flashing "0
+          // online" during the first poll cycle.
           if (onlineCount > 0) ...[
             const SizedBox(height: AppSpacing.x2),
             Row(
@@ -284,9 +305,9 @@ class _CapacitySummary extends StatelessWidget {
                   onlineCount == 1
                       ? '1 person online now'
                       : '$onlineCount people online now',
-                  style: AppTypography.bodySmall(
-                    context,
-                  ).copyWith(color: context.colors.textSecondary),
+                  style: AppTypography.bodySmall(context).copyWith(
+                    color: context.colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -324,7 +345,8 @@ class _ParticipantCard extends StatelessWidget {
   final ActivityParticipant item;
   final bool isOnline;
 
-  /// Host-only kick affordance (false for non-host viewers and on terminal games).
+  /// Host-only kick affordance (false for non-host viewers and on
+  /// terminal games). The organizer row never renders Remove.
   final bool canKick;
 
   /// True while this row's kick is in flight.
@@ -333,12 +355,12 @@ class _ParticipantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The host can't kick themselves; the inner button wins the tap arena so Remove never also opens the profile.
+    // The host can't kick themselves; the inner button wins the tap
+    // arena so Remove never also opens the profile behind it.
     final showRemove = canKick && !item.isOrganizer;
     return PressableScale(
       // pushOnce guard (duplicate page keys red-screen).
-      onTap: () => NavGuard.push(
-        context,
+      onTap: () => NavGuard.push(context,
         item.userId.isNotEmpty
             ? '/player-profile/uid/${item.userId}'
             : '/player-profile/${item.name}',
@@ -367,7 +389,8 @@ class _ParticipantCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    // Prefer the backend photo URL when the user has one; otherwise AppAvatar renders their initials.
+                    // Prefer the backend photo URL when the user has
+                    // one; otherwise AppAvatar renders their initials.
                     child: AppAvatar(
                       imageUrl: item.avatarUrl,
                       name: item.name,
@@ -482,7 +505,8 @@ class _ParticipantCard extends StatelessWidget {
   }
 }
 
-/// "Organizer" role badge.
+/// "Organizer" role badge. Raised from the original 9px to 11px per PRD
+/// Section 3 — 9px sits below practical legibility.
 class _OrganizerBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -506,7 +530,9 @@ class _OrganizerBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             'Organizer',
-            style: AppTypography.chipLabel(context).copyWith(
+            style: AppTypography.chipLabel(
+              context,
+            ).copyWith(
               fontSize: 11,
               color: context.colors.warningText,
               height: 1.0,

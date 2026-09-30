@@ -11,14 +11,18 @@ describe('downloadCsv', () => {
     clickSpy = vi.fn();
     createObjectURLSpy = vi.fn(() => 'blob:mock-url');
     revokeObjectURLSpy = vi.fn();
-    // Loose vi.fn() doubles vs strict DOM signatures — cast at the seam (test-only; runtime behavior unchanged).
-    URL.createObjectURL = createObjectURLSpy as unknown as typeof URL.createObjectURL;
-    URL.revokeObjectURL = revokeObjectURLSpy as unknown as typeof URL.revokeObjectURL;
+    // Loose vi.fn() doubles vs strict DOM signatures — cast at the
+    // seam (test-only; runtime behavior unchanged).
+    URL.createObjectURL =
+      createObjectURLSpy as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL =
+      revokeObjectURLSpy as unknown as typeof URL.revokeObjectURL;
 
     document.createElement = ((tag: string) => {
       const el = originalCreateElement(tag);
       if (tag === 'a') {
-        (el as HTMLAnchorElement).click = clickSpy as unknown as HTMLAnchorElement['click'];
+        (el as HTMLAnchorElement).click =
+          clickSpy as unknown as HTMLAnchorElement['click'];
       }
       return el;
     }) as typeof document.createElement;

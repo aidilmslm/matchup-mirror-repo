@@ -8,20 +8,35 @@ import 'local_typing_repository.dart';
 import 'typing_repository.dart';
 
 /// HTTP-backed [TypingRepository] for the live MatchUp API.
-/// Endpoints used: `POST /api/typing` — set current user's state `GET /api/typing/:activityId/:uid` — fetch a user's.
-/// Writes are fire-and-forget — a typing indicator that's a few hundred milliseconds late is harmless, and a flaky.
+///
+/// Endpoints used:
+///   - `POST /api/typing`                       — set current user's state
+///   - `GET  /api/typing/:activityId/:uid`      — fetch a user's state
+///
+/// Writes are fire-and-forget — a typing indicator that's a few hundred
+/// milliseconds late is harmless, and a flaky network shouldn't block
+/// the user's keystroke. Reads treat 404 as "not typing" rather than an
+/// error so the chat header doesn't flicker on a missing row.
 class RemoteTypingRepository implements TypingRepository {
-  RemoteTypingRepository({ApiClient? client, TypingRepository? fallback})
-    : _client = client ?? ApiClient.instance,
-      _fallback = fallback ?? LocalTypingRepository();
+  RemoteTypingRepository({
+    ApiClient? client,
+    TypingRepository? fallback,
+  })  : _client = client ?? ApiClient.instance,
+        _fallback = fallback ?? LocalTypingRepository();
 
   final ApiClient _client;
   final TypingRepository _fallback;
 
-  /// Cadence for [watchTyping].
+  /// Cadence for [watchTyping]. Typing indicators feel live at
+  /// ~2s — fast enough to be perceptible, slow enough that even a
+  /// group of 20 participants only generates 10 RPS of background
+  /// traffic.
   static const Duration _typingPollInterval = Duration(seconds: 2);
 
-  /// Circuit-breaker armed by any 429: while set.
+  /// Circuit-breaker armed by any 429: while set, [watchTyping] ticks
+  /// are skipped instead of hammering a limiter that already said
+  /// "slow down" (every poll shares the server's per-IP budget, so
+  /// polling through a 429 only prolongs it for every route).
   DateTime? _blockedUntil;
 
   bool get _isBlocked =>
@@ -52,7 +67,10 @@ class RemoteTypingRepository implements TypingRepository {
     try {
       await _client.dio.post(
         '/typing',
-        data: {'activityId': activityId, 'isTyping': isTyping},
+        data: {
+          'activityId': activityId,
+          'isTyping': isTyping,
+        },
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 429) _noteRateLimit(e);
@@ -77,9 +95,11 @@ class RemoteTypingRepository implements TypingRepository {
       return data['isTyping'] as bool?;
     } on DioException catch (e) {
       if (e.response?.statusCode == 429) _noteRateLimit(e);
-      // 404 = user hasn't typed since the activity started.
-      final isNotFound =
-          e.response?.statusCode == 404 ||
+      // 404 = user hasn't typed since the activity started. Treat as
+      // "not typing" so the chat header doesn't flash an error. The
+      // check is on the status code (and the normalised ApiException
+      // the error interceptor attaches) — never a `toString` sniff.
+      final isNotFound = e.response?.statusCode == 404 ||
           (e.error is ApiException &&
               (e.error as ApiException).statusCode == 404);
       if (!isNotFound) {
@@ -87,7 +107,8 @@ class RemoteTypingRepository implements TypingRepository {
       }
       return _fallback.isTyping(activityId: activityId, uid: uid);
     } on Exception catch (e) {
-      // Non-Dio failure (no status code to inspect).
+      // Non-Dio failure (no status code to inspect) — always logged,
+      // then treated as "not typing" like every other error here.
       debugPrint('[RemoteTypingRepository.isTyping] $e');
       return _fallback.isTyping(activityId: activityId, uid: uid);
     }
@@ -106,7 +127,10 @@ class RemoteTypingRepository implements TypingRepository {
     final controller = StreamController<Set<String>>();
     Timer? timer;
 
-    // Error backoff for the per-member fan-out: a failed tick pushes the next attempt out.
+    // Error backoff for the per-member fan-out: a failed tick pushes
+    // the next attempt out (2s × consecutive failures, capped at 5)
+    // instead of holding the fixed 2s cadence against a struggling
+    // backend. Resets on the first clean tick.
     var failures = 0;
     DateTime? backoffUntil;
 
@@ -115,11 +139,15 @@ class RemoteTypingRepository implements TypingRepository {
       final blocked = backoffUntil;
       if (blocked != null && DateTime.now().isBefore(blocked)) return;
       try {
-        // Fan out a typing-status request per uid.
+        // Fan out a typing-status request per uid. Individual failures
+        // are swallowed (treat as "not typing") so one slow network
+        // call doesn't block the rest of the roster.
         final results = await Future.wait(
           uids.map((uid) async {
             try {
-              // Use the same backing call as the public isTyping() but route through a local alias to avoid the name.
+              // Use the same backing call as the public isTyping() but
+              // route through a local alias to avoid the name clash
+              // with the `isTyping` field below.
               final status = await _isTypingOnce(
                 activityId: activityId,
                 uid: uid,
@@ -155,7 +183,10 @@ class RemoteTypingRepository implements TypingRepository {
     yield* controller.stream;
   }
 
-  /// Same as [isTyping] but with a different name so it can be called from inside the closure of [watchTyping] without.
+  /// Same as [isTyping] but with a different name so it can be
+  /// called from inside the closure of [watchTyping] without
+  /// shadowing. Kept private — external callers should use
+  /// [isTyping].
   Future<bool?> _isTypingOnce({
     required String activityId,
     required String uid,

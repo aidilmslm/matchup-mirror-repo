@@ -9,8 +9,13 @@ import 'app_tappable.dart';
 import 'pressable_scale.dart';
 
 /// Modal bottom sheet with a calendar + time picker.
-/// Returns a [DateTime] that combines the selected date and time via `Navigator.pop(context, dateTime)`, or `null` if.
-/// The time picker renders two scrollable columns (hour / minute) in 12-hour format with an AM/PM toggle.
+///
+/// Returns a [DateTime] that combines the selected date and time via
+/// `Navigator.pop(context, dateTime)`, or `null` if cancelled.
+///
+/// The time picker renders two scrollable columns (hour / minute) in
+/// 12-hour format with an AM/PM toggle — compact enough to sit in the same
+/// sheet without crowding the calendar.
 class DatePickerSheet extends StatefulWidget {
   const DatePickerSheet({
     super.key,
@@ -25,7 +30,8 @@ class DatePickerSheet extends StatefulWidget {
   final DateTime? minDate;
   final DateTime? maxDate;
 
-  /// Venue coords (opsional).
+  /// Venue coords (opsional). Jika ada, sheet menampilkan ikon cuaca
+  /// per-tanggal via Open-Meteo. Null = tanpa cuaca (tidak blokir).
   final double? latitude;
   final double? longitude;
 
@@ -38,8 +44,8 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
   late DateTime _selected;
 
   // Time state
-  late int _hour12; // 1–12
-  late int _minute; // 0–59, shown in 5-min steps
+  late int _hour12;   // 1–12
+  late int _minute;   // 0–59, shown in 5-min steps
   late bool _isPm;
 
   // Daily + hourly forecast (Open-Meteo, best-effort, one network call).
@@ -47,29 +53,19 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
   Map<DateTime, WeatherInfo> _hourly = const {};
 
   static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
   ];
   static const _weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  /// Minute granularity for the minute drum.
+  /// Minute granularity for the minute drum. Public so [_TimeSection]
+  /// (which owns the drums) stays in sync with [_result].
   static const minuteStep = 5;
 
   @override
   void initState() {
     super.initState();
-    final init =
-        widget.initialDate ?? DateTime.now().add(const Duration(hours: 1));
+    final init = widget.initialDate ?? DateTime.now().add(const Duration(hours: 1));
     _selected = init;
     _focused = DateTime(_selected.year, _selected.month);
 
@@ -103,7 +99,7 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
   WeatherInfo? _hourlyFor(DateTime dt) =>
       _hourly[DateTime(dt.year, dt.month, dt.day, dt.hour)];
 
-  // Helpers.
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   bool _inRange(DateTime d) {
     if (widget.minDate != null && d.isBefore(_dateOnly(widget.minDate!))) {
@@ -118,30 +114,26 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _shiftMonth(int delta) => setState(() {
-    _focused = DateTime(_focused.year, _focused.month + delta);
-  });
+        _focused = DateTime(_focused.year, _focused.month + delta);
+      });
 
   DateTime get _result {
     final h24 = _isPm
         ? (_hour12 == 12 ? 12 : _hour12 + 12)
         : (_hour12 == 12 ? 0 : _hour12);
-    return DateTime(
-      _selected.year,
-      _selected.month,
-      _selected.day,
-      h24,
-      _minute,
-    );
+    return DateTime(_selected.year, _selected.month, _selected.day, h24, _minute);
   }
 
-  // Build.
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final firstDayOfMonth = DateTime(_focused.year, _focused.month, 1);
     final daysInMonth = DateTime(_focused.year, _focused.month + 1, 0).day;
     final leading = firstDayOfMonth.weekday % 7;
-    // Only the rows the month actually needs (4–6): a fixed 6-row grid leaves up to two fully blank rows.
+    // Only the rows the month actually needs (4–6): a fixed 6-row grid
+    // leaves up to two fully blank rows (~112px of dead space) between
+    // the calendar and the time drums on short months.
     final rowCount = ((leading + daysInMonth) / 7).ceil();
 
     return SafeArea(
@@ -154,10 +146,7 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
           ),
         ),
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.x6,
-          AppSpacing.x3,
-          AppSpacing.x6,
-          AppSpacing.x6,
+          AppSpacing.x6, AppSpacing.x3, AppSpacing.x6, AppSpacing.x6,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -173,51 +162,40 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
               ),
             ),
 
-            // Calendar.
+            // ── Calendar ────────────────────────────────────────────────
             // Month nav
             Row(
               children: [
                 Expanded(
                   child: Text(
                     '${_months[_focused.month - 1]} ${_focused.year}',
-                    style: AppTypography.titleLarge(
-                      context,
-                    ).copyWith(fontWeight: FontWeight.w800, fontSize: 18),
+                    style: AppTypography.titleLarge(context)
+                        .copyWith(fontWeight: FontWeight.w800, fontSize: 18),
                   ),
                 ),
-                _navBtn(
-                  context,
-                  Icons.chevron_left,
-                  'Previous month',
-                  () => _shiftMonth(-1),
-                ),
+                _navBtn(context, Icons.chevron_left, 'Previous month',
+                    () => _shiftMonth(-1)),
                 const SizedBox(width: 8),
-                _navBtn(
-                  context,
-                  Icons.chevron_right,
-                  'Next month',
-                  () => _shiftMonth(1),
-                ),
+                _navBtn(context, Icons.chevron_right, 'Next month',
+                    () => _shiftMonth(1)),
               ],
             ),
             const SizedBox(height: 12),
             // Weekday labels
             Row(
               children: _weekDays
-                  .map(
-                    (w) => Expanded(
-                      child: Center(
-                        child: Text(
-                          w,
-                          style: AppTypography.bodySmall(context).copyWith(
-                            color: context.colors.textTertiary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                  .map((w) => Expanded(
+                        child: Center(
+                          child: Text(
+                            w,
+                            style: AppTypography.bodySmall(context).copyWith(
+                              color: context.colors.textTertiary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  )
+                      ))
                   .toList(),
             ),
             const SizedBox(height: 6),
@@ -232,14 +210,9 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
                     if (dayNum < 1 || dayNum > daysInMonth) {
                       return const Expanded(child: SizedBox(height: 52));
                     }
-                    final date = DateTime(
-                      _focused.year,
-                      _focused.month,
-                      dayNum,
-                    );
+                    final date = DateTime(_focused.year, _focused.month, dayNum);
                     final isSel = _dateOnly(date) == _dateOnly(_selected);
-                    final isToday =
-                        _dateOnly(date) == _dateOnly(DateTime.now());
+                    final isToday = _dateOnly(date) == _dateOnly(DateTime.now());
                     final inRange = _inRange(date);
                     return Expanded(
                       child: _DayCell(
@@ -262,8 +235,10 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
             Divider(height: 1, color: context.colors.border),
             const SizedBox(height: AppSpacing.x3),
 
-            // Time picker.
-            // Drums keep local state for smooth scrolling.
+            // ── Time picker ─────────────────────────────────────────────
+            // Drums keep local state for smooth scrolling; values are
+            // pushed up AND refresh the hourly strip below via setState
+            // so the forecast follows the spun hour live.
             _TimeSection(
               hour12: _hour12,
               minute: _minute,
@@ -278,7 +253,8 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
 
             const SizedBox(height: AppSpacing.x3),
             _SelectedDayWeather(
-              hasCoords: widget.latitude != null && widget.longitude != null,
+              hasCoords:
+                  widget.latitude != null && widget.longitude != null,
               hourly: _hourlyFor(_result),
               daily: _weatherFor(_selected),
               result: _result,
@@ -286,7 +262,7 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
 
             const SizedBox(height: AppSpacing.x5),
 
-            // Confirm row.
+            // ── Confirm row ─────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -376,9 +352,12 @@ class _DatePickerSheetState extends State<DatePickerSheet> {
   }
 }
 
-// Time section (local state — ticks stay scoped).
+// ─── Time section (local state — ticks stay scoped) ─────────────────────────
 
-/// Hour/minute/AM-PM row with its own [State] so scrolling the drums only rebuilds this subtree.
+/// Hour/minute/AM-PM row with its own [State] so scrolling the drums
+/// only rebuilds this subtree. Parent values are updated via
+/// [onChanged] *without* a parent `setState` — the parent only reads
+/// them when building [_DatePickerSheetState._result] on Confirm.
 class _TimeSection extends StatefulWidget {
   const _TimeSection({
     required this.hour12,
@@ -457,7 +436,7 @@ class _TimeSectionState extends State<_TimeSection> {
   }
 }
 
-// Time column (scrollable drum).
+// ─── Time column (scrollable drum) ────────────────────────────────────────────
 
 class _TimeColumn extends StatefulWidget {
   const _TimeColumn({
@@ -481,7 +460,8 @@ class _TimeColumnState extends State<_TimeColumn> {
   static const double _itemH = 44;
   static const int _loopFactor = 200; // large multiplier for seamless wrapping
 
-  /// Settle animation for programmatic drum moves.
+  /// Settle animation for programmatic drum moves — long enough to
+  /// read as a glide, eased so it lands softly instead of snapping.
   static const _settleDuration = Duration(milliseconds: 350);
   static const _settleCurve = Curves.easeOutCubic;
 
@@ -490,8 +470,7 @@ class _TimeColumnState extends State<_TimeColumn> {
     super.initState();
     final initialIndex = widget.values.indexOf(widget.selected);
     // Centre in the large loop so we can scroll both directions freely
-    final startIndex =
-        _loopFactor ~/ 2 * widget.values.length +
+    final startIndex = _loopFactor ~/ 2 * widget.values.length +
         (initialIndex < 0 ? 0 : initialIndex);
     _ctrl = FixedExtentScrollController(initialItem: startIndex);
   }
@@ -499,7 +478,9 @@ class _TimeColumnState extends State<_TimeColumn> {
   @override
   void didUpdateWidget(_TimeColumn old) {
     super.didUpdateWidget(old);
-    // If parent resets selection externally, glide the drum to match instead of snapping.
+    // If parent resets selection externally, glide the drum to match
+    // instead of snapping. Skip when already aligned (the common
+    // case while scrolling) so ticks never fight the user's finger.
     if (old.selected != widget.selected) {
       final idx = widget.values.indexOf(widget.selected);
       if (idx >= 0) {
@@ -568,7 +549,7 @@ class _TimeColumnState extends State<_TimeColumn> {
   }
 }
 
-// AM PM toggle.
+// ─── AM / PM toggle ───────────────────────────────────────────────────────────
 
 class _AmPmToggle extends StatelessWidget {
   const _AmPmToggle({required this.isPm, required this.onChanged});
@@ -647,9 +628,7 @@ class _Segment extends StatelessWidget {
           label,
           style: AppTypography.chipLabel(context).copyWith(
             fontSize: 13,
-            color: selected
-                ? AppColors.textOnPrimary
-                : context.colors.textSecondary,
+            color: selected ? AppColors.textOnPrimary : context.colors.textSecondary,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
@@ -658,7 +637,7 @@ class _Segment extends StatelessWidget {
   }
 }
 
-// Day cell.
+// ─── Day cell ─────────────────────────────────────────────────────────────────
 
 class _DayCell extends StatelessWidget {
   const _DayCell({
@@ -695,8 +674,10 @@ class _DayCell extends StatelessWidget {
     ].join(' ');
 
     final w = weather;
-    final showTemp =
-        w != null && enabled && !w.tempMax.isNaN && !w.tempMin.isNaN;
+    final showTemp = w != null &&
+        enabled &&
+        !w.tempMax.isNaN &&
+        !w.tempMin.isNaN;
 
     return Semantics(
       button: true,
@@ -767,6 +748,9 @@ class _DayCell extends StatelessWidget {
 }
 
 /// Hourly weather strip for the currently picked date + time.
+/// Updates live as the hour/minute drums spin (parent rebuilds on
+/// every tick). Falls back to the daily summary when the exact hour
+/// is missing, e.g. beyond the 16-day hourly range.
 class _SelectedDayWeather extends StatelessWidget {
   const _SelectedDayWeather({
     required this.hasCoords,
@@ -808,7 +792,8 @@ class _SelectedDayWeather extends StatelessWidget {
     }
     final h = hourly;
     if (h != null) {
-      final temp = h.temperatureC.isNaN ? '—' : '${h.temperatureC.round()}°C';
+      final temp =
+          h.temperatureC.isNaN ? '—' : '${h.temperatureC.round()}°C';
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -826,9 +811,9 @@ class _SelectedDayWeather extends StatelessWidget {
                 children: [
                   Text(
                     '${_hourLabel(result)} · $temp · ${h.description}',
-                    style: AppTypography.bodySmall(
-                      context,
-                    ).copyWith(fontWeight: FontWeight.w700),
+                    style: AppTypography.bodySmall(context).copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text(
                     h.precipitationProbability > 0
@@ -882,9 +867,9 @@ class _SelectedDayWeather extends StatelessWidget {
               children: [
                 Text(
                   temp,
-                  style: AppTypography.bodySmall(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w700),
+                  style: AppTypography.bodySmall(context).copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 Text(
                   w.precipitationProbabilityMax > 0

@@ -149,7 +149,9 @@ class StorageService {
       throw StateError('uploadReportEvidence requires a non-empty uid');
     }
     if (!_isFirebaseReady()) {
-      debugPrint('[StorageService] Firebase not initialised — skipping upload');
+      debugPrint(
+        '[StorageService] Firebase not initialised — skipping upload',
+      );
       return null;
     }
 
@@ -214,7 +216,9 @@ class StorageService {
     required String storagePath,
   }) async {
     if (!_isFirebaseReady()) {
-      debugPrint('[StorageService] Firebase not initialised — skipping upload');
+      debugPrint(
+        '[StorageService] Firebase not initialised — skipping upload',
+      );
       return null;
     }
 
@@ -234,7 +238,9 @@ class StorageService {
       );
 
       if (uploadTask.state != TaskState.success) {
-        debugPrint('[StorageService] Upload state: ${uploadTask.state}');
+        debugPrint(
+          '[StorageService] Upload state: ${uploadTask.state}',
+        );
         return null;
       }
 

@@ -4,14 +4,12 @@ import type { Member, MemberStatus } from '../../types/members';
 
 function StatusBadge({ status }: { status: MemberStatus }) {
   const map: Record<MemberStatus, { cls: string; dot: string }> = {
-    Active: { cls: 'bg-brand-50 text-brand-700 border-brand-200', dot: 'bg-brand-500' },
+    Active:    { cls: 'bg-brand-50 text-brand-700 border-brand-200',   dot: 'bg-brand-500' },
     Suspended: { cls: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500' },
   };
   const { cls, dot } = map[status];
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}
-    >
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       {status}
     </span>
@@ -20,9 +18,7 @@ function StatusBadge({ status }: { status: MemberStatus }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-400">
-      {children}
-    </p>
+    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-400">{children}</p>
   );
 }
 
@@ -82,15 +78,7 @@ export function MemberDetailPanel({
             <p className="mt-0.5 text-sm font-medium text-brand-500">{member.username}</p>
             {member.location && (
               <p className="mt-1 flex items-center gap-1 text-xs text-ink-500">
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                >
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
                   <path d="M7 1C4.791 1 3 2.791 3 5c0 3.5 4 8 4 8s4-4.5 4-8c0-2.209-1.791-4-4-4z" />
                   <circle cx="7" cy="5" r="1.5" />
                 </svg>
@@ -110,34 +98,16 @@ export function MemberDetailPanel({
           <SectionLabel>Activity Stats</SectionLabel>
           <div className="grid grid-cols-3 gap-2">
             {[
-              {
-                label: 'Joined',
-                value: member.activitiesJoined.toString(),
-                color: 'text-brand-600',
-              },
-              {
-                label: 'Hosted',
-                value: member.activitiesHosted.toString(),
-                color: 'text-success-600',
-              },
-              {
-                label: 'Rating',
-                value: `${member.rating.toFixed(1)}`,
-                color: 'text-warning-600',
-                prefix: '★',
-              },
+              { label: 'Joined',  value: member.activitiesJoined.toString(), color: 'text-brand-600' },
+              { label: 'Hosted',  value: member.activitiesHosted.toString(), color: 'text-success-600' },
+              { label: 'Rating',  value: `${member.rating.toFixed(1)}`, color: 'text-warning-600', prefix: '★' },
             ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl border border-ink-200 bg-ink-50 py-3.5 text-center"
-              >
+              <div key={s.label} className="rounded-xl border border-ink-200 bg-ink-50 py-3.5 text-center">
                 <p className={`text-xl font-bold ${s.color}`}>
                   {s.prefix && <span className="mr-0.5 text-sm">{s.prefix}</span>}
                   {s.value}
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-400">
-                  {s.label}
-                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-400">{s.label}</p>
               </div>
             ))}
           </div>
@@ -168,11 +138,9 @@ export function MemberDetailPanel({
                   }`}
                 >
                   {s.sport}
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      i === 0 ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-500'
-                    }`}
-                  >
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    i === 0 ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-500'
+                  }`}>
                     {s.level}
                   </span>
                 </span>
@@ -186,9 +154,9 @@ export function MemberDetailPanel({
           <SectionLabel>Contact</SectionLabel>
           <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
             <div className="px-4">
-              <InfoRow label="Email" value={member.email} />
-              <InfoRow label="Phone" value={member.phone ?? '—'} />
-              <InfoRow label="Role" value={member.role} />
+              <InfoRow label="Email"  value={member.email} />
+              <InfoRow label="Phone"  value={member.phone ?? '—'} />
+              <InfoRow label="Role"   value={member.role} />
               <InfoRow label="Joined" value={member.joinedDate} />
             </div>
           </div>
@@ -200,12 +168,10 @@ export function MemberDetailPanel({
             <SectionLabel>Physical Profile</SectionLabel>
             <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
               <div className="px-4">
-                {member.dateOfBirth && (
-                  <InfoRow label="Date of birth" value={formatDob(member.dateOfBirth) ?? '—'} />
-                )}
-                {member.heightCm && <InfoRow label="Height" value={`${member.heightCm} cm`} />}
-                {member.weightKg && <InfoRow label="Weight" value={`${member.weightKg} kg`} />}
-                {member.goal && <InfoRow label="Goal" value={member.goal} />}
+                {member.dateOfBirth && <InfoRow label="Date of birth" value={formatDob(member.dateOfBirth) ?? '—'} />}
+                {member.heightCm    && <InfoRow label="Height" value={`${member.heightCm} cm`} />}
+                {member.weightKg    && <InfoRow label="Weight" value={`${member.weightKg} kg`} />}
+                {member.goal        && <InfoRow label="Goal"   value={member.goal} />}
               </div>
             </div>
           </div>

@@ -31,33 +31,30 @@ import '../../discovery/presentation/widgets/venue_map_card.dart';
 import '../domain/activity_participant.dart';
 import 'my_activities_screen.dart';
 
-// Data type.
+// ─── Data type ───────────────────────────────────────────────────────────────
 
 typedef _DetailData = ({
   ActivityModel activity,
   List<ChatMessage> recentMessages,
 });
 
-final _detailProvider = FutureProvider.autoDispose.family<_DetailData, String>((
-  ref,
-  activityId,
-) async {
+final _detailProvider = FutureProvider.autoDispose
+    .family<_DetailData, String>((ref, activityId) async {
   final activity = await ref.watch(activityRepositoryProvider).byId(activityId);
   if (activity == null) throw StateError('Activity not found');
   final messages = await ref.watch(chatRepositoryProvider).messages(activityId);
-  final recent = messages.length > 2
-      ? messages.sublist(messages.length - 2)
-      : messages;
+  final recent =
+      messages.length > 2 ? messages.sublist(messages.length - 2) : messages;
   return (activity: activity, recentMessages: recent);
 });
 
 /// Live roster for the participant avatar stack — real faces only.
 final _rosterProvider = FutureProvider.autoDispose
     .family<List<ActivityParticipant>, String>((ref, activityId) {
-      return ref.watch(activityRepositoryProvider).participants(activityId);
-    });
+  return ref.watch(activityRepositoryProvider).participants(activityId);
+});
 
-// Screen.
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
 class JoinedActivityDetailScreen extends ConsumerWidget {
   const JoinedActivityDetailScreen({super.key, required this.activityId});
@@ -67,8 +64,7 @@ class JoinedActivityDetailScreen extends ConsumerWidget {
     final confirmed = await AppDialog.confirm(
       context,
       title: 'Leave Activity?',
-      body:
-          'Are you sure you want to leave? You can re-join later if spots are available.',
+      body: 'Are you sure you want to leave? You can re-join later if spots are available.',
       confirmLabel: 'Leave',
       destructive: true,
     );
@@ -124,7 +120,7 @@ class JoinedActivityDetailScreen extends ConsumerWidget {
   }
 }
 
-// Detail body.
+// ─── Detail body ─────────────────────────────────────────────────────────────
 
 class _DetailBody extends StatelessWidget {
   const _DetailBody({
@@ -143,18 +139,22 @@ class _DetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A cancelled game keeps rendering (history, chat, roster) but must say so loudly.
-    final isCancelled = activity.lifecycleStatus.toLowerCase() == 'cancelled';
+    // A cancelled game keeps rendering (history, chat, roster) but must
+    // say so loudly — same red CANCELLED language as the host's manage
+    // screen. `lifecycleStatus` carries the raw backend string; payloads
+    // without one never match, so this only fires on explicit cancels.
+    final isCancelled =
+        activity.lifecycleStatus.toLowerCase() == 'cancelled';
     return Stack(
       children: [
-        // Hero.
+        // ── Hero ─────────────────────────────────────────────────────────
         SizedBox(
           height: _heroHeight,
           width: double.infinity,
           child: _Hero(activity: activity),
         ),
 
-        // Scrollable card.
+        // ── Scrollable card ───────────────────────────────────────────────
         Positioned(
           top: _heroHeight - _overlapAmount,
           left: 0,
@@ -270,7 +270,7 @@ class _DetailBody extends StatelessWidget {
   }
 }
 
-// Hero.
+// ─── Hero ─────────────────────────────────────────────────────────────────────
 
 class _Hero extends StatelessWidget {
   const _Hero({required this.activity});
@@ -439,15 +439,16 @@ class _PillBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTypography.chipLabel(
-          context,
-        ).copyWith(color: textColor, fontSize: 11),
+        style: AppTypography.chipLabel(context).copyWith(
+          color: textColor,
+          fontSize: 11,
+        ),
       ),
     );
   }
 }
 
-// Joined banner.
+// ─── Joined banner ────────────────────────────────────────────────────────────
 
 class _JoinedBanner extends StatelessWidget {
   const _JoinedBanner({required this.dateTime});
@@ -459,7 +460,8 @@ class _JoinedBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.x4),
       decoration: BoxDecoration(
-        // Theme-aware bg: the hardcoded light success fill glowed neon against a dark screen.
+        // Theme-aware bg: the hardcoded light success fill glowed
+        // neon against a dark screen.
         color: context.colors.statusSuccessBg,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
@@ -480,16 +482,16 @@ class _JoinedBanner extends StatelessWidget {
               children: [
                 Text(
                   "You're in!",
-                  style: AppTypography.labelField(
-                    context,
-                  ).copyWith(color: context.colors.successText),
+                  style: AppTypography.labelField(context).copyWith(
+                    color: context.colors.successText,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'See you on ${fmt.format(dateTime)}',
-                  style: AppTypography.metaSub(
-                    context,
-                  ).copyWith(color: context.colors.successText),
+                  style: AppTypography.metaSub(context).copyWith(
+                    color: context.colors.successText,
+                  ),
                 ),
               ],
             ),
@@ -500,7 +502,8 @@ class _JoinedBanner extends StatelessWidget {
   }
 }
 
-/// Shown in place of [_JoinedBanner] when the host cancelled the game.
+/// Shown in place of [_JoinedBanner] when the host cancelled the game —
+/// same red-tint language as the host's CANCELLED badge.
 class _CancelledBanner extends StatelessWidget {
   const _CancelledBanner();
 
@@ -529,16 +532,16 @@ class _CancelledBanner extends StatelessWidget {
               children: [
                 Text(
                   'This game was cancelled',
-                  style: AppTypography.labelField(
-                    context,
-                  ).copyWith(color: context.colors.errorText),
+                  style: AppTypography.labelField(context).copyWith(
+                    color: context.colors.errorText,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'The host called it off. Chat history stays readable.',
-                  style: AppTypography.metaSub(
-                    context,
-                  ).copyWith(color: context.colors.errorText),
+                  style: AppTypography.metaSub(context).copyWith(
+                    color: context.colors.errorText,
+                  ),
                 ),
               ],
             ),
@@ -549,7 +552,7 @@ class _CancelledBanner extends StatelessWidget {
   }
 }
 
-// Host card (matches activity detail screen. HostCard).
+// ─── Host card (matches activity_detail_screen._HostCard) ─────────────────────
 
 class _HostCard extends StatelessWidget {
   const _HostCard({
@@ -563,7 +566,9 @@ class _HostCard extends StatelessWidget {
   final String hostId;
   final double? hostRating;
 
-  /// Opens a 1-on-1 thread with the host (`/dm/:uid`).
+  /// Opens a 1-on-1 thread with the host (`/dm/:uid`). Falls back to
+  /// the group chat when the host uid is unknown — never the host's
+  /// display name, which is not a valid chat id.
   void _messageHost(BuildContext context) {
     final id = hostId.trim();
     if (id.isNotEmpty) {
@@ -578,9 +583,9 @@ class _HostCard extends StatelessWidget {
     // Local for flow promotion (fields never promote).
     final rating = hostRating;
     return PressableScale(
-      // pushOnce guard: duplicate pushes share a page key and red-screen ('!keyReservation.contains(key)').
-      onTap: () => NavGuard.push(
-        context,
+      // pushOnce guard: duplicate pushes share a page key and
+      // red-screen ('!keyReservation.contains(key)'). See NavGuard.
+      onTap: () => NavGuard.push(context,
         hostId.trim().isNotEmpty
             ? '/player-profile/uid/${hostId.trim()}'
             : '/player-profile/$hostName',
@@ -598,7 +603,10 @@ class _HostCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            AppAvatar(name: hostName, size: AppAvatarSize.sm),
+            AppAvatar(
+              name: hostName,
+              size: AppAvatarSize.sm,
+            ),
             const SizedBox(width: AppSpacing.x3),
             Expanded(
               child: Column(
@@ -606,9 +614,10 @@ class _HostCard extends StatelessWidget {
                 children: [
                   Text(
                     hostName,
-                    style: AppTypography.labelField(
-                      context,
-                    ).copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: AppTypography.labelField(context).copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text('Host', style: AppTypography.metaSub(context)),
                 ],
@@ -657,9 +666,9 @@ class _HostCard extends StatelessWidget {
             else
               Text(
                 'New host',
-                style: AppTypography.metaSub(
-                  context,
-                ).copyWith(fontWeight: FontWeight.w600),
+                style: AppTypography.metaSub(context).copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
           ],
         ),
@@ -708,13 +717,13 @@ class _MetaCard extends StatelessWidget {
             title: !activity.isPaid
                 ? 'Free Activity'
                 : activity.isSplitCost
-                ? 'Split Cost'
-                : 'Paid Activity',
+                    ? 'Split Cost'
+                    : 'Paid Activity',
             sub: !activity.isPaid
                 ? 'No cost to join'
                 : activity.splitExplainer ??
-                      activity.feeLabel ??
-                      'Fee required to join',
+                    activity.feeLabel ??
+                    'Fee required to join',
             trailingChip: _FeeChip(isPaid: activity.isPaid),
           ),
         ],
@@ -752,7 +761,11 @@ class _MetaRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 18, color: context.colors.primaryOnSurface),
+            child: Icon(
+              icon,
+              size: 18,
+              color: context.colors.primaryOnSurface,
+            ),
           ),
           const SizedBox(width: AppSpacing.x3),
           Expanded(
@@ -781,12 +794,10 @@ class _FeeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isPaid
-        ? context.colors.warningBg
-        : context.colors.statusSuccessBg;
-    final fgColor = isPaid
-        ? context.colors.warningText
-        : context.colors.successText;
+    final bgColor =
+        isPaid ? context.colors.warningBg : context.colors.statusSuccessBg;
+    final fgColor =
+        isPaid ? context.colors.warningText : context.colors.successText;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -795,15 +806,17 @@ class _FeeChip extends StatelessWidget {
       ),
       child: Text(
         isPaid ? 'Paid' : 'Free',
-        style: AppTypography.chipLabel(
-          context,
-        ).copyWith(color: fgColor, fontWeight: FontWeight.w700, fontSize: 12),
+        style: AppTypography.chipLabel(context).copyWith(
+          color: fgColor,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
       ),
     );
   }
 }
 
-// Participants section.
+// ─── Participants section ─────────────────────────────────────────────────────
 
 class _ParticipantsSection extends ConsumerWidget {
   const _ParticipantsSection({required this.activity});
@@ -865,12 +878,15 @@ class _ParticipantsSection extends ConsumerWidget {
             final visible = members.take(_maxVisible).toList();
             final overflow = members.length - visible.length;
             final slots = visible.length + (overflow > 0 ? 1 : 0);
-            // Visual facepile only — one "View roster" button below is the single entry point to the full.
+            // Visual facepile only — one "View roster" button below is
+            // the single entry point to the full participants screen.
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  // Keyed so tests can scope finders to the live roster stack.
+                  // Keyed so tests can scope finders to the live roster
+                  // stack (the host card elsewhere shows the same
+                  // initials when host == organizer).
                   key: const ValueKey('participant-stack'),
                   height: _size,
                   width: _step * (slots - 1) + _size,
@@ -896,10 +912,11 @@ class _ParticipantsSection extends ConsumerWidget {
                               child: Center(
                                 child: Text(
                                   '+$overflow',
-                                  style: AppTypography.badgeSport(context)
-                                      .copyWith(
-                                        color: context.colors.textSecondary,
-                                      ),
+                                  style: AppTypography.badgeSport(
+                                    context,
+                                  ).copyWith(
+                                    color: context.colors.textSecondary,
+                                  ),
                                 ),
                               ),
                             ),
@@ -910,7 +927,8 @@ class _ParticipantsSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.x3),
                 AppButton.secondary(
-                  label: 'View roster · ${members.length} joined',
+                  label:
+                      'View roster · ${members.length} joined',
                   size: AppButtonSize.sm,
                   onPressed: () => NavGuard.push(
                     context,
@@ -944,10 +962,13 @@ class _Ring extends StatelessWidget {
   }
 }
 
-// Chat section.
+// ─── Chat section ─────────────────────────────────────────────────────────────
 
 class _ChatSection extends StatelessWidget {
-  const _ChatSection({required this.messages, required this.activityId});
+  const _ChatSection({
+    required this.messages,
+    required this.activityId,
+  });
   final List<ChatMessage> messages;
   final String activityId;
 
@@ -985,9 +1006,8 @@ class _ChatSection extends StatelessWidget {
                     color: context.colors.primarySoft,
                     borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(
-                      color: context.colors.primaryOnSurface.withValues(
-                        alpha: 0.3,
-                      ),
+                      color: context.colors.primaryOnSurface
+                          .withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -1001,9 +1021,9 @@ class _ChatSection extends StatelessWidget {
                       const SizedBox(width: AppSpacing.x2),
                       Text(
                         'Open Group Chat',
-                        style: AppTypography.labelField(
-                          context,
-                        ).copyWith(color: context.colors.primaryOnSurface),
+                        style: AppTypography.labelField(context).copyWith(
+                          color: context.colors.primaryOnSurface,
+                        ),
                       ),
                     ],
                   ),
@@ -1045,16 +1065,14 @@ class _ChatMsgRow extends StatelessWidget {
                   Expanded(
                     child: Text(
                       message.senderName,
-                      style: AppTypography.chipLabel(
-                        context,
-                      ).copyWith(fontSize: 12),
+                      style: AppTypography.chipLabel(context)
+                          .copyWith(fontSize: 12),
                     ),
                   ),
                   Text(
                     time,
-                    style: AppTypography.metaSub(
-                      context,
-                    ).copyWith(fontSize: 10),
+                    style: AppTypography.metaSub(context)
+                        .copyWith(fontSize: 10),
                   ),
                 ],
               ),
@@ -1064,9 +1082,10 @@ class _ChatMsgRow extends StatelessWidget {
               else
                 Text(
                   message.text,
-                  style: AppTypography.bodyReading(
-                    context,
-                  ).copyWith(color: context.colors.textSecondary, fontSize: 13),
+                  style: AppTypography.bodyReading(context).copyWith(
+                    color: context.colors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
             ],
           ),
@@ -1076,7 +1095,8 @@ class _ChatMsgRow extends StatelessWidget {
   }
 }
 
-/// 56px photo thumbnail for image messages, with an icon fallback when the remote image fails (or only a local path.
+/// 56px photo thumbnail for image messages, with an icon fallback when
+/// the remote image fails (or only a local path exists).
 class _PhotoThumbnail extends StatelessWidget {
   const _PhotoThumbnail({required this.imageUrl});
   final String? imageUrl;
@@ -1127,7 +1147,7 @@ class _PhotoThumbnail extends StatelessWidget {
   }
 }
 
-// Action buttons.
+// ─── Action buttons ───────────────────────────────────────────────────────────
 
 class _AddToCalendarButton extends ConsumerStatefulWidget {
   const _AddToCalendarButton({required this.activity});
@@ -1138,7 +1158,8 @@ class _AddToCalendarButton extends ConsumerStatefulWidget {
       _AddToCalendarButtonState();
 }
 
-class _AddToCalendarButtonState extends ConsumerState<_AddToCalendarButton> {
+class _AddToCalendarButtonState
+    extends ConsumerState<_AddToCalendarButton> {
   bool _added = false;
   bool _saving = false;
 
@@ -1147,9 +1168,7 @@ class _AddToCalendarButtonState extends ConsumerState<_AddToCalendarButton> {
     setState(() => _saving = true);
     try {
       final activity = widget.activity;
-      final ok = await ref
-          .read(calendarRepositoryProvider)
-          .addToDeviceCalendar(
+      final ok = await ref.read(calendarRepositoryProvider).addToDeviceCalendar(
             CalendarEvent(
               id: activity.id,
               activityId: activity.id,

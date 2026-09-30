@@ -1,4 +1,3 @@
-// Tests for devices.
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,17 +19,17 @@ vi.mock('../../middleware/auth.middleware.js', () => {
       next();
     }),
 
-    requireAuthAllowSuspended: vi.fn((req, _res, next) => {
+  requireAuthAllowSuspended: vi.fn((req, _res, next) => {
       req.auth = req.auth ?? {
-        uid: 'test-uid-1',
-        token: {} as never,
+          uid: 'test-uid-1',
+          token: {} as never,
       };
       next();
-    }),
+  }),
 
-    requireAdmin: vi.fn((_req, _res, next) => {
+  requireAdmin: vi.fn((_req, _res, next) => {
       next();
-    }),
+  }),
   };
 });
 
@@ -127,7 +126,9 @@ describe('devices routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(devicesService.registerDevice).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(devicesService.registerDevice).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
@@ -200,7 +201,9 @@ describe('devices routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(devicesService.listDevices).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(devicesService.listDevices).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
@@ -235,7 +238,10 @@ describe('devices routes', () => {
           deviceId: 'device-1',
         },
       });
-      expect(devicesService.deleteDevice).toHaveBeenCalledWith('test-uid-1', 'device-1');
+      expect(devicesService.deleteDevice).toHaveBeenCalledWith(
+        'test-uid-1',
+        'device-1',
+      );
     });
 
     it('when deviceId is blank => expected 400 w/ EMPTY_INPUT', async () => {
@@ -254,7 +260,9 @@ describe('devices routes', () => {
     });
 
     it('when device is not found => expected 404 w/ NOT_FOUND', async () => {
-      vi.mocked(devicesService.deleteDevice).mockRejectedValueOnce(new Error('Device not found'));
+      vi.mocked(devicesService.deleteDevice).mockRejectedValueOnce(
+        new Error('Device not found'),
+      );
 
       const app = createApp();
 
@@ -271,7 +279,9 @@ describe('devices routes', () => {
     });
 
     it('when service throws unknown error => expected 500 w/ INTERNAL_ERROR', async () => {
-      vi.mocked(devicesService.deleteDevice).mockRejectedValueOnce(new Error('Unknown error'));
+      vi.mocked(devicesService.deleteDevice).mockRejectedValueOnce(
+        new Error('Unknown error'),
+      );
 
       const app = createApp();
 
@@ -287,4 +297,5 @@ describe('devices routes', () => {
       });
     });
   });
+
 });

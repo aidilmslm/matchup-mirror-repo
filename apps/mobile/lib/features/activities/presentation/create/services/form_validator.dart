@@ -77,7 +77,8 @@ Map<String, String> validateStep(int step, ActivityFormData data) {
       }
       break;
     case 4:
-      // Step 4: Fee and review No required fields for this step.
+      // Step 4: Fee and review
+      // No required fields for this step
       break;
   }
 

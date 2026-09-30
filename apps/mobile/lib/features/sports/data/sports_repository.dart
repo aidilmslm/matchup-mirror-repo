@@ -1,7 +1,10 @@
 import '../../../core/network/api_client.dart';
 import '../domain/sport_config.dart';
 
-/// Master sports config.
+/// Master sports config. Served by `GET /api/public/sports` (no auth —
+/// sports config is non-sensitive) and curated in the admin web.
+/// Screens always keep a hardcoded fallback: a failed fetch must never
+/// empty a picker, it just keeps the last-known list.
 abstract class SportsRepository {
   Future<List<SportConfig>> configs();
 }
@@ -25,7 +28,10 @@ class RemoteSportsRepository implements SportsRepository {
   }
 }
 
-/// No honest offline fallback exists for admin-curated config.
+/// No honest offline fallback exists for admin-curated config — callers
+/// catch and fall back to their bundled list instead. Throws [ApiException]
+/// (not [UnimplementedError]) so offline callers get a catchable,
+/// user-message-carrying error instead of a crash.
 class UnavailableSportsRepository implements SportsRepository {
   @override
   Future<List<SportConfig>> configs() {

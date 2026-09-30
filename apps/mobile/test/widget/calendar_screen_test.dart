@@ -154,42 +154,50 @@ void main() {
         ).thenAnswer((_) async => true);
 
         await pumpScreen(tester);
-        await tester.tap(find.byTooltip('Sync ke kalender perangkat'));
+        await tester.tap(
+          find.byTooltip('Sync ke kalender perangkat'),
+        );
         await tester.pumpAndSettle();
 
         verify(() => repo.addToDeviceCalendar(any())).called(1);
-        expect(find.text('Added to your device calendar.'), findsOneWidget);
+        expect(
+          find.text('Added to your device calendar.'),
+          findsOneWidget,
+        );
       },
     );
 
-    testWidgets('should show an error notice when the device sync fails', (
-      tester,
-    ) async {
-      final today = DateTime.now();
-      when(() => repo.upcoming()).thenAnswer(
-        (_) async => [
-          CalendarEvent(
-            id: 'e1',
-            activityId: '9',
-            title: 'Evening Pickleball',
-            start: DateTime(today.year, today.month, today.day, 18),
-            end: DateTime(today.year, today.month, today.day, 20),
-            location: 'Kowhai Recreation Centre',
-          ),
-        ],
-      );
-      when(
-        () => repo.addToDeviceCalendar(any()),
-      ).thenAnswer((_) async => false);
+    testWidgets(
+      'should show an error notice when the device sync fails',
+      (tester) async {
+        final today = DateTime.now();
+        when(() => repo.upcoming()).thenAnswer(
+          (_) async => [
+            CalendarEvent(
+              id: 'e1',
+              activityId: '9',
+              title: 'Evening Pickleball',
+              start: DateTime(today.year, today.month, today.day, 18),
+              end: DateTime(today.year, today.month, today.day, 20),
+              location: 'Kowhai Recreation Centre',
+            ),
+          ],
+        );
+        when(
+          () => repo.addToDeviceCalendar(any()),
+        ).thenAnswer((_) async => false);
 
-      await pumpScreen(tester);
-      await tester.tap(find.byTooltip('Sync ke kalender perangkat'));
-      await tester.pumpAndSettle();
+        await pumpScreen(tester);
+        await tester.tap(
+          find.byTooltip('Sync ke kalender perangkat'),
+        );
+        await tester.pumpAndSettle();
 
-      expect(
-        find.text('Could not add to your device calendar.'),
-        findsOneWidget,
-      );
-    });
+        expect(
+          find.text('Could not add to your device calendar.'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

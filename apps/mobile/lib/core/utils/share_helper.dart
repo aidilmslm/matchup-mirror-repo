@@ -5,7 +5,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../features/activities/domain/activity_model.dart';
 import '../../features/profile/domain/user_model.dart';
 
-/// System share sheet wrappers.
+/// System share sheet wrappers. Every entry point degrades gracefully
+/// (returns false) when the platform share sheet is unavailable —
+/// notably in widget tests, where the method channel has no host.
 class ShareHelper {
   const ShareHelper._();
 
