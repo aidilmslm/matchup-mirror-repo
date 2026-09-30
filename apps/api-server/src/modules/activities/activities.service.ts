@@ -8,6 +8,8 @@ import {
 import { getPublicUserProfile, type PublicUserProfile } from '../users/users.service.js';
 import { getSwipeDecision, type SwipeDecision } from '../swipes/swipes.service.js';
 import { sweepExpiredActivities } from './activity-lifecycle.service.js';
+import { getParticipants } from './activity-participants.service.js';
+import { createNotification, renderTemplate } from '../notifications/notifications.service.js';
 
 export type ActivityStatus = 'open' | 'full' | 'cancelled' | 'completed' | 'removed';
 export type ActivitySkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'any';
@@ -816,6 +818,9 @@ export async function updateActivity(input: UpdateActivityInput): Promise<void> 
 
   const activityRef = firestore.doc(activityDocPath(activityId));
 
+  // Participant-visible fields before the write — compared post-commit so members learn what changed.
+  let before: Record<string, unknown> | null = null;
+
   await firestore.runTransaction(async (transaction) => {
     const activitySnap = await transaction.get(activityRef);
 
@@ -828,6 +833,18 @@ export async function updateActivity(input: UpdateActivityInput): Promise<void> 
     if (data?.hostId !== hostId) {
       throw new Error('Only the activity host can update this activity');
     }
+
+    before = {
+      title: data?.title,
+      startTime: data?.startTime,
+      endTime: data?.endTime,
+      locationName: data?.locationName,
+      address: data?.address,
+      latitude: data?.latitude,
+      longitude: data?.longitude,
+      geohash: data?.geohash,
+      capacity: data?.capacity,
+    };
 
     if (wantsPaidChange) {
       const currentPaid = data?.isPaid === true;
@@ -880,6 +897,78 @@ export async function updateActivity(input: UpdateActivityInput): Promise<void> 
 
     transaction.update(activityRef, updates);
   });
+
+  await notifyParticipantsOfUpdate(activityId, hostId, before, updates);
+}
+
+/** Notifies members (not the host) when an edit changes time, venue or capacity. Best-effort. */
+async function notifyParticipantsOfUpdate(
+  activityId: string,
+  hostId: string,
+  before: Record<string, unknown> | null,
+  updates: Partial<ActivityRecord>,
+): Promise<void> {
+  const changed = new Set<string>();
+  const differs = (key: string) =>
+    (updates as Record<string, unknown>)[key] !== undefined &&
+    (updates as Record<string, unknown>)[key] !== before?.[key];
+  if (differs('startTime') || differs('endTime')) changed.add('time');
+  if (
+    differs('locationName') ||
+    differs('address') ||
+    differs('latitude') ||
+    differs('longitude') ||
+    differs('geohash')
+  ) {
+    changed.add('the venue');
+  }
+  if (differs('capacity')) changed.add('capacity');
+  if (changed.size === 0) return;
+
+  let roster: { uid: unknown }[] = [];
+  try {
+    roster = await getParticipants(activityId);
+  } catch {
+    return;
+  }
+  const recipients = [
+    ...new Set(
+      roster
+        .map((p) => p.uid)
+        .filter((uid): uid is string => typeof uid === 'string' && !!uid && uid !== hostId),
+    ),
+  ];
+  if (recipients.length === 0) return;
+
+  const summary = [...changed].join(' and ');
+  const title =
+    typeof updates.title === 'string' && updates.title
+      ? updates.title
+      : typeof before?.title === 'string' && before.title
+        ? before.title
+        : 'Your activity';
+  try {
+    const template = await renderTemplate('activity.updated', {
+      activityName: title,
+      changeSummary: summary,
+    });
+    await Promise.all(
+      recipients.map((uid) =>
+        createNotification({
+          recipientUid: uid,
+          type: 'activity_updated',
+          title: template?.title ?? 'Activity updated',
+          body:
+            template?.body ??
+            `“${title}” updated: ${summary} changed — tap for the latest details.`,
+          activityId,
+          audience: 'member',
+        }).catch(() => undefined),
+      ),
+    );
+  } catch {
+    // Best-effort.
+  }
 }
 
 export async function enrichActivityWithHostProfile(

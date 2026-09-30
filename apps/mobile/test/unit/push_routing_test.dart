@@ -108,6 +108,26 @@ void main() {
       );
     });
 
+    test('activity_updated routes members to their joined view', () {
+      expect(
+        routeForPush(
+          const PushPayload(
+            type: 'activity_updated',
+            activityId: 'a-5',
+            audience: 'member',
+          ),
+        ),
+        '/joined-activity/a-5',
+      );
+      // Legacy rows without audience keep the discover detail.
+      expect(
+        routeForPush(
+          const PushPayload(type: 'activity_updated', activityId: 'a-5'),
+        ),
+        '/activity/a-5',
+      );
+    });
+
     test('missing activityId falls back to notifications feed', () {
       expect(
         routeForPush(const PushPayload(type: 'chat_message')),
@@ -216,6 +236,7 @@ void main() {
         'activity_cancelled',
         'activity_completed',
         'activity_joined',
+        'activity_updated',
         'activity_left',
         'participant_removed',
         'join_request',

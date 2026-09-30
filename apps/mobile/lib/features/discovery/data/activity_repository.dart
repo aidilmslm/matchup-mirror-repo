@@ -21,6 +21,9 @@ abstract class ActivityRepository {
   /// after a remote edit — the short-TTL cache would otherwise serve stale rows).
   Future<ActivityModel?> refreshActivityDetails(String id);
 
+  /// Drops cached feed pages so post-push refetches observe remote edits.
+  void invalidateFeed();
+
   /// Roster for a single activity, used by the Activity Participants screen.
   Future<List<ActivityParticipant>> participants(String activityId);
 

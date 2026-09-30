@@ -132,6 +132,7 @@ class RemoteNotificationRepository implements NotificationRepository {
         return NotificationType.chat;
       case 'activity' ||
           'activity_reminder' ||
+          'activity_updated' ||
           'activity_cancelled' ||
           'activity_completed' ||
           'activity_left':

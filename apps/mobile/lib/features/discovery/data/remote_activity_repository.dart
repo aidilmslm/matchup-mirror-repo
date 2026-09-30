@@ -79,6 +79,7 @@ class RemoteActivityRepository implements ActivityRepository {
       _feedCache.isFresh(_feedKey(filter, limit, offset));
 
   /// Drops cached feeds (whole map, or one filter).
+  @override
   void invalidateFeed({
     DiscoveryFilter? filter,
     int limit = 20,

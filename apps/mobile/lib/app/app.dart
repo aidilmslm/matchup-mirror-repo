@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_constants.dart';
+import '../core/providers/repository_providers.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_typography.dart';
@@ -458,6 +459,8 @@ class _PushRouterState extends ConsumerState<_PushRouter> {
   /// Invalidates the My Games tab providers when [payload] can have changed membership.
   void _refreshMyGames(PushPayload payload) {
     if (!invalidatesMyGames(payload)) return;
+    // Bust the feed cache too: tab refetches would otherwise serve cached rows.
+    ref.read(activityRepositoryProvider).invalidateFeed();
     ref.invalidate(joinedGamesProvider);
     ref.invalidate(hostedGamesProvider);
     ref.invalidate(pastGamesProvider);
