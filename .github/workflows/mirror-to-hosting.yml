@@ -1,7 +1,11 @@
 name: mirror-main-to-hosting
 
 # Setiap ada push ke main di nimble-takahe -> auto-push ke matchup-hosting.
-# Butuh secret HOSTING_MIRROR_TOKEN (PAT dengan write access ke matchup-hosting).
+# Butuh secret HOSTING_MIRROR_TOKEN: PAT (akun imamnurhidayat77) dengan
+# scope `repo` + `workflow` (classic) atau Contents:RW + Actions:RW
+# (fine-grained). Scope `workflow` wajib karena mirror ikut mem-push
+# file .github/workflows/*.yml dan GitHub menolak update workflow
+# tanpa scope itu.
 
 on:
   push:
@@ -10,6 +14,8 @@ on:
 
 jobs:
   mirror:
+    # Jangan jalan di repo mirror hasil copy (mencegah loop push ke diri sendiri).
+    if: github.repository == 'UOA-CS734-S2-2026/project-implementation-nimble-takahe'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout full history
