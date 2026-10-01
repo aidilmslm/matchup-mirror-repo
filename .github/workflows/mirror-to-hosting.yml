@@ -33,4 +33,14 @@ jobs:
           git config --unset http.https://github.com/.extraheader 2>/dev/null || true
           git remote remove hosting 2>/dev/null || true
           git remote add hosting "https://x-access-token:${HOSTING_MIRROR_TOKEN}@github.com/imamnurhidayat77/matchup-hosting.git"
-          git push hosting HEAD:main
+          # Repo hosting punya commit sendiri (mis. README init) sehingga
+          # histori divergen: fetch lalu merge sekali, setelah itu push
+          # fast-forward seperti biasa. Tanpa merge, push selalu rejected.
+          git fetch hosting main || true
+          if git merge-base --is-ancestor hosting/main HEAD 2>/dev/null; then
+            git push hosting HEAD:main
+          else
+            git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+              merge --allow-unrelated-histories hosting/main -m "chore: sync hosting mirror"
+            git push hosting HEAD:main
+          fi
