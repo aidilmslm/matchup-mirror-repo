@@ -333,6 +333,13 @@ Mapped control-for-control against the OWASP Top 10 (2021) in [`docs/security/ow
 - **Input & abuse** — zod validation (env fail-fast boot + per-route schemas), 1 MB JSON cap, per-IP rate limiting (global + burst caps), Nominatim behind a cached server-side proxy.
 - **Supply chain & secrets** — locked dependencies, `npm audit` gate on the production tree, secrets-guard CI job blocks tracked `.env`/keys, Dependabot updates.
 
+### Lab 07 security review (Sep 2026)
+
+Reviewed every data-changing endpoint for BOLA (details: [Wiki Lab 07 page](https://github.com/UOA-CS734-S2-2026/project-implementation-nimble-takahe/wiki/Lab-07-Security-Review)):
+- **Checked** — all API mutating routes derive identity from the verified Firebase ID token (never client-supplied ids); ownership/host/admin gates per route; RTDB writes backend-only; Firestore default-deny.
+- **Fixed** — RTDB `dmChats` broad read let any signed-in user read any 1-on-1 thread (deterministic thread ids + direct client reads). Now party-only; attacker-tested on the RTDB emulator (outsider denied, parties allowed). Deploy via `firebase deploy --only database`.
+- **Accepted gaps** — RTDB `activityChats`/`typing` reads are any-authenticated-user (needs a membership index to tighten; API layer gates correctly, writes are backend-only).
+
 ## Configuration
 
 Key variables (see [environment variables doc](docs/setup/environment-variables.md) and each app's `.env.example`):

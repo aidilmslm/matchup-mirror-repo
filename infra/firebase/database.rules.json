@@ -46,12 +46,18 @@
     "dmChats": {
       "$threadId": {
         "messages": {
-          ".read": "auth != null",
+          ".read": "auth != null && ($threadId.beginsWith(auth.uid + '_') || $threadId.endsWith('_' + auth.uid))",
           ".write": false,
           "$messageId": {
             ".validate": "newData.hasChildren(['senderId', 'text', 'timestamp']) && newData.child('senderId').isString() && newData.child('text').isString() && newData.child('timestamp').isNumber()"
           }
         }
+      }
+    },
+    "userDMs": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false
       }
     }
   }
