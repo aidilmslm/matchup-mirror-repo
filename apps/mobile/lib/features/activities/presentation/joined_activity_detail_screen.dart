@@ -121,8 +121,16 @@ class JoinedActivityDetailScreen extends ConsumerWidget {
           message: 'Could not load this activity.',
           onRetry: () => ref.invalidate(_detailProvider(activityId)),
         ),
-        data: (data) => RefreshIndicator(
-          // Pull-to-refresh bypasses the detail/roster caches so edits land immediately.
+        // NOTE: _DetailBody must stay the direct child here (no
+        // RefreshIndicator around it). Wrapping this Stack in a
+        // RefreshIndicator collapses it to hero height (~280px) because a
+        // Stack sizes non-positioned children with loose constraints —
+        // that's what caused the half-screen bug. Pull-to-refresh lives
+        // *inside* _DetailBody around the SingleChildScrollView instead.
+        data: (data) => _DetailBody(
+          activity: data.activity,
+          recentMessages: data.recentMessages,
+          onLeave: () => _confirmLeave(context, ref),
           onRefresh: () async {
             try {
               await ref
@@ -140,11 +148,6 @@ class JoinedActivityDetailScreen extends ConsumerWidget {
             ref.invalidate(_detailProvider(activityId));
             ref.invalidate(_rosterProvider(activityId));
           },
-          child: _DetailBody(
-            activity: data.activity,
-            recentMessages: data.recentMessages,
-            onLeave: () => _confirmLeave(context, ref),
-          ),
         ),
       ),
     );
@@ -158,11 +161,13 @@ class _DetailBody extends StatelessWidget {
     required this.activity,
     required this.recentMessages,
     required this.onLeave,
+    required this.onRefresh,
   });
 
   final ActivityModel activity;
   final List<ChatMessage> recentMessages;
   final VoidCallback onLeave;
+  final Future<void> Function() onRefresh;
 
   // Must match activity_detail_screen hero height for visual consistency.
   static const double _heroHeight = 280;
@@ -195,99 +200,104 @@ class _DetailBody extends StatelessWidget {
               ),
               boxShadow: AppShadows.sheet,
             ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.x5,
-                AppSpacing.x5,
-                AppSpacing.x5,
-                AppSpacing.x8,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title + cancelled badge (host parity).
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          activity.title,
-                          style: AppTypography.headingDisplay(context),
+            child: RefreshIndicator(
+              // Pull-to-refresh bypasses the detail/roster caches so edits land immediately.
+              onRefresh: onRefresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.x5,
+                  AppSpacing.x5,
+                  AppSpacing.x5,
+                  AppSpacing.x8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title + cancelled badge (host parity).
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            activity.title,
+                            style: AppTypography.headingDisplay(context),
+                          ),
                         ),
-                      ),
-                      if (isCancelled) ...[
-                        const SizedBox(width: AppSpacing.x3),
-                        LabelBadge(
-                          label: 'CANCELLED',
-                          background: context.colors.errorLight,
-                          foreground: context.colors.errorText,
-                        ),
+                        if (isCancelled) ...[
+                          const SizedBox(width: AppSpacing.x3),
+                          LabelBadge(
+                            label: 'CANCELLED',
+                            background: context.colors.errorLight,
+                            foreground: context.colors.errorText,
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.x4),
+                    ),
+                    const SizedBox(height: AppSpacing.x4),
 
-                  // Status banner: cancelled notice replaces "You're in".
-                  if (isCancelled)
-                    const _CancelledBanner()
-                  else
-                    _JoinedBanner(dateTime: activity.dateTime),
-                  const SizedBox(height: AppSpacing.x4),
+                    // Status banner: cancelled notice replaces "You're in".
+                    if (isCancelled)
+                      const _CancelledBanner()
+                    else
+                      _JoinedBanner(dateTime: activity.dateTime),
+                    const SizedBox(height: AppSpacing.x4),
 
-                  // Host card
-                  _HostCard(
-                    activityId: activity.id,
-                    hostName: activity.hostName,
-                    hostId: activity.hostId,
-                    hostRating: activity.hostRating,
-                  ),
-                  const SizedBox(height: AppSpacing.x3),
+                    // Host card
+                    _HostCard(
+                      activityId: activity.id,
+                      hostName: activity.hostName,
+                      hostId: activity.hostId,
+                      hostRating: activity.hostRating,
+                    ),
+                    const SizedBox(height: AppSpacing.x3),
 
-                  // Meta card — date + location
-                  _MetaCard(activity: activity),
-                  ActivityWeatherSection(activity: activity),
-                  const SizedBox(height: AppSpacing.x5),
-
-                  // Venue map (only when coordinates exist).
-                  if (activity.latitude != null &&
-                      activity.longitude != null) ...[
-                    VenueMapCard(activity: activity),
+                    // Meta card — date + location
+                    _MetaCard(activity: activity),
+                    ActivityWeatherSection(activity: activity),
                     const SizedBox(height: AppSpacing.x5),
-                  ],
 
-                  // Participants
-                  _ParticipantsSection(activity: activity),
-                  const SizedBox(height: AppSpacing.x5),
+                    // Venue map (only when coordinates exist).
+                    if (activity.latitude != null &&
+                        activity.longitude != null) ...[
+                      VenueMapCard(activity: activity),
+                      const SizedBox(height: AppSpacing.x5),
+                    ],
 
-                  // Group chat preview
-                  _ChatSection(
-                    messages: recentMessages,
-                    activityId: activity.id,
-                  ),
-                  const SizedBox(height: AppSpacing.x5),
+                    // Participants
+                    _ParticipantsSection(activity: activity),
+                    const SizedBox(height: AppSpacing.x5),
 
-                  // Actions
-                  _AddToCalendarButton(activity: activity),
-                  const SizedBox(height: AppSpacing.x3),
-                  _CheckInButton(activityId: activity.id),
-                  const SizedBox(height: AppSpacing.x4),
+                    // Group chat preview
+                    _ChatSection(
+                      messages: recentMessages,
+                      activityId: activity.id,
+                    ),
+                    const SizedBox(height: AppSpacing.x5),
 
-                  // Leave
-                  Center(
-                    child: PressableScale(
-                      onTap: onLeave,
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.x2),
-                        child: Text(
-                          'Leave Activity',
-                          style: AppTypography.labelField(
-                            context,
-                          ).copyWith(color: context.colors.errorText),
+                    // Actions
+                    _AddToCalendarButton(activity: activity),
+                    const SizedBox(height: AppSpacing.x3),
+                    _CheckInButton(activityId: activity.id),
+                    const SizedBox(height: AppSpacing.x4),
+
+                    // Leave
+                    Center(
+                      child: PressableScale(
+                        onTap: onLeave,
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.x2),
+                          child: Text(
+                            'Leave Activity',
+                            style: AppTypography.labelField(
+                              context,
+                            ).copyWith(color: context.colors.errorText),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
