@@ -13,8 +13,6 @@ import 'local_presence_repository.dart';
 import 'presence_repository.dart';
 
 /// HTTP-backed [PresenceRepository] for the live MatchUp API.
-/// Endpoints used: `POST /api/presence` — set current user's state `GET /api/presence/:uid` — fetch a user's state.
-/// All operations swallow transport errors and fall back to a no-op so that a flaky network never desyncs the local UI.
 class RemotePresenceRepository implements PresenceRepository {
   RemotePresenceRepository({ApiClient? client, PresenceRepository? fallback})
     : _client = client ?? ApiClient.instance,
@@ -32,14 +30,18 @@ class RemotePresenceRepository implements PresenceRepository {
   bool get _isBlocked =>
       _blockedUntil != null && DateTime.now().isBefore(_blockedUntil!);
 
-  void _noteRateLimit(DioException e) {
-    if (e.response?.statusCode != 429) return;
-    final raw = e.response?.headers.value('retry-after');
-    final secs = int.tryParse(raw?.trim() ?? '');
-    final wait = (secs != null && secs > 0 && secs <= 300)
-        ? Duration(seconds: secs)
+  void _noteRateLimit(DioException error) {
+    if (error.response?.statusCode != 429) return;
+
+    final raw = error.response?.headers.value('retry-after');
+    final seconds = int.tryParse(raw?.trim() ?? '');
+
+    final wait = seconds != null && seconds > 0 && seconds <= 300
+        ? Duration(seconds: seconds)
         : const Duration(seconds: 30);
+
     _blockedUntil = DateTime.now().add(wait);
+
     debugPrint(
       '[RemotePresenceRepository] 429 — pausing polls until $_blockedUntil',
     );
@@ -49,6 +51,7 @@ class RemotePresenceRepository implements PresenceRepository {
   Future<void> setMyState(PresenceState state) async {
     try {
       await _client.dio.post('/presence', data: {'state': state.wireValue});
+
       if (state == PresenceState.online) {
         // Best-effort and strictly additive: if arming fails.
         await _armOfflineOnDisconnect().timeout(
@@ -68,9 +71,10 @@ class RemotePresenceRepository implements PresenceRepository {
     try {
       final uid = await SecureTokenStore.instance.readUserId();
       if (uid == null || uid.isEmpty) return;
+
       await RemotePresenceRepository().setMyState(PresenceState.offline);
-    } catch (e) {
-      debugPrint('[RemotePresenceRepository.markOfflineNow] $e');
+    } catch (error) {
+      debugPrint('[RemotePresenceRepository.markOfflineNow] $error');
     }
   }
 
@@ -80,82 +84,116 @@ class RemotePresenceRepository implements PresenceRepository {
       if (Firebase.apps.isEmpty) return;
       // The RTDB rule only allows an authenticated user to write their own `presence/$uid` node (`auth.uid == $uid`).
       await RtdbAuthService.instance.ensureSignedIn();
+
       final uid = await SecureTokenStore.instance.readUserId();
       if (uid == null || uid.isEmpty) return;
+
       await FirebaseDatabase.instance.ref('presence/$uid').onDisconnect().set({
         'state': 'offline',
         'lastChanged': DateTime.now().millisecondsSinceEpoch,
       });
-    } catch (e) {
-      debugPrint('[RemotePresenceRepository.onDisconnect] $e');
+    } catch (error) {
+      debugPrint('[RemotePresenceRepository.onDisconnect] $error');
     }
   }
 
   @override
   Future<PresenceState?> getState(String uid) async {
     try {
-      final res = await _client.dio.get('/presence/$uid');
-      // Response shape: { ok, data: { state, lastChanged } }.
-      final data = apiDataMap(res.data);
+      final response = await _client.dio.get('/presence/$uid');
+      // Response shape: { ok, data: { state, lastChanged } }
+      final data = apiDataMap(response.data);
+
       if (data == null) return null;
+
       return PresenceState.fromWire(data['state'] as String?);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 429) _noteRateLimit(e);
-      // 404 = user has never reported a state. Status code (plus the normalised ApiException), never a toString sniff.
-      final isNotFound =
-          e.response?.statusCode == 404 ||
-          (e.error is ApiException &&
-              (e.error as ApiException).statusCode == 404);
-      if (!isNotFound) {
-        debugPrint('[RemotePresenceRepository.getState] $e');
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 429) {
+        _noteRateLimit(error);
       }
+      // 404 = user has never reported a state. Status code (plus the normalised ApiException), never a toString sniff.
+
+      final isNotFound =
+          error.response?.statusCode == 404 ||
+          (error.error is ApiException &&
+              (error.error as ApiException).statusCode == 404);
+
+      if (!isNotFound) {
+        debugPrint('[RemotePresenceRepository.getState] $error');
+      }
+
       return _fallback.getState(uid);
-    } on Exception catch (e) {
-      // Non-Dio failure (no status code to inspect).
-      debugPrint('[RemotePresenceRepository.getState] $e');
+    } catch (error) {
+      debugPrint('[RemotePresenceRepository.getState] $error');
+
       return _fallback.getState(uid);
     }
   }
 
   @override
   Stream<Set<String>> watchOnline(List<String> uids) async* {
-    if (uids.isEmpty) {
+    final watchedUids = List<String>.unmodifiable(uids);
+
+    if (watchedUids.isEmpty) {
       yield const <String>{};
       return;
     }
 
     final controller = StreamController<Set<String>>();
     Timer? timer;
+    var tickInFlight = false;
 
     Future<void> tick() async {
-      if (_isBlocked) return;
-      // Fan out a presence request per uid and collect the ones that report `online`.
-      final results = await Future.wait(
-        uids.map((uid) async {
-          try {
-            final state = await getState(uid);
-            return MapEntry(uid, state == PresenceState.online);
-          } catch (_) {
-            return MapEntry(uid, false);
-          }
-        }),
-      );
-      final online = <String>{
-        for (final entry in results)
-          if (entry.value) entry.key,
-      };
-      if (!controller.isClosed) controller.add(online);
+      if (tickInFlight || _isBlocked) return;
+
+      tickInFlight = true;
+
+      try {
+        final results = await Future.wait(
+          watchedUids.map((uid) async {
+            try {
+              final state = await getState(uid);
+
+              return MapEntry(uid, state == PresenceState.online);
+            } catch (_) {
+              return MapEntry(uid, false);
+            }
+          }),
+        );
+
+        final online = <String>{
+          for (final entry in results)
+            if (entry.value) entry.key,
+        };
+
+        if (!controller.isClosed) {
+          controller.add(online);
+        }
+      } finally {
+        tickInFlight = false;
+      }
     }
 
-    // Emit immediately, then on every interval tick.
     unawaited(tick());
-    timer = Timer.periodic(_onlinePollInterval, (_) => tick());
+
+    timer = Timer.periodic(_onlinePollInterval, (_) {
+      unawaited(tick());
+    });
 
     controller.onCancel = () {
       timer?.cancel();
       timer = null;
     };
 
-    yield* controller.stream;
+    try {
+      yield* controller.stream;
+    } finally {
+      timer?.cancel();
+      timer = null;
+
+      if (!controller.isClosed) {
+        await controller.close();
+      }
+    }
   }
 }
