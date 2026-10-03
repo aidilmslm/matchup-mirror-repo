@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { fetchReports, reportAction } from '../services/reportsService';
 import type { Report, ReportStatus, ReportAction } from '../services/reportsService';
 
@@ -22,59 +22,88 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'FETCH_START':
       return { status: 'loading' };
+
     case 'FETCH_SUCCESS':
       return { status: 'success', reports: action.reports };
+
     case 'FETCH_ERROR':
       return { status: 'error', message: action.message };
+
     case 'UPDATE_STATUS':
       if (state.status !== 'success') return state;
+
       return {
         ...state,
-        reports: state.reports.map((r) =>
-          r.id === action.id
+        reports: state.reports.map((report) =>
+          report.id === action.id
             ? {
-                ...r,
+                ...report,
                 status: action.reportStatus,
-                adminNote: action.note ?? r.adminNote,
+                adminNote: action.note ?? report.adminNote,
                 resolvedAt: new Date().toISOString(),
               }
-            : r,
+            : report,
         ),
       };
+
     default:
       return state;
   }
 }
 
+/**
+ * Loads reports and exposes moderation actions.
+ *
+ * Actions persist first and update local state only after the API succeeds,
+ * preventing the UI from showing a false successful moderation state.
+ */
 export function useReports() {
   const [state, dispatch] = useReducer(reducer, { status: 'idle' });
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
+
     try {
       const reports = await fetchReports();
-      dispatch({ type: 'FETCH_SUCCESS', reports });
+
+      if (mountedRef.current) {
+        dispatch({ type: 'FETCH_SUCCESS', reports });
+      }
     } catch (err) {
-      dispatch({
-        type: 'FETCH_ERROR',
-        message: err instanceof Error ? err.message : 'Failed to load reports',
-      });
+      if (mountedRef.current) {
+        dispatch({
+          type: 'FETCH_ERROR',
+          message: err instanceof Error ? err.message : 'Failed to load reports',
+        });
+      }
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const handleAction = useCallback(async (id: string, action: ReportAction, note?: string) => {
     const newStatus = STATUS_MAP[action];
-    // Persist first — only touch local state on success.
+
     try {
       await reportAction(id, action, note);
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to update report');
     }
-    dispatch({ type: 'UPDATE_STATUS', id, reportStatus: newStatus, note });
+
+    if (mountedRef.current) {
+      dispatch({ type: 'UPDATE_STATUS', id, reportStatus: newStatus, note });
+    }
   }, []);
 
   return {
