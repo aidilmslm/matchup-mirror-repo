@@ -14,7 +14,7 @@ This repository contains the **source code** for the MatchUp platform: a cross-p
 - [Tech Stack](#tech-stack)
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
-- [Demo Accounts & Seed Data](#demo-accounts--seed-data)
+- [Demo Accounts](#demo-accounts)
 - [Scripts by App](#scripts-by-app)
 - [Testing](#testing)
 - [Security](#security)
@@ -27,7 +27,7 @@ This repository contains the **source code** for the MatchUp platform: a cross-p
 
 | Component | Live URL | Notes |
 |-----------|----------|-------|
-| Admin web (React) | <https://matchup-hosting.vercel.app/> | Hosted on Vercel; hardening headers (CSP, `X-Frame-Options: DENY`) ship from [`apps/admin-web/vercel.json`](apps/admin-web/vercel.json). Admin login requires an admin uid (see [Demo Accounts](#demo-accounts--seed-data)). |
+| Admin web (React) | <https://matchup-hosting.vercel.app/> | Hosted on Vercel; hardening headers (CSP, `X-Frame-Options: DENY`) ship from [`apps/admin-web/vercel.json`](apps/admin-web/vercel.json). Admin login requires an admin uid (see [Demo Accounts](#demo-accounts)). |
 | API (Express) | <https://matchup-api-569237066208.asia-southeast1.run.app/> — health: [`/api/health`](https://matchup-api-569237066208.asia-southeast1.run.app/api/health) | Cloud Run service `matchup-api` in `asia-southeast1` (project `matchup-cs734`); secrets via Secret Manager. Deploy script: [`apps/api-server/deploy-cloudrun.sh`](apps/api-server/deploy-cloudrun.sh). |
 | Mobile (Flutter) | APK: [Google Drive folder](https://drive.google.com/drive/u/0/folders/1xdP49GI5ip-Ca7zjh3ZbHAYM1aj1QZSD) | Release build (`flutter build apk --obfuscate --split-debug-info=build/debug-info`), points at the live API + Firebase project `matchup-cs734`. |
 | Data plane | Firebase project `matchup-cs734` (Firestore + RTDB + Storage + FCM) | Rules in [`firestore.rules`](firestore.rules), [`storage.rules`](storage.rules), [`infra/firebase/database.rules.json`](infra/firebase/database.rules.json). |
@@ -269,17 +269,11 @@ cd apps/mobile && flutter run
 - Admin web: open http://localhost:5173
 - Mobile: launches in your emulator/device
 
-## Demo Accounts & Seed Data
+## Demo Accounts
 
-Seed a full demo world (5 Auth users, activities incl. full/split-cost/completed games, swipes, notifications, RTDB chats, ratings, 15 sports, 13 notification templates):
+Demo logins (same password for all): `alex.mercer@matchup.demo`, `sarah.chen@matchup.demo`, `mike.chen@matchup.demo`, `lisa.park@matchup.demo`, `james.wilson@matchup.demo` — password `MatchUp123!`.
 
-```bash
-cd apps/api-server && npm run seed
-```
-
-Demo logins (same password for all): `alex.mercer@matchup.demo`, `sarah.chen@matchup.demo`, `mike.chen@matchup.demo`, `lisa.park@matchup.demo`, `james.wilson@matchup.demo` — password `MatchUp123!`. For a dense Auckland map: `npm run seed:akl100` (destructive re-seed, 100 activities).
-
-Admin access is granted server-side (Firestore `admins/{uid}` doc or `ADMIN_UIDS` bootstrap allowlist) and proven at login via `GET /api/admin/me` — seed users are players/hosts, so ask the team for an admin uid or add your own.
+Admin access is granted server-side (Firestore `admins/{uid}` doc or `ADMIN_UIDS` bootstrap allowlist) and proven at login via `GET /api/admin/me` — demo users are players/hosts, so ask the team for an admin uid or add your own.
 
 ## Scripts by App
 
@@ -306,8 +300,6 @@ flutter build ipa --obfuscate --split-debug-info=build/debug-info
 cd apps/api-server
 npm test               # vitest suite
 npm run perf:smoke     # latency-budget smoke against a running server
-npm run seed           # seed script (src/scripts/seed.ts)
-npm run seed:akl100    # 100-activity Auckland re-seed
 ```
 
 ## Testing
@@ -352,6 +344,24 @@ Key variables (see [environment variables doc](docs/setup/environment-variables.
 | `CORS_ORIGINS` | API | Browser allowlist; **required in production** (boot refuses without it) |
 | `VITE_API_BASE_URL` (+ Firebase web keys) | Admin web | API base + sign-in config |
 | `API_BASE_URL` / `APP_ENV` | Mobile | API base (HTTPS enforced unless `local`) + env label |
+
+### Private information (Canvas upload)
+
+Secrets are never committed (root `.gitignore` excludes `.env*`). The `Private information` ZIP submitted alongside this repo contains the live values as plain-text files — copy each one to its destination and rename to `.env`:
+
+| ZIP file | Destination | Purpose |
+|----------|-------------|---------|
+| `api-server-env.txt` | `apps/api-server/.env` | Firebase Admin service account + `ADMIN_UIDS` bootstrap; the API cannot boot against `matchup-cs734` without it |
+| `admin-web-env.txt` | `apps/admin-web/.env` | Prod `VITE_API_BASE_URL` + Firebase web config for admin sign-in |
+| `mobile-env.txt` | `apps/mobile/.env` | Prod `API_BASE_URL` (Cloud Run) + `APP_ENV=production` + web API key |
+
+```bash
+cp <unzip-dir>/api-server-env.txt apps/api-server/.env
+cp <unzip-dir>/admin-web-env.txt apps/admin-web/.env
+cp <unzip-dir>/mobile-env.txt apps/mobile/.env
+```
+
+Not included (already in git): `google-services.json`, `GoogleService-Info.plist`, `lib/firebase_options.dart`, and every `.env.example`.
 
 ## Common Issues
 
