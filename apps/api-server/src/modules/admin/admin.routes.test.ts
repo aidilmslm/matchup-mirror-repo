@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Stub each service so these tests focus on endpoint routing, defaults, and HTTP error mapping.
 vi.mock('./members.service.js', () => ({
   ADMIN_MEMBERS_PAGE_LIMIT_DEFAULT: 20,
   ADMIN_MEMBERS_PAGE_LIMIT_MAX: 100,
