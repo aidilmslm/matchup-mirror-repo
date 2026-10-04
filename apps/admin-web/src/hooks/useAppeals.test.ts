@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Hoisted mocks let the tests control each status query and appeal decision.
 const { fetchAppealsMock, decideAppealMock } = vi.hoisted(() => ({
   fetchAppealsMock: vi.fn(),
   decideAppealMock: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('../services/appealsService', () => ({
 import { useAppeals } from './useAppeals';
 import type { Appeal } from '../services/appealsService';
 
+// Build realistic appeal records without repeating required fields in each scenario.
 function makeAppeal(overrides: Partial<Appeal> = {}): Appeal {
   return {
     id: 'a1',
@@ -31,10 +33,12 @@ function makeAppeal(overrides: Partial<Appeal> = {}): Appeal {
 }
 
 describe('useAppeals', () => {
+  // Reset mock call history and behavior before every independent hook scenario.
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  // All three status groups are requested so page tabs can filter the combined list locally.
   it('loads and concatenates pending, approved, and rejected appeals on mount', async () => {
     const pending = [makeAppeal({ id: 'p1', status: 'Pending' })];
     const approved = [makeAppeal({ id: 'a1', status: 'Approved' })];
@@ -65,6 +69,7 @@ describe('useAppeals', () => {
     expect(result.current.appeals).toEqual([]);
   });
 
+  // The server response replaces the decided row while other appeals remain untouched.
   it('updates only the decided appeal in place via handleDecision', async () => {
     fetchAppealsMock.mockImplementation(async (status: string) =>
       status === 'Pending' ? [makeAppeal({ id: 'p1' }), makeAppeal({ id: 'p2' })] : [],
