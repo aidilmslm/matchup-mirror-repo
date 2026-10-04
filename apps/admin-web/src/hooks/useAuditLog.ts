@@ -12,6 +12,7 @@ export function useAuditLog() {
     setLoading(true);
     setError(null);
     try {
+      // The page performs its filters, search, and pagination over this recent-entry window.
       const rows = await fetchAuditLog({ limit: 200 });
       setEntries(rows);
     } catch (err) {

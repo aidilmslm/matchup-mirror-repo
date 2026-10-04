@@ -2,11 +2,13 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { fetchReports, reportAction } from '../services/reportsService';
 import type { Report, ReportStatus, ReportAction } from '../services/reportsService';
 
+// Keep UI action names separate from the statuses stored on report records.
 const STATUS_MAP: Record<ReportAction, ReportStatus> = {
   resolve: 'Resolved',
   dismiss: 'Dismissed',
 };
 
+// A report list is either loading, failed, or ready for moderation.
 type State =
   | { status: 'idle' | 'loading' }
   | { status: 'error'; message: string }
@@ -18,6 +20,7 @@ type Action =
   | { type: 'FETCH_ERROR'; message: string }
   | { type: 'UPDATE_STATUS'; id: string; reportStatus: ReportStatus; note?: string };
 
+// Apply successful fetches and moderation results without mutating the current list.
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'FETCH_START':
@@ -61,6 +64,7 @@ export function useReports() {
   const [state, dispatch] = useReducer(reducer, { status: 'idle' });
   const mountedRef = useRef(true);
 
+  // Track mount status because requests may finish after the panel has been closed.
   useEffect(() => {
     mountedRef.current = true;
 
@@ -69,6 +73,7 @@ export function useReports() {
     };
   }, []);
 
+  // Fetch the report queue and discard results if this hook has already unmounted.
   const load = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
 
@@ -92,6 +97,7 @@ export function useReports() {
     void load();
   }, [load]);
 
+  // Persist first so failed moderation never appears successful in the local list.
   const handleAction = useCallback(async (id: string, action: ReportAction, note?: string) => {
     const newStatus = STATUS_MAP[action];
 

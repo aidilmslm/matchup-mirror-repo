@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Share one controllable audit service mock between module setup and test cases.
 const { fetchAuditLogMock } = vi.hoisted(() => ({ fetchAuditLogMock: vi.fn() }));
 vi.mock('../services/auditLogService', () => ({
   fetchAuditLog: fetchAuditLogMock,
@@ -10,6 +11,7 @@ vi.mock('../services/auditLogService', () => ({
 import { useAuditLog } from './useAuditLog';
 import type { AuditLogEntry } from '../services/auditLogService';
 
+// Reuse a valid audit row and override only fields relevant to a case.
 function makeEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
   return {
     id: 'e1',
@@ -29,6 +31,7 @@ function makeEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
 }
 
 describe('useAuditLog', () => {
+  // Clear mock state so call counts and results describe only the current case.
   beforeEach(() => {
     vi.clearAllMocks();
   });

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Hoist report service mocks so fetches and moderation actions are fully controlled per test.
 const { fetchReportsMock, reportActionMock } = vi.hoisted(() => ({
   fetchReportsMock: vi.fn(),
   reportActionMock: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('../services/reportsService', () => ({
 import { useReports } from './useReports';
 import type { Report } from '../types/reports';
 
+// Provide a complete pending report as the shared baseline for action scenarios.
 function makeReport(overrides: Partial<Report> = {}): Report {
   return {
     id: 'report-1',
@@ -32,6 +34,7 @@ function makeReport(overrides: Partial<Report> = {}): Report {
 }
 
 describe('useReports', () => {
+  // Prevent mocked responses or call history from carrying between cases.
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -58,6 +61,7 @@ describe('useReports', () => {
     expect(result.current.reports).toEqual([]);
   });
 
+  // The local status and admin note change only after the service confirms success.
   it('updates a report only after the API action succeeds', async () => {
     fetchReportsMock.mockResolvedValue([makeReport()]);
     reportActionMock.mockResolvedValue(undefined);
@@ -78,6 +82,7 @@ describe('useReports', () => {
     });
   });
 
+  // A rejected action must leave the pending report intact for a later retry.
   it('leaves the report unchanged when the API action fails', async () => {
     fetchReportsMock.mockResolvedValue([makeReport()]);
     reportActionMock.mockRejectedValue(new Error('denied'));
