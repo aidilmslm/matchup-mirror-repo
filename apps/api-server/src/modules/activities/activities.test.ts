@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Exercise activity HTTP behavior with persistence and notification dependencies stubbed at the service boundary.
 const rtdbMocks = vi.hoisted(() => {
   return {
     ref: vi.fn(),
