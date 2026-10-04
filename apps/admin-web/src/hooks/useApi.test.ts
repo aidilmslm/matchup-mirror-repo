@@ -1,12 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 
+// Use a hoisted API mock so each test can control the hook's request outcome.
 const { apiFetchMock } = vi.hoisted(() => ({ apiFetchMock: vi.fn() }));
 vi.mock('../services/api', () => ({ apiFetch: apiFetchMock }));
 
 import { useApi } from './useApi';
 
 describe('useApi', () => {
+  // Keep every request scenario independent of earlier mock implementations.
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -58,6 +60,7 @@ describe('useApi', () => {
     expect(apiFetchMock).toHaveBeenNthCalledWith(2, '/api/b');
   });
 
+  // Resolve after unmount to verify cleanup prevents a late state update from throwing.
   it('ignores a stale response after the component unmounts', async () => {
     let resolveFetch: (v: unknown) => void = () => {};
     apiFetchMock.mockReturnValue(
