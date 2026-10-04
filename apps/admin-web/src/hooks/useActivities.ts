@@ -7,6 +7,7 @@ import {
 } from '../services/activitiesService';
 import type { AdminActivity, ActivityStatus } from '../services/activitiesService';
 
+// Keep loading, error, and loaded data mutually exclusive so callers can render each state cleanly.
 type State =
   | { status: 'idle' | 'loading' }
   | { status: 'error'; message: string }
@@ -19,6 +20,7 @@ type Action =
   | { type: 'UPDATE_STATUS'; id: string; activityStatus: ActivityStatus }
   | { type: 'REMOVE'; id: string };
 
+// Apply fetch results and local edits without mutating the current activity list.
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'FETCH_START':
@@ -46,6 +48,7 @@ function reducer(state: State, action: Action): State {
 export function useActivities() {
   const [state, dispatch] = useReducer(reducer, { status: 'idle' });
 
+  // Fetching is shared by initial load, manual reloads, and mutation recovery.
   const load = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
     try {
@@ -63,6 +66,7 @@ export function useActivities() {
     load();
   }, [load]);
 
+  // Update immediately for a responsive UI; reload the server version if persistence fails.
   const handleStatusChange = useCallback(
     async (id: string, activityStatus: ActivityStatus) => {
       dispatch({ type: 'UPDATE_STATUS', id, activityStatus });
@@ -75,6 +79,7 @@ export function useActivities() {
     [load],
   );
 
+  // Remove immediately, then restore server data on failure by reloading.
   const handleDelete = useCallback(
     async (id: string) => {
       dispatch({ type: 'REMOVE', id });
