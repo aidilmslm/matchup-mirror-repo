@@ -388,7 +388,13 @@ service account has Firestore/Realtime Database access.
 
 ### Kotlin Increment failure during the Gradle build (usually for Windows Machine)
 
-Turn off the Kotlin incremental in Gradle properties. Locate ,.<strong>$root\apps\mobile\android\gradle.properties</strong> and Add this line
+If encounter a error message contains this
+
+```bash
+java.lang.Exception: Could not close incremental caches in .....
+```
+
+Turn off the Kotlin incremental in Gradle properties. Navigate to <strong>$root\apps\mobile\android\gradle.properties</strong> and Add this line
 ```bash
 kotlin.incremental=false
 ```
