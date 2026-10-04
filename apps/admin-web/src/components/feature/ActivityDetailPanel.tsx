@@ -3,6 +3,7 @@ import { Avatar } from '../ui/Avatar';
 import type { AdminActivity, ActivityStatus } from '../../types/activities';
 
 function StatusBadge({ status }: { status: ActivityStatus }) {
+  // Match each activity state to the same semantic color used across admin views.
   const map: Record<ActivityStatus, string> = {
     Active: 'bg-brand-50  text-brand-700  border-brand-200',
     Full: 'bg-warning-100 text-warning-700 border-warning-200',
@@ -20,6 +21,7 @@ function StatusBadge({ status }: { status: ActivityStatus }) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+  // Shared heading style keeps the panel's content groups visually consistent.
   return (
     <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-400">
       {children}
@@ -36,6 +38,7 @@ function MetaItem({
   primary: string;
   secondary?: string;
 }) {
+  // Pair an icon and primary value with optional supporting detail.
   return (
     <div className="flex items-start gap-3 py-3 border-b border-ink-100 last:border-0">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500">
@@ -58,6 +61,7 @@ export function ActivityDetailPanel({
 }) {
   if (!activity) return null;
 
+  // Clamp the occupancy bar so it never extends beyond the available capacity.
   const pct = Math.min((activity.participants / activity.capacity) * 100, 100);
   const isFull = pct >= 100;
 
@@ -71,7 +75,7 @@ export function ActivityDetailPanel({
     >
       {/* ── Hero block ─────────────────────────────────────────────── */}
       <div className="-mx-6 -mt-5 mb-6 border-b border-ink-100 bg-gradient-to-b from-ink-50 to-white px-6 pt-5 pb-5">
-        {/* Badges row */}
+        {/* Sport, skill, status, and price summarize the activity at a glance. */}
         <div className="flex flex-wrap gap-2 mb-4">
           <span className="rounded-full bg-ink-200 px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink-700">
             {activity.sport}
@@ -116,6 +120,7 @@ export function ActivityDetailPanel({
       <div className="space-y-7">
         {/* ── Details — mirrors _MetaCard ─────────────────────────── */}
         <div>
+          {/* Schedule, location, and price are grouped as practical activity details. */}
           <SectionLabel>Details</SectionLabel>
           <div className="rounded-xl border border-ink-200 bg-white px-4">
             <MetaItem
@@ -179,6 +184,7 @@ export function ActivityDetailPanel({
 
         {/* ── About ───────────────────────────────────────────────── */}
         <div>
+          {/* The host description adds context beyond the structured metadata. */}
           <SectionLabel>About this Activity</SectionLabel>
           <p className="rounded-xl border border-ink-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-ink-700">
             {activity.description}
@@ -187,6 +193,7 @@ export function ActivityDetailPanel({
 
         {/* ── Participants ─────────────────────────────────────────── */}
         <div>
+          {/* Show current enrollment and remaining capacity beside the progress bar. */}
           <SectionLabel>Participants</SectionLabel>
           <div className="rounded-xl border border-ink-200 bg-white px-4 py-4">
             <div className="mb-3 flex items-baseline justify-between">
