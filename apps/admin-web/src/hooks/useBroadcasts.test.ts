@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Hoisted service mocks make list and mutation responses deterministic in each test.
 const { fetchBroadcastsMock, createBroadcastMock, sendBroadcastMock, deleteBroadcastMock } =
   vi.hoisted(() => ({
     fetchBroadcastsMock: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('../services/broadcastsService', () => ({
 import { useBroadcasts } from './useBroadcasts';
 import type { Broadcast } from '../services/broadcastsService';
 
+// Provide a valid default broadcast that scenarios can customize with small overrides.
 function makeBroadcast(overrides: Partial<Broadcast> = {}): Broadcast {
   return {
     id: 'b1',
@@ -32,6 +34,7 @@ function makeBroadcast(overrides: Partial<Broadcast> = {}): Broadcast {
 }
 
 describe('useBroadcasts', () => {
+  // Isolate each scenario by clearing all mock behavior and call history.
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -57,6 +60,7 @@ describe('useBroadcasts', () => {
     expect(result.current.broadcasts.map((b) => b.id)).toEqual(['new', 'old']);
   });
 
+  // Create errors remain available to the form so it can show validation feedback.
   it('propagates a create failure to the caller instead of swallowing it', async () => {
     fetchBroadcastsMock.mockResolvedValue([]);
     createBroadcastMock.mockRejectedValue(new Error('validation failed'));
@@ -83,6 +87,7 @@ describe('useBroadcasts', () => {
     expect(result.current.broadcasts[0].status).toBe('Sent');
   });
 
+  // A failed delete reloads the list so the temporarily hidden record returns.
   it('reverts an optimistic delete by reloading on API failure', async () => {
     fetchBroadcastsMock
       .mockResolvedValueOnce([makeBroadcast({ id: 'b1' })])

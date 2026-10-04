@@ -7,6 +7,7 @@ export function useAppeals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load every status because the page switches tabs locally without another request.
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -29,6 +30,7 @@ export function useAppeals() {
     load();
   }, [load]);
 
+  // Replace only the decided row with the server's authoritative response.
   const handleDecision = useCallback(
     async (id: string, decision: 'approve' | 'reject', response: string) => {
       const updated = await decideAppeal(id, decision, response);

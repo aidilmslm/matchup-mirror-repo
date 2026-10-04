@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Hoist dashboard service mocks so requests and moderation outcomes are controlled by each case.
 const { fetchDashboardMock, moderationActionMock } = vi.hoisted(() => ({
   fetchDashboardMock: vi.fn(),
   moderationActionMock: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('../services/dashboardService', () => ({
 import { useDashboard } from './useDashboard';
 import type { DashboardData } from '../types/dashboard';
 
+// Supply one moderation item by default so removal and recovery can be observed.
 function makeDashboard(overrides: Partial<DashboardData> = {}): DashboardData {
   return {
     kpis: [],
@@ -36,6 +38,7 @@ function makeDashboard(overrides: Partial<DashboardData> = {}): DashboardData {
 }
 
 describe('useDashboard', () => {
+  // Each test starts with clean service call history and response behavior.
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -59,6 +62,7 @@ describe('useDashboard', () => {
     expect(result.current.data).toBeNull();
   });
 
+  // Successful moderation keeps the queue item hidden after the immediate local removal.
   it('optimistically removes a moderation item and keeps it removed on success', async () => {
     fetchDashboardMock.mockResolvedValue(makeDashboard());
     moderationActionMock.mockResolvedValue(undefined);
@@ -73,6 +77,7 @@ describe('useDashboard', () => {
     expect(moderationActionMock).toHaveBeenCalledWith('mod1', 'dismiss', undefined);
   });
 
+  // Re-fetching after failure restores the queue item to the view.
   it('reverts the optimistic removal by reloading on API failure', async () => {
     fetchDashboardMock
       .mockResolvedValueOnce(makeDashboard())

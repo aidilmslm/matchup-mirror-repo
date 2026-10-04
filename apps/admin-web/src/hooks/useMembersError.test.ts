@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Hoisted mocks expose rejected writes to tests of the hook's error propagation contract.
 const { fetchMembersMock, updateMemberStatusMock, deleteMemberMock } = vi.hoisted(() => ({
   fetchMembersMock: vi.fn(),
   updateMemberStatusMock: vi.fn(),
@@ -16,10 +17,12 @@ vi.mock('../services/membersService', () => ({
 import { useMembers } from './useMembers';
 
 describe('useMembers error surfacing (F9)', () => {
+  // Reset calls and outcomes before checking each mutation's rejection path.
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  // Bulk operations need the rejected promise to identify and summarize failed members.
   it('rethrows status-change failures so bulk callers can summarize them', async () => {
     fetchMembersMock.mockResolvedValue([
       {
@@ -47,6 +50,7 @@ describe('useMembers error surfacing (F9)', () => {
     ).rejects.toThrow('denied');
   });
 
+  // Delete callers also own presenting the failure after the hook reloads its data.
   it('rethrows delete failures so callers can surface them', async () => {
     fetchMembersMock.mockResolvedValue([
       {

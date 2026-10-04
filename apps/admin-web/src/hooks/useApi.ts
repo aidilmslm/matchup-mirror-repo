@@ -12,11 +12,13 @@ export function useApi<T>(path: string): {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Ignore completion callbacks from an earlier path or an unmounted hook instance.
     let cancelled = false;
     setLoading(true);
     apiFetch<T>(path)
       .then((result: ApiResponse<T>) => {
         if (cancelled) return;
+        // API errors arrive as a result value, while transport failures reach catch below.
         if (result.ok) {
           setData(result.data);
           setError(null);
@@ -36,5 +38,6 @@ export function useApi<T>(path: string): {
     };
   }, [path]);
 
+  // The returned shape is a small view model for components that need one API resource.
   return { data, loading, error };
 }

@@ -5,6 +5,7 @@ import type {
   AnalyticsRange,
 } from '../services/analyticsService';
 
+// The reducer keeps fetch lifecycle state separate from the selected analytics range.
 type State =
   | { status: 'idle' | 'loading' }
   | { status: 'error'; message: string }
@@ -15,6 +16,7 @@ type Action =
   | { type: 'FETCH_SUCCESS'; data: AnalyticsData }
   | { type: 'FETCH_ERROR'; message: string };
 
+// Store the latest fetch result or error while ignoring unrelated actions.
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'FETCH_START':
@@ -37,6 +39,7 @@ export function useAnalytics() {
   const requestIdRef = useRef(0);
   const mountedRef = useRef(true);
 
+  // Prevent async responses from dispatching after unmount.
   useEffect(() => {
   mountedRef.current = true;
 
@@ -45,6 +48,7 @@ export function useAnalytics() {
   };
 }, []);
 
+  // Only the most recent range request may update the visible chart data.
   const load = useCallback(async (requestedRange: AnalyticsRange) => {
     const requestId = ++requestIdRef.current;
 
@@ -83,6 +87,7 @@ export function useAnalytics() {
     void load(range);
   }, [load, range]);
 
+  // Re-run the query for the currently selected range.
   const reload = useCallback(() => {
     void load(range);
   }, [load, range]);

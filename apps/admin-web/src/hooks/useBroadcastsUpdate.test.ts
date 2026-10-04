@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Mock every service export because the hook imports the whole broadcasts service module.
 const {
   fetchBroadcastsMock,
   createBroadcastMock,
@@ -26,10 +27,12 @@ vi.mock('../services/broadcastsService', () => ({
 import { useBroadcasts } from './useBroadcasts';
 
 describe('useBroadcasts.handleUpdate (F3)', () => {
+  // Clear mock behavior so each update result is tied to its own case.
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  // Verify the patch reaches the service and its canonical response updates local state.
   it('updates a broadcast in place after editing', async () => {
     fetchBroadcastsMock.mockResolvedValue([
       {
@@ -60,6 +63,7 @@ describe('useBroadcasts.handleUpdate (F3)', () => {
     expect(out).toMatchObject({ title: 'New' });
   });
 
+  // The editing UI owns error presentation, so update failures must reject to the caller.
   it('propagates update failures to the caller', async () => {
     fetchBroadcastsMock.mockResolvedValue([]);
     updateBroadcastMock.mockRejectedValue(new Error('denied'));

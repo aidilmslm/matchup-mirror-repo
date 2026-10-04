@@ -3,6 +3,7 @@ import { Avatar } from '../ui/Avatar';
 import type { Member, MemberStatus } from '../../types/members';
 
 function StatusBadge({ status }: { status: MemberStatus }) {
+  // Keep status colors and the dot indicator aligned for each member state.
   const map: Record<MemberStatus, { cls: string; dot: string }> = {
     Active: { cls: 'bg-brand-50 text-brand-700 border-brand-200', dot: 'bg-brand-500' },
     Suspended: { cls: 'bg-danger-50 text-danger-700 border-danger-200', dot: 'bg-danger-500' },
@@ -19,6 +20,7 @@ function StatusBadge({ status }: { status: MemberStatus }) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+  // Reuse one label treatment for each group of member details.
   return (
     <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-400">
       {children}
@@ -27,6 +29,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  // Align field names and values consistently in the compact information lists.
   return (
     <div className="flex items-start justify-between gap-4 py-2.5 border-b border-ink-100 last:border-0">
       <span className="shrink-0 text-xs text-ink-400">{label}</span>
@@ -44,6 +47,7 @@ export function MemberDetailPanel({
 }) {
   if (!member) return null;
 
+  // Convert an optional birth date into a readable date and approximate age.
   const formatDob = (dob?: string) => {
     if (!dob) return null;
     const d = new Date(dob);
@@ -51,6 +55,7 @@ export function MemberDetailPanel({
     return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (${age} yrs)`;
   };
 
+  // Hide the physical profile section when there are no fields to display.
   const hasPhysical = !!(member.dateOfBirth || member.heightCm || member.weightKg || member.goal);
 
   return (
@@ -107,6 +112,7 @@ export function MemberDetailPanel({
       <div className="space-y-7">
         {/* ── Stats row — mirrors _StatsRow in mobile ─────────────── */}
         <div>
+          {/* Joined, hosted, and rating metrics give a compact activity summary. */}
           <SectionLabel>Activity Stats</SectionLabel>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -146,6 +152,7 @@ export function MemberDetailPanel({
         {/* ── Bio ─────────────────────────────────────────────────── */}
         {member.bio && (
           <div>
+            {/* Bio is optional, so only render this section when supplied. */}
             <SectionLabel>Bio</SectionLabel>
             <p className="rounded-xl border border-ink-200 bg-ink-50 px-4 py-3 text-sm leading-relaxed text-ink-700">
               {member.bio}
@@ -156,6 +163,7 @@ export function MemberDetailPanel({
         {/* ── Sports — mirrors "My Sports" chips ──────────────────── */}
         {member.sports.length > 0 && (
           <div>
+            {/* Show each sport's level and visually highlight the first sport. */}
             <SectionLabel>My Sports</SectionLabel>
             <div className="flex flex-wrap gap-2">
               {member.sports.map((s, i) => (
@@ -183,6 +191,7 @@ export function MemberDetailPanel({
 
         {/* ── Contact — admin-only ─────────────────────────────────── */}
         <div>
+          {/* Contact and account fields are grouped for quick administrative reference. */}
           <SectionLabel>Contact</SectionLabel>
           <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
             <div className="px-4">
@@ -197,6 +206,7 @@ export function MemberDetailPanel({
         {/* ── Physical profile — admin-only, only if data exists ────── */}
         {hasPhysical && (
           <div>
+            {/* Render only physical profile attributes the member has provided. */}
             <SectionLabel>Physical Profile</SectionLabel>
             <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
               <div className="px-4">

@@ -8,6 +8,7 @@ export function useNotifTemplates() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use one fetch path for the initial request and any caller-triggered reload.
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -24,6 +25,7 @@ export function useNotifTemplates() {
     load();
   }, [load]);
 
+  // Whitelist editable fields so identifiers or server-managed values are never sent in a patch.
   const handleUpdate = useCallback(async (id: string, patch: Partial<NotifTemplate>) => {
     const allowed = {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
@@ -34,6 +36,7 @@ export function useNotifTemplates() {
     setTemplates((prev) => prev.map((t) => (t.id === id ? updated : t)));
   }, []);
 
+  // Read the current enabled value and route the toggle through the same update flow.
   const handleToggle = useCallback(
     async (id: string) => {
       const current = templates.find((t) => t.id === id);

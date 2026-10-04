@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Hoist service mocks so the module factory and tests share the same controllable functions.
 const { fetchActivitiesMock, updateActivityStatusMock, deleteActivityMock } = vi.hoisted(() => ({
   fetchActivitiesMock: vi.fn(),
   updateActivityStatusMock: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock('../services/activitiesService', () => ({
 import { useActivities } from './useActivities';
 import type { AdminActivity } from '../services/activitiesService';
 
+// Supply a complete baseline record while letting each scenario override relevant fields.
 function makeActivity(overrides: Partial<AdminActivity> = {}): AdminActivity {
   return {
     id: 'act1',
@@ -43,10 +45,12 @@ function makeActivity(overrides: Partial<AdminActivity> = {}): AdminActivity {
 }
 
 describe('useActivities', () => {
+  // Reset service behavior between cases so failures and responses cannot leak across tests.
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  // The hook starts loading, then exposes fetched rows with a cleared error.
   it('loads activities on mount', async () => {
     fetchActivitiesMock.mockResolvedValue([makeActivity()]);
     const { result } = renderHook(() => useActivities());
@@ -80,6 +84,7 @@ describe('useActivities', () => {
     expect(updateActivityStatusMock).toHaveBeenCalledWith('act1', 'Cancelled');
   });
 
+  // A failed write must reload server state to undo the optimistic status shown in memory.
   it('reverts the optimistic status change by reloading on API failure', async () => {
     fetchActivitiesMock
       .mockResolvedValueOnce([makeActivity({ id: 'act1', status: 'Active' })])
@@ -96,6 +101,7 @@ describe('useActivities', () => {
     expect(fetchActivitiesMock).toHaveBeenCalledTimes(2);
   });
 
+  // Successful deletion removes only the selected activity from the visible collection.
   it('optimistically removes an activity on delete', async () => {
     fetchActivitiesMock.mockResolvedValue([
       makeActivity({ id: 'act1' }),
