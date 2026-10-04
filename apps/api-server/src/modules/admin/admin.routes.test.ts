@@ -258,6 +258,21 @@ describe('admin routes', () => {
     expect(response.status).toBe(409);
   });
 
+  it('POST /api/admin/appeals/:id/reject forwards the admin and optional note', async () => {
+    vi.mocked(appealsService.decideAppeal).mockResolvedValue({} as never);
+    const response = await request(createApp())
+      .post('/api/admin/appeals/ap-1/reject')
+      .send({ note: 'Evidence was reviewed.' });
+
+    expect(response.status).toBe(200);
+    expect(appealsService.decideAppeal).toHaveBeenCalledWith(
+      'ap-1',
+      'rejected',
+      'admin-1',
+      'Evidence was reviewed.',
+    );
+  });
+
   it('POST /api/appeals lets users file (201)', async () => {
     vi.mocked(appealsService.submitAppeal).mockResolvedValue({} as never);
     const response = await request(createApp())
