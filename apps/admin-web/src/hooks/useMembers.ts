@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer } from 'react';
 import { fetchMembers, updateMemberStatus, deleteMember } from '../services/membersService';
 import type { Member, MemberStatus } from '../services/membersService';
 
+// Make fetch lifecycle explicit so the UI does not confuse empty data with a failed load.
 type State =
   | { status: 'idle' | 'loading' }
   | { status: 'error'; message: string }
@@ -14,6 +15,7 @@ type Action =
   | { type: 'UPDATE_STATUS'; id: string; memberStatus: MemberStatus }
   | { type: 'REMOVE'; id: string };
 
+// Apply local status/removal changes immutably while the list is loaded.
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'FETCH_START':
@@ -44,6 +46,7 @@ function reducer(state: State, action: Action): State {
 export function useMembers() {
   const [state, dispatch] = useReducer(reducer, { status: 'idle' });
 
+  // Shared fetch path for initial load, manual reload, and mutation recovery.
   const load = useCallback(async () => {
     dispatch({ type: 'FETCH_START' });
     try {
@@ -61,6 +64,7 @@ export function useMembers() {
     load();
   }, [load]);
 
+  // Optimistically update, then reload and rethrow so bulk callers can report failures.
   const handleStatusChange = useCallback(
     async (id: string, memberStatus: MemberStatus) => {
       dispatch({ type: 'UPDATE_STATUS', id, memberStatus }); // optimistic
@@ -74,6 +78,7 @@ export function useMembers() {
     [load],
   );
 
+  // Optimistically remove; a failed request reloads the row and remains visible to the caller.
   const handleDelete = useCallback(
     async (id: string) => {
       dispatch({ type: 'REMOVE', id }); // optimistic

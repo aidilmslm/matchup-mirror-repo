@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+// Use hoisted service mocks so member loads and writes can be resolved or rejected per case.
 const { fetchMembersMock, updateMemberStatusMock, deleteMemberMock } = vi.hoisted(() => ({
   fetchMembersMock: vi.fn(),
   updateMemberStatusMock: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock('../services/membersService', () => ({
 import { useMembers } from './useMembers';
 import type { Member } from '../services/membersService';
 
+// Create a complete member record and customize only the fields needed by a scenario.
 function makeMember(overrides: Partial<Member> = {}): Member {
   return {
     id: 'mem1',
@@ -34,6 +36,7 @@ function makeMember(overrides: Partial<Member> = {}): Member {
 }
 
 describe('useMembers', () => {
+  // Keep service call counts and outcomes isolated across the hook tests.
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -68,6 +71,7 @@ describe('useMembers', () => {
     expect(result.current.members[0].status).toBe('Suspended');
   });
 
+  // Failure is both surfaced to the caller and corrected in the displayed list.
   it('reverts the optimistic status change by reloading on API failure', async () => {
     fetchMembersMock
       .mockResolvedValueOnce([makeMember({ id: 'mem1', status: 'Active' })])
@@ -86,6 +90,7 @@ describe('useMembers', () => {
     await waitFor(() => expect(result.current.members[0].status).toBe('Active'));
   });
 
+  // A rejected delete restores the member by loading the authoritative list again.
   it('reverts an optimistic delete by reloading on API failure', async () => {
     fetchMembersMock
       .mockResolvedValueOnce([makeMember({ id: 'mem1' })])
