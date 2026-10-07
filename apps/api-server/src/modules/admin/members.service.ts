@@ -10,12 +10,14 @@ export type AdminMemberView = {
   photoUrl?: string;
   status: UserStatus;
   createdAt: string | null;
+  sports: { sport: string; level: string }[];
+  rating: number;
   activitiesCount?: number;
   hostedCount?: number;
 };
 
 export const ADMIN_MEMBERS_PAGE_LIMIT_DEFAULT = 20;
-export const ADMIN_MEMBERS_PAGE_LIMIT_MAX = 100;
+export const ADMIN_MEMBERS_PAGE_LIMIT_MAX = 1000;
 
 function toIso(value: unknown): string | null {
   if (
@@ -38,6 +40,36 @@ function mapMemberRow(
   data: FirebaseFirestore.DocumentData | undefined,
 ): AdminMemberView | null {
   if (!data || typeof data.email !== 'string') return null;
+  // Sports come straight from the profile; levels fall back to blank when unset.
+  const preferred = Array.isArray(data.preferredSports)
+    ? (data.preferredSports as unknown[]).filter(
+        (s): s is string => typeof s === 'string' && s.length > 0,
+      )
+    : [];
+  const levels =
+    data.sportSkillLevels !== null &&
+    typeof data.sportSkillLevels === 'object' &&
+    !Array.isArray(data.sportSkillLevels)
+      ? (data.sportSkillLevels as Record<string, unknown>)
+      : {};
+  // Weighted average across per-sport aggregates; 0 when never rated.
+  let ratingSum = 0;
+  let ratingCount = 0;
+  const bySport =
+    data.ratingBySport !== null &&
+    typeof data.ratingBySport === 'object' &&
+    !Array.isArray(data.ratingBySport)
+      ? (data.ratingBySport as Record<string, unknown>)
+      : {};
+  for (const entry of Object.values(bySport)) {
+    if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+      const rec = entry as { average?: unknown; count?: unknown };
+      if (typeof rec.average === 'number' && typeof rec.count === 'number' && rec.count > 0) {
+        ratingSum += rec.average * rec.count;
+        ratingCount += rec.count;
+      }
+    }
+  }
   return {
     uid: id,
     email: data.email,
@@ -45,11 +77,17 @@ function mapMemberRow(
     ...(typeof data.photoUrl === 'string' ? { photoUrl: data.photoUrl } : {}),
     status: isUserStatus(data.status) ? data.status : 'active',
     createdAt: toIso(data.createdAt),
+    sports: preferred.map((sport) => ({
+      sport,
+      level: typeof levels[sport] === 'string' ? (levels[sport] as string) : '',
+    })),
+    rating: ratingCount > 0 ? Math.round((ratingSum / ratingCount) * 10) / 10 : 0,
   };
 }
 
 /** Paginated user list for the admin Members table (no counts — list stays cheap). */
 export async function listMembers(limit: number): Promise<AdminMemberView[]> {
+  // Enforce the page-size cap before reading and mapping admin-visible user fields.
   const take = Math.trunc(limit);
   if (!Number.isFinite(take) || take < 1 || take > ADMIN_MEMBERS_PAGE_LIMIT_MAX) {
     throw new Error(`limit must be between 1 and ${ADMIN_MEMBERS_PAGE_LIMIT_MAX}`);
@@ -60,11 +98,33 @@ export async function listMembers(limit: number): Promise<AdminMemberView[]> {
     const view = mapMemberRow(doc.id, doc.data());
     if (view) views.push(view);
   }
-  return views;
+  // Per-row participation counts (parallel aggregations; failures degrade to zero per user).
+  const counts = await Promise.all(views.map((view) => countUserActivities(view.uid)));
+  return views.map((view, i) => ({ ...view, ...counts[i] }));
+}
+
+export type MembersSummary = {
+  total: number;
+  active: number;
+  suspended: number;
+};
+
+/** Collection-wide member totals for the admin header cards (aggregation only, no doc reads). */
+export async function getMembersSummary(): Promise<MembersSummary> {
+  // Docs without an explicit status behave as active (see mapMemberRow), so
+  // active is derived as total minus suspended rather than counted directly.
+  const [totalSnap, suspendedSnap] = await Promise.all([
+    firestore.collection('users').count().get(),
+    firestore.collection('users').where('status', '==', 'suspended').count().get(),
+  ]);
+  const total = totalSnap.data().count;
+  const suspended = suspendedSnap.data().count;
+  return { total, active: total - suspended, suspended };
 }
 
 /** Member detail with live participation counts (reuses the user module). */
 export async function getMemberDetail(uid: string): Promise<AdminMemberView> {
+  // Return one admin projection, including aggregate activity counts when available.
   const normalizedUid = uid.trim();
   if (!normalizedUid) {
     throw new Error('uid is required');
@@ -81,7 +141,7 @@ export async function getMemberDetail(uid: string): Promise<AdminMemberView> {
   return { ...view, ...counts };
 }
 
-/** Suspend/reactivate. Only the status enum is writable (mass-assignment safe). */
+/** Change only the status field, revoke sessions on suspension, and record the admin action. */
 export async function setMemberStatus(
   uid: string,
   status: unknown,
@@ -125,7 +185,7 @@ export async function setMemberStatus(
   return view;
 }
 
-/** Full offboard: Auth account (best-effort when already gone) + user doc + email index. */
+/** Remove the Auth account, user document, and email index, then record the admin action. */
 export async function deleteMember(
   uid: string,
   adminUid: string,

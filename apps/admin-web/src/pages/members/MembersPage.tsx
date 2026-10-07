@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMembers } from '../../hooks/useMembers';
+import { fetchMembersSummary, type MembersSummary } from '../../services/membersService';
 import {
   MembersPageSkeleton,
   PageError,
@@ -28,6 +29,7 @@ function StatusBadge({ status }: { status: MemberStatus }) {
 }
 
 function StarRating({ value }: { value: number }) {
+  // Use a warmer color for higher ratings while preserving the numeric score.
   const color =
     value >= 4.5 ? 'text-warning-500' : value >= 3.5 ? 'text-warning-600' : 'text-ink-400';
   return <span className={`text-sm font-semibold ${color}`}>★ {value.toFixed(1)}</span>;
@@ -49,6 +51,22 @@ export function MembersPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Collection-wide totals for the header cards (the full list is loaded; the table paginates client-side).
+  const [summary, setSummary] = useState<MembersSummary | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMembersSummary()
+      .then((s) => {
+        if (!cancelled) setSummary(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Keyboard shortcut: '/' focuses search
   useEffect(() => {
@@ -95,6 +113,7 @@ export function MembersPage() {
   }
 
   function toggleSelect(id: string) {
+    // Copy the Set before changing it so React receives a new state reference.
     setSelectedIds((prev) => {
       const n = new Set(prev);
       if (n.has(id)) {
@@ -106,11 +125,13 @@ export function MembersPage() {
     });
   }
   function toggleAll() {
+    // Select the current page's rows, or clear the selection when they are already selected.
     setSelectedIds(
       selectedIds.size === paginated.length ? new Set() : new Set(paginated.map((m) => m.id)),
     );
   }
   async function handleBulkStatus(next: MemberStatus) {
+    // Settle every request so one failed member does not prevent results for the others.
     const ids = [...selectedIds];
     if (ids.length === 0 || bulkBusy) return;
     setBulkBusy(true);
@@ -140,6 +161,7 @@ export function MembersPage() {
     void handleBulkStatus('Active');
   }
   function handleExport() {
+    // Export all loaded members, regardless of the active search, status filter, or page.
     downloadCsv(
       members.map((m) => ({
         Name: m.name,
@@ -163,6 +185,7 @@ export function MembersPage() {
     setConfirm({ type: 'remove', id, name });
   }
   async function handleConfirm() {
+    // Route the confirmed action to the matching mutation and surface any rejected request.
     if (!confirm) return;
     try {
       if (confirm.type === 'suspend') {
@@ -179,16 +202,18 @@ export function MembersPage() {
     setMenuOpenId(null);
   }
 
+  // Header cards describe the whole collection; the table below paginates client-side.
+  // Falls back to page counts when the summary fetch fails (offline/CSP).
   const stats = [
-    { label: 'Total Members', value: members.length, color: 'text-ink-900' },
+    { label: 'Total Members', value: summary?.total ?? members.length, color: 'text-ink-900' },
     {
       label: 'Active',
-      value: members.filter((m) => m.status === 'Active').length,
+      value: summary?.active ?? members.filter((m) => m.status === 'Active').length,
       color: 'text-brand-500',
     },
     {
       label: 'Suspended',
-      value: members.filter((m) => m.status === 'Suspended').length,
+      value: summary?.suspended ?? members.filter((m) => m.status === 'Suspended').length,
       color: 'text-danger-500',
     },
   ];

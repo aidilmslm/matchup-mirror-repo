@@ -21,6 +21,7 @@ interface AdminActivityView {
   fee?: number;
 }
 
+// Return display-ready date/time fields, using empty labels for missing or invalid backend values.
 function formatDateTime(iso: string | null): {
   scheduledDate: string;
   startTime: string;
@@ -41,6 +42,7 @@ function formatDateTime(iso: string | null): {
   };
 }
 
+// Adapt the backend's smaller activity view into the fields consumed by admin pages.
 function toAdminActivity(view: AdminActivityView): AdminActivity {
   const { scheduledDate, startTime } = formatDateTime(view.startTime);
   const status: ActivityStatus =
@@ -80,6 +82,7 @@ function toAdminActivity(view: AdminActivityView): AdminActivity {
 }
 
 function toBackendStatus(status: ActivityStatus): string {
+  // Translate display labels into the status vocabulary accepted by the API.
   switch (status) {
     case 'Active':
     case 'Full':
@@ -94,9 +97,27 @@ function toBackendStatus(status: ActivityStatus): string {
 }
 
 export async function fetchActivities(): Promise<AdminActivity[]> {
-  const res = await apiFetch<AdminActivityView[]>('/api/admin/activities');
+  // Normalize each wire record into the model shared by admin pages.
+  // Ask for the full collection (API default is 20): the table paginates client-side.
+  const res = await apiFetch<AdminActivityView[]>('/api/admin/activities?limit=1000');
   if (!res.ok) throw new Error(res.error.message);
   return res.data.map(toAdminActivity);
+}
+
+export interface ActivitiesSummary {
+  total: number;
+  open: number;
+  full: number;
+  cancelled: number;
+  completed: number;
+  removed: number;
+}
+
+// Collection-wide totals for the header cards (cheap counts; the list itself is fully loaded).
+export async function fetchActivitiesSummary(): Promise<ActivitiesSummary> {
+  const res = await apiFetch<ActivitiesSummary>('/api/admin/activities/summary');
+  if (!res.ok) throw new Error(res.error.message);
+  return res.data;
 }
 
 export async function updateActivityStatus(id: string, status: ActivityStatus): Promise<void> {

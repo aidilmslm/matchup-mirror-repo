@@ -1,9 +1,10 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Stub each service so these tests focus on endpoint routing, defaults, and HTTP error mapping.
 vi.mock('./members.service.js', () => ({
   ADMIN_MEMBERS_PAGE_LIMIT_DEFAULT: 20,
-  ADMIN_MEMBERS_PAGE_LIMIT_MAX: 100,
+  ADMIN_MEMBERS_PAGE_LIMIT_MAX: 1000,
   listMembers: vi.fn(),
   getMemberDetail: vi.fn(),
   setMemberStatus: vi.fn(),
@@ -12,7 +13,7 @@ vi.mock('./members.service.js', () => ({
 
 vi.mock('./activities.service.js', () => ({
   ADMIN_ACTIVITIES_LIMIT_DEFAULT: 20,
-  ADMIN_ACTIVITIES_LIMIT_MAX: 100,
+  ADMIN_ACTIVITIES_LIMIT_MAX: 1000,
   listAdminActivities: vi.fn(),
   setAdminActivityStatus: vi.fn().mockResolvedValue(undefined),
   deleteAdminActivity: vi.fn().mockResolvedValue(undefined),
@@ -255,6 +256,21 @@ describe('admin routes', () => {
       .post('/api/admin/appeals/ap-1/approve')
       .send({ note: 'ok' });
     expect(response.status).toBe(409);
+  });
+
+  it('POST /api/admin/appeals/:id/reject forwards the admin and optional note', async () => {
+    vi.mocked(appealsService.decideAppeal).mockResolvedValue({} as never);
+    const response = await request(createApp())
+      .post('/api/admin/appeals/ap-1/reject')
+      .send({ note: 'Evidence was reviewed.' });
+
+    expect(response.status).toBe(200);
+    expect(appealsService.decideAppeal).toHaveBeenCalledWith(
+      'ap-1',
+      'rejected',
+      'admin-1',
+      'Evidence was reviewed.',
+    );
   });
 
   it('POST /api/appeals lets users file (201)', async () => {

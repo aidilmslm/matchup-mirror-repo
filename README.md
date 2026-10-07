@@ -14,7 +14,7 @@ This repository contains the **source code** for the MatchUp platform: a cross-p
 - [Tech Stack](#tech-stack)
 - [Repository Structure](#repository-structure)
 - [Installation](#installation)
-- [Demo Accounts & Seed Data](#demo-accounts--seed-data)
+- [Demo Accounts](#demo-accounts)
 - [Scripts by App](#scripts-by-app)
 - [Testing](#testing)
 - [Security](#security)
@@ -115,7 +115,6 @@ matchup/
 │   └── shared-utils/            # common helpers
 ├── infra/
 │   ├── firebase/                # RTDB rules, Firestore indexes, setup README
-│   ├── database/                # local Postgres setup notes
 │   ├── perf/                    # k6 load-test script
 │   ├── scripts/                 # secrets setup
 │   └── ci/                      # CI references
@@ -269,17 +268,18 @@ cd apps/mobile && flutter run
 - Admin web: open http://localhost:5173
 - Mobile: launches in your emulator/device
 
-## Demo Accounts & Seed Data
+## Demo Accounts
 
-Seed a full demo world (5 Auth users, activities incl. full/split-cost/completed games, swipes, notifications, RTDB chats, ratings, 15 sports, 13 notification templates):
+Demo logins (same password for all): `alex.mercer@matchup.demo`, `sarah.chen@matchup.demo`, `mike.chen@matchup.demo`, `lisa.park@matchup.demo`, `james.wilson@matchup.demo` — password `MatchUp123!`. These accounts are players/hosts for the mobile app.
 
-```bash
-cd apps/api-server && npm run seed
-```
+### Admin account (admin web)
 
-Demo logins (same password for all): `alex.mercer@matchup.demo`, `sarah.chen@matchup.demo`, `mike.chen@matchup.demo`, `lisa.park@matchup.demo`, `james.wilson@matchup.demo` — password `MatchUp123!`. For a dense Auckland map: `npm run seed:akl100` (destructive re-seed, 100 activities).
+Log in to the admin web (`/login`) with the admin account:
 
-Admin access is granted server-side (Firestore `admins/{uid}` doc or `ADMIN_UIDS` bootstrap allowlist) and proven at login via `GET /api/admin/me` — seed users are players/hosts, so ask the team for an admin uid or add your own.
+- Email: `admin@matchup.com`
+- Password: `MatchUp123!`
+
+This account has full access to all moderation routes (members, activities, reports, appeals, broadcasts, analytics). The demo accounts above are players/hosts and cannot open the admin web.
 
 ## Scripts by App
 
@@ -341,6 +341,7 @@ Reviewed every data-changing endpoint for BOLA (details: [Wiki Lab 07 page](http
 - **Accepted gaps** — RTDB `activityChats`/`typing` reads are any-authenticated-user (needs a membership index to tighten; API layer gates correctly, writes are backend-only).
 
 ## Configuration
+The project private keys is compressed in ZIP format. The each application environment file is already store based on this project structure. To implement the environment variable is <strong>to just copy the "apps" folder inside "nimble-takahe-private-keys" to the project root</strong>
 
 Key variables (see [environment variables doc](docs/setup/environment-variables.md) and each app's `.env.example`):
 
@@ -410,7 +411,6 @@ kotlin.incremental=false
 - [Boilerplate plan](docs/initial-plan.md) — what this phase delivers
 - [Local development guide](docs/setup/local-development.md)
 - [Environment variables](docs/setup/environment-variables.md)
-- [Database setup](infra/database/README.md)
 - [Firebase setup (RTDB rules + client config)](infra/firebase/README.md)
 - [Coding standards](docs/conventions/coding-standards.md)
 

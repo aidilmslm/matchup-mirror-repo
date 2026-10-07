@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useActivities } from '../../hooks/useActivities';
+import { fetchActivitiesSummary, type ActivitiesSummary } from '../../services/activitiesService';
 import {
   ActivitiesPageSkeleton,
   PageError,
@@ -20,6 +21,7 @@ const PAGE_SIZE = 10;
 type DateRange = 'All' | 'Today' | 'This Week' | 'This Month';
 
 function matchesDateRange(dateStr: string, range: DateRange): boolean {
+  // Compare against local calendar boundaries so the date filters match the admin's locale.
   if (range === 'All') return true;
   const d = new Date(dateStr);
   const now = new Date();
@@ -62,12 +64,13 @@ function StatusBadge({ status }: { status: ActivityStatus }) {
 }
 
 function ProgressBar({ value, max }: { value: number; max: number }) {
+  // Cap the fill at capacity to keep over-capacity records from overflowing the track.
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-200">
       <div
         className="h-full rounded-full"
-        style={{ width: `${pct}%`, backgroundColor: pct >= 100 ? '#f59e0b' : '#0b1f8a' }}
+        style={{ width: `${pct}%`, backgroundColor: pct >= 100 ? '#f59e0b' : 'var(--brand-graphic)' }}
       />
     </div>
   );
@@ -89,7 +92,24 @@ export function ActivitiesPage() {
   } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Collection-wide totals for the header cards (the full list is loaded; the table paginates client-side).
+  const [summary, setSummary] = useState<ActivitiesSummary | null>(null);
   useEffect(() => {
+    let cancelled = false;
+    fetchActivitiesSummary()
+      .then((s) => {
+        if (!cancelled) setSummary(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Let admins focus search with '/', unless they are already typing in a text field.
     function onKey(e: KeyboardEvent) {
       if (
         e.key === '/' &&
@@ -107,10 +127,11 @@ export function ActivitiesPage() {
   if (loading) return <ActivitiesPageSkeleton />;
   if (error) return <PageError message={error} onRetry={reload} />;
 
-  // Derive unique sports from data
+  // Build filter choices from the currently loaded records rather than a hard-coded list.
   const allSports = ['All', ...Array.from(new Set(activities.map((a) => a.sport))).sort()];
 
   function handleExport() {
+    // Export the complete loaded set; current search and page filters affect only the table.
     downloadCsv(
       activities.map((a) => ({
         Name: a.name,
@@ -129,6 +150,7 @@ export function ActivitiesPage() {
     toast('Activities exported as CSV.', 'info');
   }
 
+  // Apply all active criteria before calculating pages so pagination reflects visible results.
   const filtered = activities.filter((a) => {
     const matchSearch =
       a.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -143,6 +165,7 @@ export function ActivitiesPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // Return to the first page whenever a criterion changes to avoid landing on an empty page.
   function applyFilter(f: string) {
     setStatusFilter(f);
     setPage(1);
@@ -169,11 +192,19 @@ export function ActivitiesPage() {
     dateRange !== 'All',
   ].filter(Boolean).length;
 
+  // Summary cards describe the full collection; the table below paginates client-side.
+  // Falls back to page counts when the summary fetch fails (offline/CSP).
   const stats = [
-    { label: 'Total Activities', value: activities.length },
-    { label: 'Active', value: activities.filter((a) => a.status === 'Active').length },
-    { label: 'Flagged', value: activities.filter((a) => a.status === 'Flagged').length },
-    { label: 'Full', value: activities.filter((a) => a.status === 'Full').length },
+    { label: 'Total Activities', value: summary?.total ?? activities.length },
+    {
+      label: 'Active',
+      value: summary?.open ?? activities.filter((a) => a.status === 'Active').length,
+    },
+    {
+      label: 'Flagged',
+      value: summary?.removed ?? activities.filter((a) => a.status === 'Flagged').length,
+    },
+    { label: 'Full', value: summary?.full ?? activities.filter((a) => a.status === 'Full').length },
   ];
 
   return (
@@ -353,7 +384,7 @@ export function ActivitiesPage() {
                 <tr key={a.id} className={i % 2 === 0 ? 'bg-white' : 'bg-ink-50'}>
                   <td className="tbl-td">
                     <Link to={`/activities/${a.id}`} className="group block">
-                      <p className="font-semibold text-brand-500 group-hover:underline leading-snug">
+                      <p className="font-semibold text-ink-900 group-hover:underline leading-snug">
                         {a.name}
                       </p>
                       <p className="text-xs text-ink-400">ID: {a.matchId}</p>

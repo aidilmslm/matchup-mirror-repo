@@ -11,9 +11,8 @@ import { firestore } from '../../database/firebase.js';
  * No fake data: `retention`/`health` stay `[]` because the events to
  * compute them (repeat-visit cohorts, DAU/WAU funnels) are not recorded
  * yet — the frontend renders those cards from the empty series plus the
- * human-readable `note` (also sent as the `X-Analytics-Note` response
- * header). When an `analyticsEvents` collection lands, compute the
- * series here and keep the same shape.
+ * human-readable `note` in the JSON body. When an `analyticsEvents`
+ * collection lands, compute the series here and keep the same shape.
  */
 export const ANALYTICS_SCAN_CAP = 1000;
 
@@ -140,6 +139,7 @@ async function bucketByDay(collection: string, field: string, days: Date[]): Pro
 }
 
 export async function getAnalytics(rangeDays = 7): Promise<AnalyticsView> {
+  // Aggregate a bounded recent dataset into the chart, retention, health, and sport summaries.
   if (rangeDays !== 7 && rangeDays !== 30 && rangeDays !== 90) {
     throw new Error('range must be 7, 30, or 90 days');
   }
@@ -255,6 +255,7 @@ export async function getAnalytics(rangeDays = 7): Promise<AnalyticsView> {
 }
 
 export async function getDashboard(): Promise<DashboardView> {
+  // Build dashboard KPIs from the same underlying collections used by analytics.
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
   const [totalUsers, activeActivities, pendingReports, newUsersWeek, analytics] = await Promise.all(

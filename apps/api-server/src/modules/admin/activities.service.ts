@@ -27,7 +27,7 @@ export function isAdminActivityStatus(value: unknown): value is ActivityStatus {
 }
 
 export const ADMIN_ACTIVITIES_LIMIT_DEFAULT = 20;
-export const ADMIN_ACTIVITIES_LIMIT_MAX = 100;
+export const ADMIN_ACTIVITIES_LIMIT_MAX = 1000;
 
 function toIso(value: unknown): string | null {
   if (
@@ -55,8 +55,38 @@ async function hostDisplayName(hostId: string): Promise<string> {
   }
 }
 
+export type ActivitiesSummary = {
+  total: number;
+  open: number;
+  full: number;
+  cancelled: number;
+  completed: number;
+  removed: number;
+};
+
+/** Collection-wide activity totals for the admin header cards (aggregation only, no doc reads). */
+export async function getActivitiesSummary(): Promise<ActivitiesSummary> {
+  const statuses = ['open', 'full', 'cancelled', 'completed', 'removed'] as const;
+  const [totalSnap, ...statusSnaps] = await Promise.all([
+    firestore.collection('activities').count().get(),
+    ...statuses.map((status) =>
+      firestore.collection('activities').where('status', '==', status).count().get(),
+    ),
+  ]);
+  const counts = statusSnaps.map((snap) => snap.data().count);
+  return {
+    total: totalSnap.data().count,
+    open: counts[0] ?? 0,
+    full: counts[1] ?? 0,
+    cancelled: counts[2] ?? 0,
+    completed: counts[3] ?? 0,
+    removed: counts[4] ?? 0,
+  };
+}
+
 /** Newest-first admin table. Host names resolved best-effort. */
 export async function listAdminActivities(limit: number): Promise<AdminActivityView[]> {
+  // Validate the requested window and map stored activity records into the admin list projection.
   const take = Math.trunc(limit);
   if (!Number.isFinite(take) || take < 1 || take > ADMIN_ACTIVITIES_LIMIT_MAX) {
     throw new Error(`limit must be between 1 and ${ADMIN_ACTIVITIES_LIMIT_MAX}`);
@@ -94,6 +124,7 @@ export async function listAdminActivities(limit: number): Promise<AdminActivityV
 }
 
 /** Admin status override — same write the host flow performs, without the host-ownership check. */
+// Record the moderator identity with the status change so the audit trail is attributable.
 export async function setAdminActivityStatus(
   activityId: string,
   status: unknown,
@@ -144,7 +175,7 @@ async function deleteSubcollection(
   return removed;
 }
 
-/** Removes the activity doc plus its `participants` and `joinRequests` subcollections (Firestore has no cascade. */
+/** Delete the activity and its `participants`/`joinRequests` rows, then record the admin action. */
 export async function deleteAdminActivity(
   activityId: string,
   adminUid: string,
